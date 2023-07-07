@@ -36,11 +36,21 @@ uint constant FROM_APPLICATION_END              = 66;
 
 // CTX0 Source to Destination ******************************************************************************************************
 
-uint constant TO_APPLICATION_LENGTH__POS        = 66; 
-uint constant TO_APPLICATION_START              = 67; 
-uint constant TO_APPLICATION_START_EVM          = 111;  // If the address is an EVM address, this is the start
-uint constant TO_APPLICATION_END                = 131;
+uint constant CTX0_TO_APPLICATION_LENGTH_POS         = 66; 
+uint constant CTX0_TO_APPLICATION_START              = 67; 
+uint constant CTX0_TO_APPLICATION_START_EVM          = 111;  // If the address is an EVM address, this is the start
+uint constant CTX0_TO_APPLICATION_END                = 131;
 
+uint constant CTX0_MESSAGE_START                     = 131;
 
 // CTX1 Destination to Source **************************************************************************************************
 
+uint constant CTX1_RELAYER_RECIPITENT_LENGTH_POS     = 66; 
+uint constant CTX1_RELAYER_RECIPITENT_START          = 67; 
+uint constant CTX1_RELAYER_RECIPITENT_START_EVM      = 111;  // If the address is an EVM address, this is the start
+uint constant CTX1_RELAYER_RECIPITENT_END            = 131;
+
+uint constant CTX1_GAS_SPENT_START                   = 131;
+uint constant CTX1_GAS_SPENT_END                     = 147;
+
+uint constant CTX1_MESSAGE_START                     = 147;

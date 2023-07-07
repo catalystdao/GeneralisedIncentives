@@ -18,5 +18,5 @@ interface IIncentivizedMessageEscrow {
         incentiveDescription calldata incentive
     ) external payable returns(uint256);
 
-    function deliverMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message) external;
+    function processMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message) external;
 }

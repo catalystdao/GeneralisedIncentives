@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEscrow.sol";
 import { IApplication } from "./interfaces/IApplication.sol";
 import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
+import "./MessagePayload.sol";
 
 
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow {
@@ -12,10 +13,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow {
     error ZeroIncentiveNotAllowed();
     error MessageAlreadyBountied();
     error NotImplementedError();
+    error feeRecipitentIncorrectFormatted(uint8 expected, uint8 actual);
+
+    bytes constant ALT_DEPLOYMENT = bytes("0x12341234");
 
     mapping(bytes32 => incentiveDescription) public bounty;
 
-    bytes constant ALT_DEPLOYMENT = bytes("0x12341234");
 
     mapping(bytes32 => bytes) public destinationToAddress;
 
@@ -76,7 +79,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow {
 
         bytes memory messageWithContext = abi.encodePacked(
             bytes1(SourcetoDestination),    // This is a sendMessage,
-            convertEVMTo65(msg.sender),     // Original sender // TODO: let the sender customize this to deliver the ack to another address? That would let us build messageWithContext out of calldata which could be cheaper.
+            convertEVMTo65(msg.sender),     // Original sender
             destinationAddress,             // The address to deliver the (original) message to.
             incentive.minGasDelivery,       // Send the gas limit to the other chain so we can enforce it
             message                         // The message to deliver to the destination.
@@ -99,33 +102,64 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow {
 
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
     /// @dev Called by off-chain agents.
-    function deliverMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message) external {
+    function processMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message, bytes calldata feeRecipitent) external {
+        uint256 gasLimit = gasleft();
         // Verify message is valid
         _verifyMessage(sourceIdentifier, messagingProtocolContext, message);
 
         bytes1 context = bytes1(message[0]);
 
         if (context == SourcetoDestination) {
-            _handleSTD(sourceIdentifier, message);
+            _handleCall(sourceIdentifier, message, feeRecipitent, gasLimit);
         } else if (context == DestinationtoSource) {
-            _handleDTS(message);
+            _handleAck(sourceIdentifier, message, feeRecipitent, gasLimit);
         } else {
             revert NotImplementedError();
         }
     }
 
-    function _handleSTD(bytes32 sourceIdentifier, bytes calldata message) internal {
+    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint256 gasLimit) internal {
+        
+        // We do not check if toApplication is formatted correctly: check if TO_APPLICATION_LENGTH_POS == 20? because this function is not allowed to fail.
+        address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END]));
+        bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
+        // Deliver the message to the application.
+        bytes memory acknowledgement = IApplication(toApplication).receiveMessage(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ]);  // TODO: try - catch
+
+        // It is assumed that the length of the address of the feeRecipitent is the same as the fromApplication. Check that feeRecipitent is formatted correctly. //TODO Assumption?
+        if (feeRecipitent[0] != fromApplication[0]) revert feeRecipitentIncorrectFormatted(uint8(fromApplication[0]), uint8(feeRecipitent[0]));
+
+        // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
+        uint256 gasUsed = uint128(gasLimit - gasleft());
+
+        // Encode a new message to send back. This lets the relayer claim their payment.
         bytes memory messageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource), // This is a sendMessage
-            msg.sender,
-            message
+            feeRecipitent,
+            gasUsed,
+            acknowledgement
         );
 
         // Send message to messaging protocol
         _sendMessage(sourceIdentifier, _getEscrowAddress(sourceIdentifier), messageWithContext);
     }
 
-    function _handleDTS(bytes calldata message) internal {
+    function _handleAck(bytes32 sourceIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint256 gasLimit) internal {
+
+        // Handle the payment to the user
+        address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
+        IApplication(fromApplication).ackMessage(sourceIdentifier, message[CTX1_MESSAGE_START: ]);  // TODO: try - catch
+
+        // release payment
+        address destinationFeeRecipitent = address(bytes20(message[CTX1_RELAYER_RECIPITENT_START_EVM:CTX1_RELAYER_RECIPITENT_END]));
+        address sourceFeeRecipitent = address(bytes20(feeRecipitent[45:]));
+        uint128 gasSpentOnDestination = uint128(bytes16(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
+
+        // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
+        uint256 gasUsed = uint128(gasLimit - gasleft());
+
+        // Payment for relaying message
+        destinationFee
 
     }
 }
