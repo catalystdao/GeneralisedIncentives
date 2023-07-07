@@ -11,7 +11,12 @@ interface IIncentivizedMessageEscrow {
         uint128 totalIncentive;         // 1: 256/256 bytes
     }
 
-    function escrowMessage(bytes32 destinationIdentifier, bytes32 target, bytes calldata message, incentiveDescription calldata incentive) external payable returns(uint256);
+    function escrowMessage(
+        bytes32 destinationIdentifier,
+        bytes calldata destinationAddress,
+        bytes calldata message,
+        incentiveDescription calldata incentive
+    ) external payable returns(uint256);
 
-    function deliverMessage(bytes calldata message) external payable;
+    function deliverMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message) external;
 }
