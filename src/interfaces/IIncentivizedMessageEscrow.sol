@@ -11,6 +11,7 @@ interface IIncentivizedMessageEscrow {
         uint96 priceOfAckGas;       // 1: 24/32 bytes
         uint64 targetDelta;         // 1: 32/32 bytes
     }
+    
 
     function escrowMessage(
         bytes32 destinationIdentifier,

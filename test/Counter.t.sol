@@ -8,6 +8,6 @@ contract HyperlaneTest is Test {
     IncentivizedHyperlaneEscrow public counter;
 
     function setUp() public {
-        counter = new IncentivizedHyperlaneEscrow();
+        counter = new IncentivizedHyperlaneEscrow(address(0), 0);
     }
 }
