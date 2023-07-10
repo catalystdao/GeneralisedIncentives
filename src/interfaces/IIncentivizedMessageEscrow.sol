@@ -4,11 +4,12 @@ pragma solidity ^0.8.13;
 interface IIncentivizedMessageEscrow {
     // Packs to two slots.
     struct incentiveDescription {
-        uint64 minGasDelivery;          // 0: 64/256 bytes
-        uint64 minGasAck;               // 0: 128/256 bytes
-        uint128 priceOfDeliveryGas;     // 0: 256/256 bytes
-        uint128 priceOfAckGas;          // 1: 128/256 bytes
-        uint128 totalIncentive;         // 1: 256/256 bytes
+        uint64 minGasDelivery;      // 0: 8/32 bytes
+        uint64 minGasAck;           // 0: 16/32 bytes
+        uint128 totalIncentive;     // 0: 32/32 bytes
+        uint96 priceOfDeliveryGas;  // 1: 12/32 bytes
+        uint96 priceOfAckGas;       // 1: 24/32 bytes
+        uint64 targetDelta;         // 1: 32/32 bytes
     }
 
     function escrowMessage(
@@ -16,7 +17,7 @@ interface IIncentivizedMessageEscrow {
         bytes calldata destinationAddress,
         bytes calldata message,
         incentiveDescription calldata incentive
-    ) external payable returns(uint256);
+    ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 
-    function processMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message) external;
+    function processMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message, bytes calldata feeRecipitent) external;
 }

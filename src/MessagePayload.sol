@@ -5,52 +5,64 @@ pragma solidity ^0.8.13;
 // IncentivizedMessageEscrow Payload***********************************************************************************************
 //
 // Common Payload (beginning)
-//    CONTEXT                       0   (1 byte)
-//    + FROM_APPLICATION_LENGTH     1   (1 byte)
-//    + FROM_APPLICATION            2   (64 bytes)
+//    CONTEXT                           0   (1 byte)
+//    + MESSAGE_IDENTIFIER              1   (32 bytes)
+//    + FROM_APPLICATION_LENGTH         33  (1 byte)
+//    + FROM_APPLICATION                34  (64 bytes)
 // 
 // Context-depending Payload
 //    CTX0 - 0x00 - Source to Destination
-//      + TO_VAULT_LENGTH             66  (1 byte)
-//      + TO_VAULT                    67  (64 bytes)
+//      + TO_VAULT_LENGTH               98  (1 byte)
+//      + TO_VAULT                      99  (64 bytes)
+//      + MIN_GAS                       163 (8 bytes)
+//     => MESSAGE_START                 171 (remainder)
 //
 //    CTX1 - 0x01 - Destination to Source
-//      +
+//      + RELAYER_RECIPITENT_LENGTH     98  (1 byte)
+//      + RELAYER_RECIPITENT            99  (64 bytes)
+//      + GAS_SPENT                     163 (8 bytes)
+//     => MESSAGE_START                 171 (remainder)
 
 
 // Contexts *********************************************************************************************************************
 
 bytes1 constant SourcetoDestination     = 0x00;
-bytes1 constant DestinationtoSource = 0x01;
+bytes1 constant DestinationtoSource     = 0x01;
 
 
 // Common Payload ***************************************************************************************************************
 
 uint constant CONTEXT_POS                       = 0;
 
-uint constant FROM_APPLICATION_LENGTH_POS      = 1; 
-uint constant FROM_APPLICATION_START            = 2; 
-uint constant FROM_APPLICATION_START_EVM        = 46;  // If the address is an EVM address, this is the start
-uint constant FROM_APPLICATION_END              = 66;
+uint constant MESSAGE_IDENTIFIER_START          = 1;
+uint constant MESSAGE_IDENTIFIER_END            = 33;
+
+uint constant FROM_APPLICATION_LENGTH_POS       = 33; 
+uint constant FROM_APPLICATION_START            = 34; 
+uint constant FROM_APPLICATION_START_EVM        = 78;  // If the address is an EVM address, this is the start
+uint constant FROM_APPLICATION_END              = 98;
 
 
 // CTX0 Source to Destination ******************************************************************************************************
 
-uint constant CTX0_TO_APPLICATION_LENGTH_POS         = 66; 
-uint constant CTX0_TO_APPLICATION_START              = 67; 
-uint constant CTX0_TO_APPLICATION_START_EVM          = 111;  // If the address is an EVM address, this is the start
-uint constant CTX0_TO_APPLICATION_END                = 131;
+uint constant CTX0_TO_APPLICATION_LENGTH_POS         = 98; 
+uint constant CTX0_TO_APPLICATION_START              = 99; 
+uint constant CTX0_TO_APPLICATION_START_EVM          = 143;  // If the address is an EVM address, this is the start
+uint constant CTX0_TO_APPLICATION_END                = 163;
 
-uint constant CTX0_MESSAGE_START                     = 131;
+uint constant CTX0_MIN_GAS_LIMIT_START               = 163;
+uint constant CTX0_MIN_GAS_LIMIT_END                 = 179;
+
+uint constant CTX0_MESSAGE_START                     = 163;
 
 // CTX1 Destination to Source **************************************************************************************************
 
-uint constant CTX1_RELAYER_RECIPITENT_LENGTH_POS     = 66; 
-uint constant CTX1_RELAYER_RECIPITENT_START          = 67; 
-uint constant CTX1_RELAYER_RECIPITENT_START_EVM      = 111;  // If the address is an EVM address, this is the start
-uint constant CTX1_RELAYER_RECIPITENT_END            = 131;
+uint constant CTX1_RELAYER_RECIPITENT_LENGTH_POS     = 98; 
+uint constant CTX1_RELAYER_RECIPITENT_START          = 99; 
+uint constant CTX1_RELAYER_RECIPITENT_START_EVM      = 143;  // If the address is an EVM address, this is the start
+uint constant CTX1_RELAYER_RECIPITENT_END            = 163;
 
-uint constant CTX1_GAS_SPENT_START                   = 131;
-uint constant CTX1_GAS_SPENT_END                     = 147;
+uint constant CTX1_GAS_SPENT_START                   = 163;
+uint constant CTX1_GAS_SPENT_END                     = 179;
 
-uint constant CTX1_MESSAGE_START                     = 147;
+uint constant CTX1_MESSAGE_START                     = 179;
