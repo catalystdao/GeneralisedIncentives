@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { IncentivizedMessageEscrow } from "../IncentivizedMessageEscrow.sol";
+import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { IMailbox } from "./interfaces/IMailbox.sol";
 import { Message } from "./libs/Message.sol";
 import { IInterchainSecurityModule, ISpecifiesInterchainSecurityModule } from "./interfaces/IInterchainSecurityModule.sol";

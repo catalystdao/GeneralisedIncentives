@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-interface IApplication {
+interface ICrossChainReceiver {
     /// @notice Handles the acknowledgement from the destination
     /// @dev acknowledgement is exactly the output of receiveMessage except if receiveMessage reverted, then it is 0x00.
     /// If an acknowledgement isn't needed, this can be implemented as {}.

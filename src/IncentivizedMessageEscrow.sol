@@ -2,21 +2,13 @@
 pragma solidity ^0.8.13;
 
 import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEscrow.sol";
-import { IApplication } from "./interfaces/IApplication.sol";
+import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
 import { Bytes65 } from "./Bytes65.sol";
 import "./MessagePayload.sol";
 
 
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
-    error NotEnoughGasProvided(uint128 expected, uint128 actual);
-    error InvalidTotalIncentive(uint128 expected, uint128 actual);
-    error ZeroIncentiveNotAllowed();
-    error MessageAlreadyBountied();
-    error NotImplementedError();
-    error feeRecipitentIncorrectFormatted(uint8 expected, uint8 actual);
-    error MessageAlreadySpent();
-    error TargetExecutionTimeInvalid(int128 difference);
 
     event BountyPlaced(
         bytes32 indexed messageIdentifier,
@@ -63,7 +55,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         // Compute incentive metrics.
         uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
-        uint128 ackGas = incentive.minGasAck * incentive.priceOfDeliveryGas;
+        uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
         uint128 sum = deliveryGas + ackGas;
         // Check that the provided gas is sufficient and refund the rest
         if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
@@ -148,7 +140,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
             // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
         bytes memory acknowledgement;
-        try IApplication(toApplication).receiveMessage{gas: minGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ]) returns(bytes memory returnValue) 
+        try ICrossChainReceiver(toApplication).receiveMessage{gas: minGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ]) returns(bytes memory returnValue) 
             {acknowledgement = returnValue;} catch {acknowledgement = new bytes(0x00);}
 
         // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
@@ -178,7 +170,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Deliver the ack to the application
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-        try IApplication(fromApplication).ackMessage{gas: incentive.minGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
+        try ICrossChainReceiver(fromApplication).ackMessage{gas: incentive.minGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
 
         // Get the gas used by these calls:
         uint256 gasSpentOnDestination = uint128(bytes16(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
@@ -274,7 +266,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Only allow acks to do this. Normal messages are invalid after first execution.
         if (context == DestinationtoSource) {
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-            IApplication(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
+            ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
 
             bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
             emit MessageAcked(messageIdentifier);
