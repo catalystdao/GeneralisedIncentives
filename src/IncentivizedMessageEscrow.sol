@@ -16,8 +16,21 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     error NotImplementedError();
     error feeRecipitentIncorrectFormatted(uint8 expected, uint8 actual);
     error MessageAlreadySpent();
+    error TargetExecutionTimeInvalid(int128 difference);
 
-    event BountyPlaced();
+    event BountyPlaced(
+        bytes32 indexed messageIdentifier,
+        incentiveDescription incentive
+    );
+    event MessageDelivered(bytes32 messageIdentifier);
+    event MessageAcked(bytes32 messageIdentifier);
+    event BountyClaimed(
+        bytes32 indexed uniqueIdentifier,
+        uint64 gasSpentOnDestination,
+        uint64 gasSpentOnSource,
+        uint128 destinationRelayerReward,
+        uint128 sourceRelayerReward
+    );
 
     mapping(bytes32 => incentiveDescription) public bounty;
 
@@ -33,6 +46,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
     /// @dev Called by other contracts
+    /// Any integrating application should check:
+    ///     1. That incentive.minGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
+    ///     2. That incentive.minGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
+    ///     3. The relay incentive is enough to get the message relayed within the expected time. If that is never, then this check is not needed.
     /// @param message The message to be sent to the destination. Please ensure the message is semi-unique.
     ///     This can safely be done by appending a counter to the message or adding a number of pesudo-randomized
     ///     bytes like the blockhash. (or difficulty)
@@ -73,6 +90,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         _sendMessage(
             destinationIdentifier,
             messageWithContext
+        );
+
+        emit BountyPlaced(
+            messageIdentifier,
+            incentive
         );
 
         // Return excess incentives
@@ -133,16 +155,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 gasUsed = uint128(gasLimit - gasleft());
 
         // Encode a new message to send back. This lets the relayer claim their payment.
-        bytes memory messageWithContext = abi.encodePacked(
+        bytes memory ackMessageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource),                                        // This is a sendMessage
             bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]),  // message identifier
             feeRecipitent,
             gasUsed,
+            uint64(block.timestamp),        // If this overflows, it is fine. It is used in conjunction with a delta.
             acknowledgement
         );
 
         // Send message to messaging protocol
-        _sendMessage(sourceIdentifier, messageWithContext);
+        _sendMessage(sourceIdentifier, ackMessageWithContext);
+
+
+        emit MessageDelivered(messageIdentifier);
     }
 
     function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint128 gasLimit) internal {
@@ -155,14 +181,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         try IApplication(fromApplication).ackMessage{gas: incentive.minGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
 
         // Get the gas used by these calls:
-        uint128 gasSpentOnDestination = uint128(bytes16(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
+        uint256 gasSpentOnDestination = uint128(bytes16(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
         if (incentive.minGasDelivery < gasSpentOnDestination) gasSpentOnDestination = incentive.minGasDelivery;  // If more gas was spent then allocated, then only return the allocation.
         // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
-        uint128 gasSpentOnSource = uint128(gasLimit - gasleft());
+        uint256 gasSpentOnSource = gasLimit - gasleft();
         if (incentive.minGasAck < gasSpentOnSource) gasSpentOnSource = incentive.minGasAck;  // If more gas was spent then allocated, then only return the allocation.
 
         // Find the respective fees for delivery and ack.
-        uint128 deliveryFee; uint128 ackFee; uint128 sumFee;
+        uint256 deliveryFee; uint256 ackFee; uint256 sumFee;
         unchecked {
             // gasSpentOnDestination < minGasDelivery => We have done this calculation before.
             deliveryFee = gasSpentOnDestination * incentive.priceOfDeliveryGas;
@@ -170,19 +196,69 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             ackFee = gasSpentOnSource * incentive.priceOfAckGas;
             // deliveryFee + ackFee must be less than incentive.totalIncentive
             sumFee = deliveryFee + ackFee;
-
         }
         address destinationFeeRecipitent = address(bytes20(message[CTX1_RELAYER_RECIPITENT_START_EVM:CTX1_RELAYER_RECIPITENT_END]));
         address sourceFeeRecipitent = address(bytes20(feeRecipitent[45:]));
 
-        if (destinationFeeRecipitent == sourceFeeRecipitent) payable(sourceFeeRecipitent).transfer(sumFee);
+        if (destinationFeeRecipitent == sourceFeeRecipitent) {
+            payable(sourceFeeRecipitent).transfer(sumFee);
+            return;
+        }
 
-        // Otherwise, figure out the decay.
-        // TODO: Compute
-        uint128 forDestinationRelayer = (sumFee * 5*10**17) / 10**18;
-        uint128 forSourceRelayer = sumFee - forDestinationRelayer;
+        uint64 targetDelta = incentive.targetDelta;
+        // If targetDelta is 0, then distribute exactly the rewards.
+        if (targetDelta == 0) {
+            payable(destinationFeeRecipitent).send(deliveryFee);  // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+            payable(sourceFeeRecipitent).transfer(ackFee);
+            return;
+        }
+        // Compute the reward distribution
+        // We need to compute how much time it took to deliver the ack back.
+        uint64 executionTime;
+        unchecked {
+            // Underflow is desired in this code chuck. It ensures that the code piece continues working
+            // past the time when uint64 stops working. *As long as any timedelta is less than uint64. // TODO: Test
+            executionTime = uint64(block.timestamp) - uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]));
+        }
+        // The incentive scheme is as follows: When executionTime = incentive.targetDelta then 
+        // The rewards are distributed as per the incentive spec. If the time is less, then
+        // more incentives are given to the destination relayer while if the time is more, 
+        // then more incentives are given to the sourceRelayer.
+        uint256 forDestinationRelayer;
+        unchecked {
+            // |targetDekta - executionTime| < |2**64 + 2**64| = 2**65 < 2**255 - 1
+            int256 timeBetweenTargetAndExecution = int256(uint256(targetDelta)) - int256(uint256(executionTime));
+            if (timeBetweenTargetAndExecution <= 0) {
+                // Less time than target passed and the destination relayer should get a larger chunk.
+                // targetDelta != 0, we checked for that. 
+                // max abs timeBetweenTargetAndExecution = targetDelta => ackFee * targetDelta < sumFee * targetDelta
+                //  2**127 * 2**64 = 2**191 < 2**256-1
+                // Thus the largest this can be is sumFee and that is less than incentive.totalIncentive.
+                forDestinationRelayer = deliveryFee + ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
+            } else {
+                // More time than target passed and the ack relayer should get a larger chunk.
+                if (uint256(timeBetweenTargetAndExecution) >= targetDelta) {
+                    forDestinationRelayer = 0;
+                } else {
+                    // targetDelta != 0, we checked for that. 
+                    // max abs timeBetweenTargetAndExecution = targetDelta since we have the above check
+                    // => deliveryFee * targetDelta < sumFee * targetDelta < 2**127 * 2**64 = 2**191 < 2**256-1
+                    forDestinationRelayer = deliveryFee - deliveryFee * uint256(timeBetweenTargetAndExecution) / targetDelta;
+                }
+            }
+        }
         payable(destinationFeeRecipitent).send(forDestinationRelayer);  // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+        uint256 forSourceRelayer = sumFee - forDestinationRelayer;
         payable(sourceFeeRecipitent).transfer(forSourceRelayer);
+
+        emit MessageAcked(messageIdentifier);
+        emit BountyClaimed(
+            messageIdentifier,
+            uint64(gasSpentOnDestination),
+            uint64(gasSpentOnSource),
+            uint128(forDestinationRelayer),
+            uint128(forSourceRelayer)
+        );
     }
 
     /// @notice Allows anyone to re-execute an ack which didn't properly execute. Out of gas?
@@ -199,6 +275,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (context == DestinationtoSource) {
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
             IApplication(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
+
+            bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
+            emit MessageAcked(messageIdentifier);
         } else {
             revert NotImplementedError();
         }

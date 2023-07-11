@@ -21,7 +21,8 @@ pragma solidity ^0.8.13;
 //      + RELAYER_RECIPITENT_LENGTH     98  (1 byte)
 //      + RELAYER_RECIPITENT            99  (64 bytes)
 //      + GAS_SPENT                     163 (8 bytes)
-//     => MESSAGE_START                 171 (remainder)
+//      + EXECUTION_TIME                171 (8 bytes)
+//     => MESSAGE_START                 187 (remainder)
 
 
 // Contexts *********************************************************************************************************************
@@ -45,24 +46,27 @@ uint constant FROM_APPLICATION_END              = 98;
 
 // CTX0 Source to Destination ******************************************************************************************************
 
-uint constant CTX0_TO_APPLICATION_LENGTH_POS         = 98; 
-uint constant CTX0_TO_APPLICATION_START              = 99; 
-uint constant CTX0_TO_APPLICATION_START_EVM          = 143;  // If the address is an EVM address, this is the start
-uint constant CTX0_TO_APPLICATION_END                = 163;
+uint constant CTX0_TO_APPLICATION_LENGTH_POS        = 98; 
+uint constant CTX0_TO_APPLICATION_START             = 99; 
+uint constant CTX0_TO_APPLICATION_START_EVM         = 143;  // If the address is an EVM address, this is the start
+uint constant CTX0_TO_APPLICATION_END               = 163;
 
-uint constant CTX0_MIN_GAS_LIMIT_START               = 163;
-uint constant CTX0_MIN_GAS_LIMIT_END                 = 179;
+uint constant CTX0_MIN_GAS_LIMIT_START              = 163;
+uint constant CTX0_MIN_GAS_LIMIT_END                = 179;
 
-uint constant CTX0_MESSAGE_START                     = 163;
+uint constant CTX0_MESSAGE_START                    = 163;
 
 // CTX1 Destination to Source **************************************************************************************************
 
-uint constant CTX1_RELAYER_RECIPITENT_LENGTH_POS     = 98; 
-uint constant CTX1_RELAYER_RECIPITENT_START          = 99; 
-uint constant CTX1_RELAYER_RECIPITENT_START_EVM      = 143;  // If the address is an EVM address, this is the start
-uint constant CTX1_RELAYER_RECIPITENT_END            = 163;
+uint constant CTX1_RELAYER_RECIPITENT_LENGTH_POS    = 98; 
+uint constant CTX1_RELAYER_RECIPITENT_START         = 99; 
+uint constant CTX1_RELAYER_RECIPITENT_START_EVM     = 143;  // If the address is an EVM address, this is the start
+uint constant CTX1_RELAYER_RECIPITENT_END           = 163;
 
-uint constant CTX1_GAS_SPENT_START                   = 163;
-uint constant CTX1_GAS_SPENT_END                     = 179;
+uint constant CTX1_GAS_SPENT_START                  = 163;
+uint constant CTX1_GAS_SPENT_END                    = 179;
 
-uint constant CTX1_MESSAGE_START                     = 179;
+uint constant CTX1_EXECUTION_TIME_START             = 179;
+uint constant CTX1_EXECUTION_TIME_END               = 187;
+
+uint constant CTX1_MESSAGE_START                    = 187;
