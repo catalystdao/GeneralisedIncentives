@@ -8,36 +8,36 @@ contract MessageIdentifierTest is TestCommon {
 
     function test_unique_identifier_block_10() public {
         vm.roll(10);
-        IncentiveDescription storage incentive = _incentive;
+        IncentiveDescription storage incentive = _INCENTIVE;
         (uint256 unused, bytes32 messageIdentifier) = escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
 
-        assertEq(messageIdentifier, bytes32(0x7d01c60c0b535b864f187d5ef6a43b38777eb9278bde07e01aac581417338a8e));
+        assertEq(messageIdentifier, bytes32(0xf05e0ca00911f1e899dcc2a2b34ae6a81e6d807d649fac3bf301d22adaab370b));
     }
 
     function test_unique_identifier_block_11() public {
         vm.roll(11);
-        IncentiveDescription storage incentive = _incentive;
+        IncentiveDescription storage incentive = _INCENTIVE;
         (uint256 unused, bytes32 messageIdentifier) = escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
 
-        assertEq(messageIdentifier, bytes32(0xb010c35a159afa479757019581efe2b2909c9552770ea6c5d3d4a484d9ca098d));
+        assertEq(messageIdentifier, bytes32(0xad796d50abed2b9f91b027ed86c52256476dd66ad7d1c0a789a2285cf2ad71f6));
     }
 
     // Even with the same message, the identifier should be different between blocks.
     function test_non_unique_bounty(bytes calldata message) public {
-        IncentiveDescription storage incentive = _incentive;
+        IncentiveDescription storage incentive = _INCENTIVE;
         escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
             message,
             incentive
         );
@@ -46,31 +46,31 @@ contract MessageIdentifierTest is TestCommon {
             abi.encodeWithSignature("MessageAlreadyBountied()")
         ); 
         escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
             message,
             incentive
         );
     }
 
     // With different destination identifiers they should produce different identifiers.
-    function test_destination_identifier_impacts_message_identifier() public {
-        IncentiveDescription storage incentive = _incentive;
+    function test_DESTINATION_IDENTIFIER_impacts_MESSAGE_identifier() public {
+        IncentiveDescription storage incentive = _INCENTIVE;
         (uint256 unused1, bytes32 messageIdentifier1) = escrow.escrowMessage{value: incentive.totalIncentive}(
-            bytes32(uint256(_destination_identifier) + uint256(1)),
-            abi.encode(address(application)),
-            _message,
+            bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
 
         (uint256 unused2, bytes32 messageIdentifier2) = escrow.escrowMessage{value: incentive.totalIncentive}(
-            bytes32(uint256(_destination_identifier) + uint256(2)),
-            abi.encode(address(application)),
-            _message,
+            bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
 
-        assertEq(messageIdentifier1, bytes32(0xb611f5ca36bd36b47bab8c365fb5f0fdd9eb31b4c7b9eed405203b767b0538d7));
-        assertEq(messageIdentifier2, bytes32(0x6a39bdb9cac78cd0c194b55ea88fac150b7db57dcd5b39d89964381816a2fbbd));
+        assertEq(messageIdentifier1, bytes32(0x8ba40a82a80752b4a381baec116964861862eb6c926b16da869061adaddc428f));
+        assertEq(messageIdentifier2, bytes32(0xf525c217f2302cb99972860c1bf75861e194eed2f050aae6cfb4178dcc276949));
     }
 }

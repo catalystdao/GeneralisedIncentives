@@ -8,11 +8,11 @@ contract EscrowInformationTest is TestCommon {
     uint256 _overpay;
 
     function test_check_escrow_state() public {
-        IncentiveDescription storage incentive = _incentive;
+        IncentiveDescription storage incentive = _INCENTIVE;
         (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: incentive.totalIncentive}(
             bytes32(uint256(0x123123) + uint256(2**255)),
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
 
@@ -28,30 +28,30 @@ contract EscrowInformationTest is TestCommon {
     }
 
     function test_check_escrow_events() public {
-        IncentiveDescription storage incentive = _incentive;
+        IncentiveDescription storage incentive = _INCENTIVE;
 
-        vm.expectEmit(true, false, false, true);
-        emit BountyPlaced(bytes32(0x9b1bd1506f72482e1e9bbaae440dbf443f2e2b83a8877c90290e2406f066b4c9), incentive);
+        vm.expectEmit();
+        emit BountyPlaced(bytes32(0x561213edd20145c0e5b7e2f9303e83b75eb429046e9bddac10f0d8b1d53be42e), incentive);
 
         escrow.escrowMessage{value: incentive.totalIncentive}(
             bytes32(uint256(0x123123) + uint256(2**255)),
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
     }
 
     function test_gas_refund(uint256 overpay) public {
         vm.assume(overpay < 10000 ether);
-        
-        IncentiveDescription storage incentive = _incentive;
+
+        IncentiveDescription storage incentive = _INCENTIVE;
         _overpay = overpay;
 
         
         (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: incentive.totalIncentive + overpay}(
             bytes32(uint256(0x123123) + uint256(2**255)),
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
 

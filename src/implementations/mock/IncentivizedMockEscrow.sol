@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
-import { EscrowAddress } from "../../EscrowAddress.sol";
+import { EscrowAddress } from "../../utils/EscrowAddress.sol";
 
 // This is a mock contract which should only be used for testing
 // It does not work as a authenticated message escrow!
@@ -17,13 +17,13 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress {
 
     address immutable SIGNER;
 
-    constructor(address signer_) {
+    constructor(bytes32 uniqueChainIndex, address signer_) IncentivizedMessageEscrow(uniqueChainIndex) {
         SIGNER = signer_;
     }
 
     function _verifyMessage(bytes32 sourceIdentifier, bytes calldata _metadata, bytes calldata _message) internal override returns(bytes calldata message_) {
         
-        (uint8 v, bytes32 r, bytes1 s) = abi.decode(_metadata, (uint8, bytes32, bytes1));
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(_metadata, (uint8, bytes32, bytes32));
 
         address messageSigner = ecrecover(keccak256(_message), v, r, s);
         require(messageSigner == SIGNER, "!signer");

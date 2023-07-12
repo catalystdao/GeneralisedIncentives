@@ -35,7 +35,7 @@ contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow {
 
     IMailbox immutable MAILBOX;
 
-    constructor(address mailbox_, uint32 localDomain_) {
+    constructor(bytes32 uniqueChainIndex, address mailbox_, uint32 localDomain_) IncentivizedMessageEscrow(uniqueChainIndex) {
         MAILBOX = IMailbox(mailbox_);
         localDomain = localDomain_;
     }

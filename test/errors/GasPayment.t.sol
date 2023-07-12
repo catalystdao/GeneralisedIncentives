@@ -6,7 +6,7 @@ import { TestCommon } from "../TestCommon.sol";
 
 contract GasPaymentTest is TestCommon {
 
-    function test_place_incentive() public {
+    function test_place_INCENTIVE() public {
         IncentiveDescription memory incentive = IncentiveDescription({
             minGasDelivery: 1199199,
             minGasAck: 1188188,
@@ -16,14 +16,14 @@ contract GasPaymentTest is TestCommon {
             targetDelta: 30 minutes
         });
         escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
     }
 
-    function test_place_zero_incentive() public {
+    function test_place_zero_INCENTIVE() public {
         IncentiveDescription memory incentive = IncentiveDescription({
             minGasDelivery: 0,
             minGasAck: 0,
@@ -36,14 +36,14 @@ contract GasPaymentTest is TestCommon {
             abi.encodeWithSignature("ZeroIncentiveNotAllowed()")
         ); 
         escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
     }
 
-    function test_place_incentive_total_sum_wrong() public {
+    function test_place_INCENTIVE_total_sum_wrong() public {
         uint64 error = 10;
         IncentiveDescription memory incentive = IncentiveDescription({
             minGasDelivery: 1199199,
@@ -57,14 +57,14 @@ contract GasPaymentTest is TestCommon {
             abi.encodeWithSignature("NotEnoughGasProvided(uint128,uint128)", incentive.totalIncentive + error, incentive.totalIncentive)
         ); 
         escrow.escrowMessage{value: incentive.totalIncentive}(
-            _destination_identifier,
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
     }
 
-    function test_place_incentive_total_send_wrong() public {
+    function test_place_INCENTIVE_total_send_wrong() public {
         uint64 error = 10;
         IncentiveDescription memory incentive = IncentiveDescription({
             minGasDelivery: 1199199,
@@ -78,9 +78,9 @@ contract GasPaymentTest is TestCommon {
             abi.encodeWithSignature("NotEnoughGasProvided(uint128,uint128)", incentive.totalIncentive, incentive.totalIncentive - error)
         ); 
         escrow.escrowMessage{value: incentive.totalIncentive - error}(
-            _destination_identifier,
-            abi.encode(address(application)),
-            _message,
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
             incentive
         );
     }

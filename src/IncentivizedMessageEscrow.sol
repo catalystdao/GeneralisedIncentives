@@ -4,12 +4,17 @@ pragma solidity ^0.8.13;
 import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEscrow.sol";
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
-import { Bytes65 } from "./Bytes65.sol";
+import { Bytes65 } from "./utils/Bytes65.sol";
 import "./MessagePayload.sol";
 
 
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
 
+    bytes32 immutable UNIQUE_SOURCE_IDENTIFIER;
+
+    constructor(bytes32 uniqueChainIndex) {
+        UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
+    }
 
     mapping(bytes32 => IncentiveDescription) public _bounty;
 
@@ -33,7 +38,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
    }
 
 
-
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
     /// @dev Called by other contracts
     /// Any integrating application should check:
@@ -50,7 +54,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata destinationAddress,
         bytes calldata message,
         IncentiveDescription calldata incentive
-    ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
+    ) checkBytes64Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         // Compute incentive metrics.
         uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
         uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
@@ -63,7 +67,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (incentive.totalIncentive != sum) revert NotEnoughGasProvided(incentive.totalIncentive, sum);
 
         // Prepare to store incentive
-        messageIdentifier = keccak256(bytes.concat(bytes32(block.number), destinationIdentifier, message));
+        messageIdentifier = keccak256(bytes.concat(bytes32(block.number), UNIQUE_SOURCE_IDENTIFIER, destinationIdentifier, message));
         if (_bounty[messageIdentifier].totalIncentive != 0) revert MessageAlreadyBountied();
         _bounty[messageIdentifier] = incentive;
 
@@ -122,9 +126,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint128 gasLimit) internal {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-        // Since there could be messages which are different from chain to chain, 
-        // add the sourceIdentifier to the messageIdentifier.
-        messageIdentifier = keccak256(bytes.concat(sourceIdentifier, messageIdentifier));
         bool messageState = _spentMessageIdentifier[messageIdentifier];
         if (messageState) revert MessageAlreadySpent();
         _spentMessageIdentifier[messageIdentifier] = true;
@@ -133,20 +134,24 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Deliver message to application
             // Decode gas limit, application address and sending application
         uint64 minGas = uint64(bytes8(message[CTX0_MIN_GAS_LIMIT_START:CTX0_MIN_GAS_LIMIT_END]));
-        address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END]));
+        address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
             // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
         bytes memory acknowledgement;
+        // TODO: If the caller doesn't implement receiveMessage, catch.
         try ICrossChainReceiver(toApplication).receiveMessage{gas: minGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ]) returns(bytes memory returnValue) 
             {acknowledgement = returnValue;} catch {acknowledgement = new bytes(0x00);}
 
+
         // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
         uint128 gasUsed = uint128(gasLimit - gasleft());
+
 
         // Encode a new message to send back. This lets the relayer claim their payment.
         bytes memory ackMessageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource),                                        // This is a sendMessage
             bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]),  // message identifier
+            fromApplication,
             feeRecipitent,
             gasUsed,
             uint64(block.timestamp),        // If this overflows, it is fine. It is used in conjunction with a delta.
@@ -155,7 +160,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Send message to messaging protocol
         _sendMessage(sourceIdentifier, ackMessageWithContext);
-
 
         emit MessageDelivered(messageIdentifier);
     }
