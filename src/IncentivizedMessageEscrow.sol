@@ -10,23 +10,10 @@ import "./MessagePayload.sol";
 
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
 
-    event BountyPlaced(
-        bytes32 indexed messageIdentifier,
-        incentiveDescription incentive
-    );
-    event MessageDelivered(bytes32 messageIdentifier);
-    event MessageAcked(bytes32 messageIdentifier);
-    event BountyClaimed(
-        bytes32 indexed uniqueIdentifier,
-        uint64 gasSpentOnDestination,
-        uint64 gasSpentOnSource,
-        uint128 destinationRelayerReward,
-        uint128 sourceRelayerReward
-    );
 
-    mapping(bytes32 => incentiveDescription) public bounty;
+    mapping(bytes32 => IncentiveDescription) public _bounty;
 
-    mapping(bytes32 => bool) public spentMessageIdentifier;
+    mapping(bytes32 => bool) public _spentMessageIdentifier;
 
     /// @notice Verify a message's authenticity.
     /// @dev Should be overwritten by the specific messaging protocol verification structure.
@@ -35,6 +22,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice Send the message to the messaging protocol.
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
     function _sendMessage(bytes32 destinationIdentifier, bytes memory message) virtual internal;
+
+    /// Getters:
+    function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive) {
+        return _bounty[messageIdentifier];
+    }
+
+   function spentMessageIdentifier(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted) {
+        return _spentMessageIdentifier[messageIdentifier];
+   }
+
+
 
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
     /// @dev Called by other contracts
@@ -51,7 +49,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
-        incentiveDescription calldata incentive
+        IncentiveDescription calldata incentive
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         // Compute incentive metrics.
         uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
@@ -65,9 +63,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (incentive.totalIncentive != sum) revert NotEnoughGasProvided(incentive.totalIncentive, sum);
 
         // Prepare to store incentive
-        messageIdentifier = keccak256(bytes.concat(bytes32(block.number), message));
-        if (bounty[messageIdentifier].totalIncentive != 0) revert MessageAlreadyBountied();
-        bounty[messageIdentifier] = incentive;
+        messageIdentifier = keccak256(bytes.concat(bytes32(block.number), destinationIdentifier, message));
+        if (_bounty[messageIdentifier].totalIncentive != 0) revert MessageAlreadyBountied();
+        _bounty[messageIdentifier] = incentive;
 
         bytes memory messageWithContext = abi.encodePacked(
             bytes1(SourcetoDestination),    // This is a sendMessage,
@@ -93,10 +91,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (msg.value > sum) {
             payable(msg.sender).transfer(msg.value - sum);
             gasRefund = msg.value - sum;
-            // return [gasRefund, messageIdentifier]
+            return (gasRefund, messageIdentifier);
         }
-        gasRefund = 0;
-        // return [gasRefund, messageIdentifier]
+        return (0, messageIdentifier);
     }
 
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
@@ -128,9 +125,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Since there could be messages which are different from chain to chain, 
         // add the sourceIdentifier to the messageIdentifier.
         messageIdentifier = keccak256(bytes.concat(sourceIdentifier, messageIdentifier));
-        bool messageState = spentMessageIdentifier[messageIdentifier];
+        bool messageState = _spentMessageIdentifier[messageIdentifier];
         if (messageState) revert MessageAlreadySpent();
-        spentMessageIdentifier[messageIdentifier] = true;
+        _spentMessageIdentifier[messageIdentifier] = true;
 
 
         // Deliver message to application
@@ -165,8 +162,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint128 gasLimit) internal {
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-        incentiveDescription memory incentive = bounty[messageIdentifier];
-        delete bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
+        IncentiveDescription memory incentive = _bounty[messageIdentifier];
+        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
         // Deliver the ack to the application
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));

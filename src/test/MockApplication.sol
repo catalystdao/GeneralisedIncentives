@@ -23,9 +23,9 @@ contract MockApplication is ICrossChainReceiver {
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
-        IIncentivizedMessageEscrow.incentiveDescription calldata incentive
-    ) external payable {
-        (uint256 gasRefund, bytes32 messageIdentifier) = MESSAGE_ESCROW.escrowMessage{value: msg.value}(
+        IIncentivizedMessageEscrow.IncentiveDescription calldata incentive
+    ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
+        (gasRefund, messageIdentifier) = MESSAGE_ESCROW.escrowMessage{value: msg.value}(
             destinationIdentifier,
             destinationAddress,
             message,
@@ -58,4 +58,5 @@ contract MockApplication is ICrossChainReceiver {
         );
         return acknowledgement;
     }
+
 }
