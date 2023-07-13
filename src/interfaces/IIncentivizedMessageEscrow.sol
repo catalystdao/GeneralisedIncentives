@@ -12,6 +12,12 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
 
    function spentMessageIdentifier(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted);
 
+    function increaseBounty(
+        bytes32 messageIdentifier,
+        uint96 priceOfDeliveryGas,
+        uint96 priceOfAckGas
+    ) external payable;
+
     function escrowMessage(
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,

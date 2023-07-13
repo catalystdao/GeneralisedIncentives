@@ -35,9 +35,23 @@ contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow {
 
     IMailbox immutable MAILBOX;
 
-    constructor(bytes32 uniqueChainIndex, address mailbox_, uint32 localDomain_) IncentivizedMessageEscrow(uniqueChainIndex) {
+    constructor(bytes32 uniqueChainIndex, address mailbox_, uint32 localDomain_) {
         MAILBOX = IMailbox(mailbox_);
         localDomain = localDomain_;
+    }
+
+    function _getMessageIdentifier(
+        bytes32 destinationIdentifier,
+        bytes calldata message
+    ) internal override view returns(bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes32(block.number),
+                localDomain, 
+                destinationIdentifier,
+                message
+            )
+        );
     }
 
     // TODO: Figure out if this is a good method to verify the message.

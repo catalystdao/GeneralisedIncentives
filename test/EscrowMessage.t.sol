@@ -31,7 +31,7 @@ contract EscrowInformationTest is TestCommon {
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.expectEmit();
-        emit BountyPlaced(bytes32(0x561213edd20145c0e5b7e2f9303e83b75eb429046e9bddac10f0d8b1d53be42e), incentive);
+        emit BountyPlaced(bytes32(0x2dfdcf3ed929fb394f4f06ccf6d75629926d36dc4409186a42a5904a2f80d74d), incentive);
 
         escrow.escrowMessage{value: incentive.totalIncentive}(
             bytes32(uint256(0x123123) + uint256(2**255)),

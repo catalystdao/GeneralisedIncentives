@@ -18,9 +18,9 @@ contract ProcessMessageTest is TestCommon {
         bytes message
     );
 
-    function addContextToMessage(bytes memory message) internal returns(bytes memory) {
+    function addContextToMessage(bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
-        application.escrowMessage{value: _INCENTIVE.totalIncentive}(
+        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _INCENTIVE.totalIncentive}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -29,23 +29,21 @@ contract ProcessMessageTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory message) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
 
-        return message;
+        return (messageIdentifier, messageWithContext);
     }
 
     function test_call_process_message() public {
         bytes memory message = _MESSAGE;
         bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
 
-        bytes memory messageWithContext = addContextToMessage(message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = addContextToMessage(message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
         bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
-
-        bytes32 messageIdentifier = 0x561213edd20145c0e5b7e2f9303e83b75eb429046e9bddac10f0d8b1d53be42e;
 
         vm.expectEmit();
         // Check that the application was called
@@ -65,11 +63,12 @@ contract ProcessMessageTest is TestCommon {
                 bytes32(uint256(uint160(address(escrow))))
             ),
             abi.encodePacked(
+                _DESTINATION_IDENTIFIER,
                 bytes1(0x01),
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint128(0x8117),  // Gas used
+                uint128(0x8163),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -79,7 +78,34 @@ contract ProcessMessageTest is TestCommon {
         emit MessageDelivered(messageIdentifier);
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,  // This value is not checked by the mock.
+            _DESTINATION_IDENTIFIER,
+            mockContext,
+            messageWithContext,
+            feeRecipitent
+        );
+    }
+
+    function test_call_process_message_twice() public {
+        bytes memory message = _MESSAGE;
+        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = addContextToMessage(message);
+
+        (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
+        bytes memory mockContext = abi.encode(v, r, s);
+
+        escrow.processMessage(
+            _DESTINATION_IDENTIFIER,
+            mockContext,
+            messageWithContext,
+            feeRecipitent
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSignature("MessageAlreadySpent()")
+        ); 
+        escrow.processMessage(
+            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent

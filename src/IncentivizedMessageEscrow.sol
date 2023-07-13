@@ -7,14 +7,24 @@ import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
 import "./MessagePayload.sol";
 
-
+/**
+ * @title Generalised Incentive Escrow
+ * @author Alexander @ Catalyst
+ * @notice Places transparent incentives on relaying messages.
+ * The incentive is released when an ack from a matching implementation on the destination chain
+ * is delivered to this contract.
+ *
+ * The incentive scheme is designed to overload the existing incentive scheme for messaging protocols
+ * and streamline intergration by standardizing the interface and the relaying payment.
+ *
+ * Several quality of life features are implemented like:
+ * - Refunds of unused gas.
+ * - Seperate gas payments for initial call and ack.
+ * - Simple implementation of new messaging protocols.
+ */
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
 
-    bytes32 immutable UNIQUE_SOURCE_IDENTIFIER;
-
-    constructor(bytes32 uniqueChainIndex) {
-        UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
-    }
+    bytes1 constant SWAP_REVERTED = 0xff;
 
     mapping(bytes32 => IncentiveDescription) public _bounty;
 
@@ -28,6 +38,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
     function _sendMessage(bytes32 destinationIdentifier, bytes memory message) virtual internal;
 
+    /// @notice Generates a unique message identifier for a message
+    /// @dev The identifier should:
+    ///  - Be unique over time
+    ///     Use blocknumber or blockhash
+    ///  - Be unique on destination chain
+    ///     Use a unique source identifier 
+    ///  - Be unique on the source chain
+    ///     Use a unique destinationIdentifier
+    ///  - Depend on the message
+    function _getMessageIdentifier(
+        bytes32 destinationIdentifier,
+        bytes calldata message
+    ) view internal virtual returns(bytes32);
+
     /// Getters:
     function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive) {
         return _bounty[messageIdentifier];
@@ -36,6 +60,58 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
    function spentMessageIdentifier(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted) {
         return _spentMessageIdentifier[messageIdentifier];
    }
+
+    function increaseBounty(
+        bytes32 messageIdentifier,
+        uint96 priceOfDeliveryGas,
+        uint96 priceOfAckGas
+    ) external payable {
+        if (_bounty[messageIdentifier].totalIncentive == 0) revert MessageDoesNotExist();
+        // We need to make sure that the user pays more on each parameter.
+        IncentiveDescription storage incentive = _bounty[messageIdentifier];
+
+        if(incentive.priceOfDeliveryGas > priceOfDeliveryGas) revert DeliveryGasPriceMustBeIncreased();
+        incentive.priceOfDeliveryGas = priceOfDeliveryGas;
+
+        if(incentive.priceOfAckGas > priceOfAckGas) revert AckGasPriceMustBeIncreased();
+        incentive.priceOfAckGas = priceOfAckGas;
+
+        _increaseBounty(messageIdentifier, incentive);
+    }
+
+    function _increaseBounty(
+        bytes32 messageIdentifier, 
+        IncentiveDescription storage incentive
+    ) internal returns(uint128 sum){
+        // Compute incentive metrics.
+        uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
+        uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
+        sum = deliveryGas + ackGas;
+        uint128 difference = sum - incentive.totalIncentive;
+        // Check that the provided gas is sufficient and refund the rest
+        if (msg.value != difference) revert NotEnoughGasProvided(difference, uint128(msg.value));
+        
+        incentive.totalIncentive = sum;
+        // _bounty[messageIdentifier] = incentive;
+    }
+
+   function _setBounty(
+        bytes32 messageIdentifier, 
+        IncentiveDescription calldata incentive
+    ) internal returns(uint128 sum){
+        if (_bounty[messageIdentifier].totalIncentive != 0) revert MessageAlreadyBountied();
+        // Compute incentive metrics.
+        uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
+        uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
+        sum = deliveryGas + ackGas;
+        // Check that the provided gas is sufficient and refund the rest
+        if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
+        
+        // Verify that the incentive structure is correct.
+        if (sum == 0) revert ZeroIncentiveNotAllowed();
+        if (incentive.totalIncentive != sum) revert NotEnoughGasProvided(incentive.totalIncentive, sum);
+        _bounty[messageIdentifier] = incentive;
+    }
 
 
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
@@ -55,25 +131,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata message,
         IncentiveDescription calldata incentive
     ) checkBytes64Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
-        // Compute incentive metrics.
-        uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
-        uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
-        uint128 sum = deliveryGas + ackGas;
-        // Check that the provided gas is sufficient and refund the rest
-        if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
-        
-        // Verify that the incentive structure is correct.
-        if (sum == 0) revert ZeroIncentiveNotAllowed();
-        if (incentive.totalIncentive != sum) revert NotEnoughGasProvided(incentive.totalIncentive, sum);
-
         // Prepare to store incentive
-        messageIdentifier = keccak256(bytes.concat(bytes32(block.number), UNIQUE_SOURCE_IDENTIFIER, destinationIdentifier, message));
-        if (_bounty[messageIdentifier].totalIncentive != 0) revert MessageAlreadyBountied();
-        _bounty[messageIdentifier] = incentive;
+        messageIdentifier = _getMessageIdentifier(
+            destinationIdentifier,
+            message
+        );
+        uint128 sum = _setBounty(messageIdentifier, incentive);
 
         bytes memory messageWithContext = abi.encodePacked(
             bytes1(SourcetoDestination),    // This is a sendMessage,
-            messageIdentifier,              // An semi-unique identifier to recover identifier to recover 
+            messageIdentifier,              // An unique identifier to recover identifier to recover 
             convertEVMTo65(msg.sender),     // Original sender
             destinationAddress,             // The address to deliver the (original) message to.
             incentive.minGasDelivery,       // Send the gas limit to the other chain so we can enforce it
@@ -140,7 +207,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes memory acknowledgement;
         // TODO: If the caller doesn't implement receiveMessage, catch.
         try ICrossChainReceiver(toApplication).receiveMessage{gas: minGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ]) returns(bytes memory returnValue) 
-            {acknowledgement = returnValue;} catch {acknowledgement = new bytes(0x00);}
+            {acknowledgement = returnValue;} catch {acknowledgement = abi.encodePacked(SWAP_REVERTED);}
 
 
         // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
@@ -150,7 +217,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Encode a new message to send back. This lets the relayer claim their payment.
         bytes memory ackMessageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource),                                        // This is a sendMessage
-            bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]),  // message identifier
+            messageIdentifier,  // message identifier
             fromApplication,
             feeRecipitent,
             gasUsed,
@@ -195,6 +262,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
             payable(sourceFeeRecipitent).transfer(sumFee);
+        // TODO: Refund unspent gas to application.
             return;
         }
 
@@ -203,6 +271,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (targetDelta == 0) {
             payable(destinationFeeRecipitent).send(deliveryFee);  // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
             payable(sourceFeeRecipitent).transfer(ackFee);
+        // TODO: Refund unspent gas to application.
             return;
         }
         // Compute the reward distribution
@@ -243,6 +312,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         payable(destinationFeeRecipitent).send(forDestinationRelayer);  // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
         uint256 forSourceRelayer = sumFee - forDestinationRelayer;
         payable(sourceFeeRecipitent).transfer(forSourceRelayer);
+        // TODO: Refund unspent gas to application.
 
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(
@@ -260,16 +330,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata message
     ) external {
+        // TODO: Make sure the main function has been called.
         _verifyMessage(chainIdentifier, messagingProtocolContext, message);
 
         bytes1 context = bytes1(message[0]);
         
         // Only allow acks to do this. Normal messages are invalid after first execution.
         if (context == DestinationtoSource) {
+            bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
+            // TODO: Error
+            require(_bounty[messageIdentifier].totalIncentive == 0, "!Hasn't been claimed"); 
+
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
             ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
 
-            bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
             emit MessageAcked(messageIdentifier);
         } else {
             revert NotImplementedError();

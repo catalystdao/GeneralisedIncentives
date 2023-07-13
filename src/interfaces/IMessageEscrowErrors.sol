@@ -6,8 +6,11 @@ interface IMessageEscrowErrors {
     error InvalidTotalIncentive(uint128 expected, uint128 actual);
     error ZeroIncentiveNotAllowed();
     error MessageAlreadyBountied();
+    error MessageDoesNotExist();
     error NotImplementedError();
     error feeRecipitentIncorrectFormatted(uint8 expected, uint8 actual);
     error MessageAlreadySpent();
     error TargetExecutionTimeInvalid(int128 difference);
+    error DeliveryGasPriceMustBeIncreased();
+    error AckGasPriceMustBeIncreased();
 }

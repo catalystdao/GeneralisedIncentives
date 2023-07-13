@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/implementations/mock/IncentivizedMockEscrow.sol";
+import "../src/apps/mock/IncentivizedMockEscrow.sol";
 import "../src/interfaces/IIncentivizedMessageEscrow.sol";
 import { IMessageEscrowEvents } from "../src/interfaces/IMessageEscrowEvents.sol";
 import { IMessageEscrowStructs } from "../src/interfaces/IMessageEscrowStructs.sol";
@@ -24,7 +24,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
     function setUp() virtual public {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
-        escrow = new IncentivizedMockEscrow(bytes32(0), SIGNER);
+        escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER);
         application = new MockApplication(address(escrow));
 
         _MESSAGE = abi.encode(keccak256(abi.encode(1)));
