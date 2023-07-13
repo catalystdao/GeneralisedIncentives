@@ -235,6 +235,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         IncentiveDescription memory incentive = _bounty[messageIdentifier];
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
+        emit MessageDelivered(bytes32(uint256(100)));
 
         // Deliver the ack to the application
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
@@ -330,7 +331,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata message
     ) external {
-        // TODO: Make sure the main function has been called.
         _verifyMessage(chainIdentifier, messagingProtocolContext, message);
 
         bytes1 context = bytes1(message[0]);
@@ -338,7 +338,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Only allow acks to do this. Normal messages are invalid after first execution.
         if (context == DestinationtoSource) {
             bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-            // TODO: Error
+            // TODO: Custom Error
             require(_bounty[messageIdentifier].totalIncentive == 0, "!Hasn't been claimed"); 
 
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));

@@ -18,7 +18,7 @@ contract ProcessMessageTest is TestCommon {
         bytes message
     );
 
-    function addContextToMessage(bytes memory message) internal returns(bytes32, bytes memory) {
+    function setupEscrowMessage(bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
         (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _INCENTIVE.totalIncentive}(
             _DESTINATION_IDENTIFIER,
@@ -38,7 +38,7 @@ contract ProcessMessageTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = addContextToMessage(message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -89,7 +89,7 @@ contract ProcessMessageTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = addContextToMessage(message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
