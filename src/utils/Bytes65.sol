@@ -8,7 +8,7 @@ contract Bytes65 {
         return supposedlyBytes65.length == 65;
     }
 
-    modifier checkBytes64Address(bytes calldata supposedlyBytes65) {
+    modifier checkBytes65Address(bytes calldata supposedlyBytes65) {
         if (!_checkBytes65(supposedlyBytes65)) revert InvalidBytes65Address();
         _;
     }
