@@ -41,7 +41,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _sendMessage(bytes32 destinationIdentifier, bytes memory message) virtual internal;
 
     /// @notice Generates a unique message identifier for a message
-    /// @dev The identifier should:
+    /// @dev Should be overwritten. The identifier should:
     ///  - Be unique over time
     ///     Use blocknumber or blockhash
     ///  - Be unique on destination chain
@@ -63,34 +63,36 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return _spentMessageIdentifier[messageIdentifier];
    }
 
+    /**
+     * @notice Increases the bounty for relaying messages
+     * @dev It is not possible to increase the gas budget for a message. 
+     */
     function increaseBounty(
         bytes32 messageIdentifier,
         uint96 deliveryGasPriceIncrease,
         uint96 ackGasPriceIncrease
     ) external payable {
         if (_bounty[messageIdentifier].refundGasTo == address(0)) revert MessageDoesNotExist();
-        // We need to make sure that the user pays more on each parameter.
+        // Find incentive scheme.
         IncentiveDescription storage incentive = _bounty[messageIdentifier];
 
-        incentive.priceOfDeliveryGas += deliveryGasPriceIncrease;
-        incentive.priceOfAckGas += ackGasPriceIncrease;
-
-        _increaseBounty(messageIdentifier, deliveryGasPriceIncrease, ackGasPriceIncrease, incentive);
-    }
-
-    function _increaseBounty(
-        bytes32 messageIdentifier,
-        uint96 deliveryGasPriceIncrease,
-        uint96 ackGasPriceIncrease,
-        IncentiveDescription storage incentive
-    ) internal{
         // Compute incentive metrics.
         uint128 deliveryGas = incentive.maxGasDelivery * deliveryGasPriceIncrease;
         uint128 ackGas = incentive.maxGasAck * ackGasPriceIncrease;
         uint128 sum = deliveryGas + ackGas;
         // Check that the provided gas is exact
         if (msg.value != sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
-        // _bounty[messageIdentifier] = incentive;
+
+        // Update storage.
+        incentive.priceOfDeliveryGas += deliveryGasPriceIncrease;
+        incentive.priceOfAckGas += ackGasPriceIncrease;
+
+        // Emit the event with the increased values.
+        emit BountyIncreased(
+            messageIdentifier,
+            deliveryGasPriceIncrease,
+            ackGasPriceIncrease
+        );
     }
 
    function _setBounty(
@@ -102,11 +104,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 deliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
         uint128 ackGas = incentive.maxGasAck * incentive.priceOfAckGas;
         sum = deliveryGas + ackGas;
-        // Check that the provided gas is sufficient and refund the rest
+        // Check that the provided gas is sufficient. The refund will be sent later. (reentry? concern).
+        if (sum == 0) revert ZeroIncentiveNotAllowed();
         if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
         
-        // Verify that the incentive structure is correct.
-        if (sum == 0) revert ZeroIncentiveNotAllowed();
         _bounty[messageIdentifier] = incentive;
     }
 
