@@ -187,7 +187,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata rawMessage,
         bytes calldata feeRecipitent
     ) checkBytes65Address(feeRecipitent) external {
-        uint48 gasLimit = uint48(gasleft());  // 2**128-1 is plenty gas. If this overflows (and then becomes almost 0, then the relayer provided too much gas)
+        uint256 gasLimit = gasleft();  // 2**128-1 is plenty gas. If this overflows (and then becomes almost 0, then the relayer provided too much gas)
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
         bytes calldata message = _verifyMessage(chainIdentifier, messagingProtocolContext, rawMessage);
@@ -209,7 +209,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles call messages.
      */
-    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint128 gasLimit) internal {
+    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint256 gasLimit) internal {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         bool messageState = _spentMessageIdentifier[messageIdentifier];
@@ -253,7 +253,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles ack messages.
      */
-    function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint128 gasLimit) internal {
+    function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint256 gasLimit) internal {
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         IncentiveDescription memory incentive = _bounty[messageIdentifier];
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
