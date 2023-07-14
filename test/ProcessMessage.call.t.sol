@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import { TestCommon } from "./TestCommon.sol";
 
 
-contract ProcessMessageTest is TestCommon {
+contract CallMessageTest is TestCommon {
     event ReceiveMessage(
         bytes32 sourceIdentifierbytes,
         bytes fromApplication,
@@ -20,7 +20,7 @@ contract ProcessMessageTest is TestCommon {
 
     function setupEscrowMessage(bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
-        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _INCENTIVE.totalIncentive}(
+        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -68,7 +68,7 @@ contract ProcessMessageTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint128(0x8163),  // Gas used
+                uint48(0x8166),  // Gas used
                 uint64(1),
                 mockAck
             )

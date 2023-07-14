@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { IIncentivizedMessageEscrow } from "../interfaces/IIncentivizedMessageEscrow.sol";
-import { ICrossChainReceiver } from "../interfaces/ICrossChainReceiver.sol";
+import { IIncentivizedMessageEscrow } from "../../src/interfaces/IIncentivizedMessageEscrow.sol";
+import { ICrossChainReceiver } from "../../src/interfaces/ICrossChainReceiver.sol";
 
 /**
  * @title Example application contract
@@ -49,7 +49,7 @@ contract MockApplication is ICrossChainReceiver {
     /// @notice receiveMessage from a cross-chain call.
     /// @dev The application needs to check the fromApplication combined with sourceIdentifierbytes to figure out if the call is authenticated.
     function receiveMessage(bytes32 sourceIdentifierbytes, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement) {
-        acknowledgement = abi.encode(keccak256(bytes.concat(message, fromApplication)));
+        acknowledgement = abi.encodePacked(keccak256(bytes.concat(message, fromApplication)));
         emit ReceiveMessage(
             sourceIdentifierbytes,
             fromApplication,

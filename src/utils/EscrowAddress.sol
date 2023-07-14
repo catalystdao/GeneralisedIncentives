@@ -14,11 +14,8 @@ contract EscrowAddress is Bytes65 {
     /// @dev Can be overwritten if a messaging router uses some other assumption
     function _getEscrowAddress(bytes32 destinationIdentifier) internal virtual returns(bytes memory) {
         // Try to save gas by not accessing storage. If the most significant bit is set to 1, then return itself
-        if (uint256(destinationIdentifier) >> 255 == 1) return convertEVMTo65(address(this));
-        if (uint256(destinationIdentifier) >> 254 == 1) return ALT_DEPLOYMENT;
-        // TODO Check gas usage of vs
-        // if ((destinationIdentifier & 2**255) == 1) return convertEVMTo65(address(this));;
-        // if ((destinationIdentifier & 2**254) == 1) return ALT_DEPLOYMENT;
+        if ((uint256(destinationIdentifier) & 2**255) != 0) return convertEVMTo65(address(this));
+        if ((uint256(destinationIdentifier) & 2**254) != 0) return ALT_DEPLOYMENT;
         return destinationToAddress[destinationIdentifier];
     }
 }

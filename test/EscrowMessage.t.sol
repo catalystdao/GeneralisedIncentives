@@ -9,7 +9,7 @@ contract EscrowInformationTest is TestCommon {
 
     function test_check_escrow_state() public {
         IncentiveDescription storage incentive = _INCENTIVE;
-        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: incentive.totalIncentive}(
+        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -19,9 +19,9 @@ contract EscrowInformationTest is TestCommon {
         // Check that the message identifier points exposes the bounty.
         IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(messageIdentifier);
 
-        assertEq(incentive.minGasDelivery, storedIncentiveAtEscrow.minGasDelivery);
-        assertEq(incentive.minGasAck, storedIncentiveAtEscrow.minGasAck);
-        assertEq(incentive.totalIncentive, storedIncentiveAtEscrow.totalIncentive);
+        assertEq(incentive.maxGasDelivery, storedIncentiveAtEscrow.maxGasDelivery);
+        assertEq(incentive.maxGasAck, storedIncentiveAtEscrow.maxGasAck);
+        assertEq(incentive.refundGasTo, storedIncentiveAtEscrow.refundGasTo);
         assertEq(incentive.priceOfDeliveryGas, storedIncentiveAtEscrow.priceOfDeliveryGas);
         assertEq(incentive.priceOfAckGas, storedIncentiveAtEscrow.priceOfAckGas);
         assertEq(incentive.targetDelta, storedIncentiveAtEscrow.targetDelta);
@@ -33,7 +33,7 @@ contract EscrowInformationTest is TestCommon {
         vm.expectEmit();
         emit BountyPlaced(bytes32(0x2dfdcf3ed929fb394f4f06ccf6d75629926d36dc4409186a42a5904a2f80d74d), incentive);
 
-        escrow.escrowMessage{value: incentive.totalIncentive}(
+        escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -48,7 +48,7 @@ contract EscrowInformationTest is TestCommon {
         _overpay = overpay;
 
         
-        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: incentive.totalIncentive + overpay}(
+        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE) + overpay}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

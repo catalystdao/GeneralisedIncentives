@@ -6,7 +6,7 @@ import { TestCommon } from "./TestCommon.sol";
 
 contract EscrowInformationTest is TestCommon {
     function escrowMessage(bytes memory message) internal returns(bytes32) {
-        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _INCENTIVE.totalIncentive}(
+        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -25,36 +25,8 @@ contract EscrowInformationTest is TestCommon {
         ); 
         escrow.increaseBounty{value: 100000}(
             keccak256(abi.encodePacked(uint256(123))),
-            _INCENTIVE.priceOfDeliveryGas + 123123,
-            _INCENTIVE.priceOfAckGas + 321321
-        );
-    }
-
-    function test_fail_delivery_gas_must_increase() public {
-        // Do not escrow the message
-        bytes32 messageIdentifier = escrowMessage(_MESSAGE);
-
-        vm.expectRevert(
-            abi.encodeWithSignature("DeliveryGasPriceMustBeIncreased()")
-        ); 
-        escrow.increaseBounty{value: 100000}(
-            messageIdentifier,
-            _INCENTIVE.priceOfDeliveryGas - 1,
-            _INCENTIVE.priceOfAckGas
-        );
-    }
-
-    function test_fail_ack_gas_must_increase() public {
-        // Do not escrow the message
-        bytes32 messageIdentifier = escrowMessage(_MESSAGE);
-
-        vm.expectRevert(
-            abi.encodeWithSignature("AckGasPriceMustBeIncreased()")
-        ); 
-        escrow.increaseBounty{value: 0}(
-            messageIdentifier,
-            _INCENTIVE.priceOfDeliveryGas,
-            _INCENTIVE.priceOfAckGas - 1
+            123123,
+            321321
         );
     }
 
@@ -63,8 +35,8 @@ contract EscrowInformationTest is TestCommon {
 
         escrow.increaseBounty{value: 0}(
             messageIdentifier,
-            _INCENTIVE.priceOfDeliveryGas,
-            _INCENTIVE.priceOfAckGas
+            0,
+            0
         );
     }
 
@@ -78,8 +50,8 @@ contract EscrowInformationTest is TestCommon {
         );
         escrow.increaseBounty{value: overPay}(
             messageIdentifier,
-            _INCENTIVE.priceOfDeliveryGas,
-            _INCENTIVE.priceOfAckGas
+            0,
+            0
         );
     }
 
@@ -91,8 +63,8 @@ contract EscrowInformationTest is TestCommon {
 
         bytes32 messageIdentifier = escrowMessage(_MESSAGE);
 
-        uint128 deliveryGas = _INCENTIVE.minGasDelivery * increaseDelivery;
-        uint128 ackGas = _INCENTIVE.minGasAck * increaseAck;
+        uint128 deliveryGas = _INCENTIVE.maxGasDelivery * increaseDelivery;
+        uint128 ackGas = _INCENTIVE.maxGasAck * increaseAck;
         uint128 difference = deliveryGas + ackGas;
         vm.assume(0 < int256(uint256(difference)) + diffPay);
 
@@ -104,8 +76,8 @@ contract EscrowInformationTest is TestCommon {
         );
         escrow.increaseBounty{value: newPay}(
             messageIdentifier,
-            increaseDelivery + _INCENTIVE.priceOfDeliveryGas,
-            increaseAck + _INCENTIVE.priceOfAckGas
+            increaseDelivery,
+            increaseAck
         );
     }
 
@@ -115,14 +87,14 @@ contract EscrowInformationTest is TestCommon {
 
         bytes32 messageIdentifier = escrowMessage(_MESSAGE);
 
-        uint128 deliveryGas = _INCENTIVE.minGasDelivery * increaseDelivery;
-        uint128 ackGas = _INCENTIVE.minGasAck * increaseAck;
+        uint128 deliveryGas = _INCENTIVE.maxGasDelivery * increaseDelivery;
+        uint128 ackGas = _INCENTIVE.maxGasAck * increaseAck;
         uint128 difference = deliveryGas + ackGas;
 
         escrow.increaseBounty{value: difference}(
             messageIdentifier,
-            increaseDelivery + _INCENTIVE.priceOfDeliveryGas,
-            increaseAck + _INCENTIVE.priceOfAckGas
+            increaseDelivery,
+            increaseAck
         );
     }
 }

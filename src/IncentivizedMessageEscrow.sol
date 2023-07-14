@@ -26,6 +26,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     bytes1 constant SWAP_REVERTED = 0xff;
 
+    address constant SEND_LOST_GAS_TO = address(0);
+
     mapping(bytes32 => IncentiveDescription) public _bounty;
 
     mapping(bytes32 => bool) public _spentMessageIdentifier;
@@ -63,35 +65,31 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     function increaseBounty(
         bytes32 messageIdentifier,
-        uint96 priceOfDeliveryGas,
-        uint96 priceOfAckGas
+        uint96 deliveryGasPriceIncrease,
+        uint96 ackGasPriceIncrease
     ) external payable {
-        if (_bounty[messageIdentifier].totalIncentive == 0) revert MessageDoesNotExist();
+        if (_bounty[messageIdentifier].refundGasTo == address(0)) revert MessageDoesNotExist();
         // We need to make sure that the user pays more on each parameter.
         IncentiveDescription storage incentive = _bounty[messageIdentifier];
 
-        if(incentive.priceOfDeliveryGas > priceOfDeliveryGas) revert DeliveryGasPriceMustBeIncreased();
-        incentive.priceOfDeliveryGas = priceOfDeliveryGas;
+        incentive.priceOfDeliveryGas += deliveryGasPriceIncrease;
+        incentive.priceOfAckGas += ackGasPriceIncrease;
 
-        if(incentive.priceOfAckGas > priceOfAckGas) revert AckGasPriceMustBeIncreased();
-        incentive.priceOfAckGas = priceOfAckGas;
-
-        _increaseBounty(messageIdentifier, incentive);
+        _increaseBounty(messageIdentifier, deliveryGasPriceIncrease, ackGasPriceIncrease, incentive);
     }
 
     function _increaseBounty(
-        bytes32 messageIdentifier, 
+        bytes32 messageIdentifier,
+        uint96 deliveryGasPriceIncrease,
+        uint96 ackGasPriceIncrease,
         IncentiveDescription storage incentive
-    ) internal returns(uint128 sum){
+    ) internal{
         // Compute incentive metrics.
-        uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
-        uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
-        sum = deliveryGas + ackGas;
-        uint128 difference = sum - incentive.totalIncentive;
-        // Check that the provided gas is sufficient and refund the rest
-        if (msg.value != difference) revert NotEnoughGasProvided(difference, uint128(msg.value));
-        
-        incentive.totalIncentive = sum;
+        uint128 deliveryGas = incentive.maxGasDelivery * deliveryGasPriceIncrease;
+        uint128 ackGas = incentive.maxGasAck * ackGasPriceIncrease;
+        uint128 sum = deliveryGas + ackGas;
+        // Check that the provided gas is exact
+        if (msg.value != sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
         // _bounty[messageIdentifier] = incentive;
     }
 
@@ -99,17 +97,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 messageIdentifier, 
         IncentiveDescription calldata incentive
     ) internal returns(uint128 sum){
-        if (_bounty[messageIdentifier].totalIncentive != 0) revert MessageAlreadyBountied();
+        if (_bounty[messageIdentifier].refundGasTo != address(0)) revert MessageAlreadyBountied();
         // Compute incentive metrics.
-        uint128 deliveryGas = incentive.minGasDelivery * incentive.priceOfDeliveryGas;
-        uint128 ackGas = incentive.minGasAck * incentive.priceOfAckGas;
+        uint128 deliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
+        uint128 ackGas = incentive.maxGasAck * incentive.priceOfAckGas;
         sum = deliveryGas + ackGas;
         // Check that the provided gas is sufficient and refund the rest
         if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
         
         // Verify that the incentive structure is correct.
         if (sum == 0) revert ZeroIncentiveNotAllowed();
-        if (incentive.totalIncentive != sum) revert NotEnoughGasProvided(incentive.totalIncentive, sum);
         _bounty[messageIdentifier] = incentive;
     }
 
@@ -117,8 +114,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice Set a bounty on a message and transfer the message to the messaging protocol.
     /// @dev Called by other contracts
     /// Any integrating application should check:
-    ///     1. That incentive.minGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
-    ///     2. That incentive.minGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
+    ///     1. That incentive.maxGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
+    ///     2. That incentive.maxGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
     ///     3. The relay incentive is enough to get the message relayed within the expected time. If that is never, then this check is not needed.
     /// @param message The message to be sent to the destination. Please ensure the message is semi-unique.
     ///     This can safely be done by appending a counter to the message or adding a number of pesudo-randomized
@@ -143,7 +140,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             messageIdentifier,              // An unique identifier to recover identifier to recover 
             convertEVMTo65(msg.sender),     // Original sender
             destinationAddress,             // The address to deliver the (original) message to.
-            incentive.minGasDelivery,       // Send the gas limit to the other chain so we can enforce it
+            incentive.maxGasDelivery,       // Send the gas limit to the other chain so we can enforce it
             message                         // The message to deliver to the destination.
         );
 
@@ -211,7 +208,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
 
         // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
-        uint128 gasUsed = uint128(gasLimit - gasleft());
+        uint48 gasUsed = uint48(gasLimit - gasleft());
 
 
         // Encode a new message to send back. This lets the relayer claim their payment.
@@ -235,44 +232,53 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         IncentiveDescription memory incentive = _bounty[messageIdentifier];
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
-        emit MessageDelivered(bytes32(uint256(100)));
 
         // Deliver the ack to the application
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-        try ICrossChainReceiver(fromApplication).ackMessage{gas: incentive.minGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
+        try ICrossChainReceiver(fromApplication).ackMessage{gas: incentive.maxGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
 
         // Get the gas used by these calls:
-        uint256 gasSpentOnDestination = uint128(bytes16(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
-        if (incentive.minGasDelivery < gasSpentOnDestination) gasSpentOnDestination = incentive.minGasDelivery;  // If more gas was spent then allocated, then only return the allocation.
+        uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
+        if (incentive.maxGasDelivery < gasSpentOnDestination) gasSpentOnDestination = incentive.maxGasDelivery;  // If more gas was spent then allocated, then only return the allocation.
         // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
         uint256 gasSpentOnSource = gasLimit - gasleft();
-        if (incentive.minGasAck < gasSpentOnSource) gasSpentOnSource = incentive.minGasAck;  // If more gas was spent then allocated, then only return the allocation.
+        if (incentive.maxGasAck < gasSpentOnSource) gasSpentOnSource = incentive.maxGasAck;  // If more gas was spent then allocated, then only return the allocation.
 
         // Find the respective fees for delivery and ack.
-        uint256 deliveryFee; uint256 ackFee; uint256 sumFee;
+        uint256 deliveryFee; uint256 ackFee; uint256 sumFee; uint256 refund;
         unchecked {
-            // gasSpentOnDestination < minGasDelivery => We have done this calculation before.
+            // gasSpentOnDestination < maxGasDelivery => We have done this calculation before.
             deliveryFee = gasSpentOnDestination * incentive.priceOfDeliveryGas;
-            // gasSpentOnSource < minGasAck => We have done this calculation before.
+            // gasSpentOnSource < maxGasAck => We have done this calculation before.
             ackFee = gasSpentOnSource * incentive.priceOfAckGas;
-            // deliveryFee + ackFee must be less than incentive.totalIncentive
+            // deliveryFee + ackFee have been calculated before.
             sumFee = deliveryFee + ackFee;
+            // (incentive.priceOfDeliveryGas * incentive.maxGasDelivery + incentive.priceOfDeliveryGas * incentive.maxGasAck) has been caculated before. (see above). then sumFee must be weakly less.
+            uint256 maxDeliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
+            uint256 maxAckGas = incentive.maxGasAck * incentive.priceOfAckGas;
+            uint256 maxSum = maxDeliveryGas + maxAckGas;
+            refund = maxSum - sumFee;
+        }
+        // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+        if(!payable(incentive.refundGasTo).send(refund)) {
+            payable(SEND_LOST_GAS_TO).transfer(refund);
         }
         address destinationFeeRecipitent = address(bytes20(message[CTX1_RELAYER_RECIPITENT_START_EVM:CTX1_RELAYER_RECIPITENT_END]));
         address sourceFeeRecipitent = address(bytes20(feeRecipitent[45:]));
 
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
             payable(sourceFeeRecipitent).transfer(sumFee);
-        // TODO: Refund unspent gas to application.
             return;
         }
 
         uint64 targetDelta = incentive.targetDelta;
         // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
-            payable(destinationFeeRecipitent).send(deliveryFee);  // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+            // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+            if(!payable(destinationFeeRecipitent).send(deliveryFee)) {
+                payable(SEND_LOST_GAS_TO).transfer(refund);
+            }
             payable(sourceFeeRecipitent).transfer(ackFee);
-        // TODO: Refund unspent gas to application.
             return;
         }
         // Compute the reward distribution
@@ -296,7 +302,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 // targetDelta != 0, we checked for that. 
                 // max abs timeBetweenTargetAndExecution = targetDelta => ackFee * targetDelta < sumFee * targetDelta
                 //  2**127 * 2**64 = 2**191 < 2**256-1
-                // Thus the largest this can be is sumFee and that is less than incentive.totalIncentive.
+                // Thus the largest this can be is sumFee and that is the sum previously calculated.
                 forDestinationRelayer = deliveryFee + ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
             } else {
                 // More time than target passed and the ack relayer should get a larger chunk.
@@ -310,10 +316,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 }
             }
         }
-        payable(destinationFeeRecipitent).send(forDestinationRelayer);  // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+        // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
+        if(!payable(destinationFeeRecipitent).send(forDestinationRelayer)) {
+            payable(SEND_LOST_GAS_TO).transfer(refund);
+        }
         uint256 forSourceRelayer = sumFee - forDestinationRelayer;
         payable(sourceFeeRecipitent).transfer(forSourceRelayer);
-        // TODO: Refund unspent gas to application.
 
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(
@@ -339,7 +347,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (context == DestinationtoSource) {
             bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
             // TODO: Custom Error
-            require(_bounty[messageIdentifier].totalIncentive == 0, "!Hasn't been claimed"); 
+            require(_bounty[messageIdentifier].refundGasTo != address(0), "!Hasn't been claimed"); 
 
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
             ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);

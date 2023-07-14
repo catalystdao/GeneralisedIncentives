@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import { TestCommon } from "./TestCommon.sol";
 
 
-contract ProcessMessageTest is TestCommon {
+contract AckMessageTest is TestCommon {
     uint256 _receive;
 
     event ReceiveMessage(
@@ -22,7 +22,7 @@ contract ProcessMessageTest is TestCommon {
 
     function setupEscrowMessage(bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
-        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _INCENTIVE.totalIncentive}(
+        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -73,7 +73,7 @@ contract ProcessMessageTest is TestCommon {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        _receive = 6947251905;
+        _receive = 6623287638;
 
         escrow.processMessage(
             _DESTINATION_IDENTIFIER,
@@ -81,10 +81,12 @@ contract ProcessMessageTest is TestCommon {
             messageWithContext,
             feeRecipitent
         );
+
+        assertEq(_REFUND_GAS_TO.balance, _getTotalIncentive(_INCENTIVE) - _receive, "Refund");
     }
 
     // relayer incentives will be sent here
     receive() payable external {
-        assertEq(msg.value, _receive);
+        assertEq(msg.value, _receive, "Relayer Payment");
     }
 }
