@@ -261,28 +261,22 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
         try ICrossChainReceiver(fromApplication).ackMessage{gas: incentive.maxGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
 
-        // Get the gas used by the destination call:
+        // Get the gas used by the destination call
         uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
-        // TODO: Check if we can optimise gas here.
-        if (incentive.maxGasDelivery < gasSpentOnDestination) gasSpentOnDestination = incentive.maxGasDelivery;  // If more gas was spent then allocated, then only use the allocation.
-        // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
-        uint256 gasSpentOnSource = gasLimit - gasleft();
-        // TODO: Check if we can optimise gas here.
-        if (incentive.maxGasAck < gasSpentOnSource) gasSpentOnSource = incentive.maxGasAck;  // If more gas was spent then allocated, then only use the allocation.
 
         // Find the respective rewards for delivery and ack.
-        uint256 deliveryFee; uint256 ackFee; uint256 sumFee; uint256 refund;
+        uint256 deliveryFee; uint256 ackFee; uint256 sumFee; uint256 refund; uint256 gasSpentOnSource;
         unchecked {
             // gasSpentOnDestination * incentive.priceOfDeliveryGas < 2**48 * 2**96 = 2**144
-            // TODO: Check if we can optimise gas here.
-            deliveryFee = gasSpentOnDestination * incentive.priceOfDeliveryGas;
+            deliveryFee = ((gasSpentOnDestination <= incentive.maxGasDelivery) ? gasSpentOnDestination : incentive.maxGasDelivery) * incentive.priceOfDeliveryGas;  // If more gas was spent then allocated, then only use the allocation.
+            // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
+            // gasLimit = gasleft() when less gas was spent, thus it is always larger than gasleft().
+            gasSpentOnSource = gasLimit - gasleft();
             // gasSpentOnSource * incentive.priceOfAckGas < 2**48 * 2**96 = 2**144
-            // TODO: Check if we can optimise gas here.
-            ackFee = gasSpentOnSource * incentive.priceOfAckGas;
+            ackFee = ((gasSpentOnSource <= incentive.maxGasAck) ? gasSpentOnSource : incentive.maxGasAck) * incentive.priceOfAckGas;  // If more gas was spent then allocated, then only use the allocation.
             // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
             sumFee = deliveryFee + ackFee;
             // (incentive.priceOfDeliveryGas * incentive.maxGasDelivery + incentive.priceOfDeliveryGas * incentive.maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
-            // TODO: Check if we can optimise gas here.
             uint256 maxDeliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
             uint256 maxAckGas = incentive.maxGasAck * incentive.priceOfAckGas;
             uint256 maxSum = maxDeliveryGas + maxAckGas;
@@ -297,7 +291,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         address sourceFeeRecipitent = address(bytes20(feeRecipitent[45:]));
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
-            payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided an bad input.
+            payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             return;
         }
 
@@ -308,7 +302,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if(!payable(destinationFeeRecipitent).send(deliveryFee)) {
                 payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
             }
-            payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided an bad input.
+            payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             return;
         }
         // Compute the reward distribution. We need the time it took to deliver the ack back.
