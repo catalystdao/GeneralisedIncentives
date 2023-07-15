@@ -1,4 +1,4 @@
-AckMessageTest:test_ack_process_message() (gas: 218523)
+AckMessageTest:test_ack_process_message() (gas: 218535)
 CallMessageTest:test_call_process_message() (gas: 186965)
 CallMessageTest:test_call_process_message_twice() (gas: 177717)
 EscrowInformationTest:test_check_escrow_events() (gas: 93468)

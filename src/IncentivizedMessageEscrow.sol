@@ -272,8 +272,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
             // gasLimit = gasleft() when less gas was spent, thus it is always larger than gasleft().
             gasSpentOnSource = gasLimit - gasleft();
+            if (incentive.maxGasAck <= gasSpentOnSource) gasSpentOnSource = incentive.maxGasAck;
             // gasSpentOnSource * incentive.priceOfAckGas < 2**48 * 2**96 = 2**144
-            ackFee = ((gasSpentOnSource <= incentive.maxGasAck) ? gasSpentOnSource : incentive.maxGasAck) * incentive.priceOfAckGas;  // If more gas was spent then allocated, then only use the allocation.
+            ackFee = gasSpentOnSource * incentive.priceOfAckGas;  // If more gas was spent then allocated, then only use the allocation.
             // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
             sumFee = deliveryFee + ackFee;
             // (incentive.priceOfDeliveryGas * incentive.maxGasDelivery + incentive.priceOfDeliveryGas * incentive.maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
