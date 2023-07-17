@@ -203,7 +203,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         }
     }
 
-
     //--- Internal Functions ---//
 
     /**
@@ -223,11 +222,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
         // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
-        bytes memory acknowledgement;
+
         // TODO: If the caller doesn't implement receiveMessage, catch.
-        try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ]) returns(bytes memory returnValue) {
-            acknowledgement = returnValue;  // Set the acknolwedgement to the return value. Otherwise, set it to SWAP_REVERTED.
-        } catch {acknowledgement = abi.encodePacked(SWAP_REVERTED);}
+        // TODO: Optimise gas?
+        (bool success, bytes memory acknowledgement) = toApplication.call{gas: maxGas}(
+            abi.encodeWithSignature("receiveMessage(bytes32,bytes,bytes)", sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
+        );
+        if (success) {
+            acknowledgement = abi.decode(acknowledgement, (bytes));
+        } else {
+            acknowledgement = abi.encodePacked(SWAP_REVERTED);
+        }
 
 
         // Encode a new message to send back. This lets the relayer claim their payment.
@@ -259,7 +264,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-        try ICrossChainReceiver(fromApplication).ackMessage{gas: incentive.maxGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
+        // Ensure that if the call reverts it doesn't boil up.  // TODO: Optimise gas?
+        fromApplication.call{gas: incentive.maxGasAck}(
+            abi.encodeWithSignature("ackMessage(bytes32,bytes)", destinationIdentifier, message[CTX1_MESSAGE_START: ])
+        );
 
         // Get the gas used by the destination call.
         uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));

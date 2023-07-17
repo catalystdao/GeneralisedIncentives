@@ -8,9 +8,9 @@ import { TestCommon } from "./TestCommon.sol";
 contract AckMessageTest is TestCommon {
     event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 7902;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33150;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6625605096;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7845;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33383;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6636034878;
 
     uint256 _receive;
 
@@ -263,6 +263,6 @@ contract AckMessageTest is TestCommon {
 
     // relayer incentives will be sent here
     receive() payable external {
-        // assertEq(msg.value, _receive, "Relayer Payment");
+        assertEq(msg.value, _receive, "Relayer Payment");
     }
 }
