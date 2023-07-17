@@ -223,7 +223,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
         // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
 
-        // TODO: If the caller doesn't implement receiveMessage, catch.
+        // TODO: If the caller doesn't implement receiveMessage, catch. //TODO: test
         // TODO: Optimise gas?
         (bool success, bytes memory acknowledgement) = toApplication.call{gas: maxGas}(
             abi.encodeWithSignature("receiveMessage(bytes32,bytes,bytes)", sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
@@ -328,7 +328,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint64 executionTime;
         unchecked {
             // Underflow is desired in this code chuck. It ensures that the code piece continues working
-            // past the time when uint64 stops working. *As long as any timedelta is less than uint64. // TODO: Test
+            // past the time when uint64 stops working. *As long as any timedelta is less than uint64.
             executionTime = uint64(block.timestamp) - uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]));
         }
         // The incentive scheme is as follows: When executionTime = incentive.targetDelta then 
