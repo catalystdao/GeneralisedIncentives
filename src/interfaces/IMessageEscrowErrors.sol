@@ -13,4 +13,5 @@ interface IMessageEscrowErrors {
     error TargetExecutionTimeInvalid(int128 difference);
     error DeliveryGasPriceMustBeIncreased();
     error AckGasPriceMustBeIncreased();
+    error AckHasNotBeenExecuted();
 }

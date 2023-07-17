@@ -18,14 +18,17 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     address _REFUND_GAS_TO;
     bytes _MESSAGE;
     bytes _DESTINATION_ADDRESS_THIS;
+    bytes _DESTINATION_ADDRESS_BOB;
     bytes _DESTINATION_ADDRESS_APPLICATION;
 
     address SIGNER;
+    address BOB;
     uint256 PRIVATEKEY;
 
     function setUp() virtual public {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
         _REFUND_GAS_TO = makeAddr("Alice");
+        BOB = makeAddr("Bob");
         escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER);
         application = new MockApplication(address(escrow));
 
@@ -34,6 +37,11 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
             uint8(20),
             bytes32(0),
             bytes32(uint256(uint160(address(this))))
+        );
+        _DESTINATION_ADDRESS_BOB = abi.encodePacked(
+            uint8(20),
+            bytes32(0),
+            bytes32(uint256(uint160(BOB)))
         );
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),

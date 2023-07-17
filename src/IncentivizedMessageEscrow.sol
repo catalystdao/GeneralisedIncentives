@@ -257,11 +257,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         IncentiveDescription memory incentive = _bounty[messageIdentifier];
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
-        // Deliver the ack to the application
+        // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
         try ICrossChainReceiver(fromApplication).ackMessage{gas: incentive.maxGasAck}(destinationIdentifier, message[CTX1_MESSAGE_START: ]) {} catch {}
 
-        // Get the gas used by the destination call
+        // Get the gas used by the destination call.
         uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
 
         // Find the respective rewards for delivery and ack.
@@ -294,6 +294,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
             payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+            emit MessageAcked(messageIdentifier);
+            emit BountyClaimed(
+                messageIdentifier,
+                uint64(gasSpentOnDestination),
+                uint64(gasSpentOnSource),
+                uint128(sumFee),
+                0
+            );
             return;
         }
 
@@ -318,7 +326,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // The rewards are distributed as per the incentive spec. If the time is less, then
         // more incentives are given to the destination relayer while if the time is more, 
         // then more incentives are given to the sourceRelayer.
-        uint256 forDestinationRelayer;
+        uint256 forDestinationRelayer = deliveryFee;
         unchecked {
             // |targetDelta - executionTime| < |2**64 + 2**64| = 2**65
             int256 timeBetweenTargetAndExecution = int256(uint256(executionTime))-int256(uint256(targetDelta));
@@ -327,19 +335,19 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 // targetDelta != 0, we checked for that. 
                 // max abs timeBetweenTargetAndExecution = | - targetDelta| = targetDelta => ackFee * targetDelta < sumFee * targetDelta
                 //  2**127 * 2**64 = 2**191
-                forDestinationRelayer = deliveryFee + ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
+                forDestinationRelayer += ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
             } else {
                 // More time than target passed and the ack relayer should get a larger chunk.
                 // If more time than the target passed, the ack relayer should get everything.
-                if (uint256(timeBetweenTargetAndExecution) >= targetDelta) {
-                    // This doesn't discourage relaying, since executionTime first begins counting once the destinaion call has been executed.
-                    // As a result, this only encorages delivery of the ack.
-                    forDestinationRelayer = 0;
-                } else {
+                if (uint256(timeBetweenTargetAndExecution) < targetDelta) {
                     // targetDelta != 0, we checked for that. 
                     // max abs timeBetweenTargetAndExecution = targetDelta since we have the above check
                     // => deliveryFee * targetDelta < sumFee * targetDelta < 2**127 * 2**64 = 2**191
-                    forDestinationRelayer = deliveryFee - deliveryFee * uint256(timeBetweenTargetAndExecution) / targetDelta;
+                    forDestinationRelayer -= deliveryFee * uint256(timeBetweenTargetAndExecution) / targetDelta;
+                } else {
+                    // This doesn't discourage relaying, since executionTime first begins counting once the destinaion call has been executed.
+                    // As a result, this only encorages delivery of the ack.
+                    forDestinationRelayer = 0;
                 }
             }
         }
@@ -347,8 +355,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if(!payable(destinationFeeRecipitent).send(forDestinationRelayer)) {
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
-        uint256 forSourceRelayer = sumFee - forDestinationRelayer;
-        payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+        uint256 forSourceRelayer;
+        unchecked {
+            // max forDestinationRelayer is deliveryFee + ackFee = sumFee => sumFee - forDestinationRelayer == 0
+            // min forDestinationRelayer = 0 => sumFee - 0 = sumFee
+            forSourceRelayer = sumFee - forDestinationRelayer;
+        }
+            payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(
@@ -360,6 +373,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
     }
 
+
+    /// @notice Sets a bounty for a message
    function _setBounty(
         bytes32 messageIdentifier, 
         IncentiveDescription calldata incentive
@@ -376,7 +391,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         _bounty[messageIdentifier] = incentive;
     }
 
-    /// @notice Allows anyone to re-execute an ack which didn't properly execute. Out of gas?
+
+    /// @notice Allows anyone to re-execute an ack which didn't properly execute.
+    /// @dev No applciation should rely on this function. It should only be used in-case an
+    /// application has faulty logic. 
+    /// Example: Faulty logic results in wrong enforcement on gas limit => out of gas?
     function recoverAck(
         bytes32 chainIdentifier,
         bytes calldata messagingProtocolContext,
@@ -389,8 +408,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Only allow acks to do this. Normal messages are invalid after first execution.
         if (context == DestinationtoSource) {
             bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-            // TODO: Custom Error
-            require(_bounty[messageIdentifier].refundGasTo != address(0), "!Hasn't been claimed"); 
+            if(_bounty[messageIdentifier].refundGasTo != address(0)) revert AckHasNotBeenExecuted(); 
 
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
             ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
