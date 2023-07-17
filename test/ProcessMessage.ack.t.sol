@@ -103,7 +103,7 @@ contract AckMessageTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         _receive = GAS_RECEIVE_CONSTANT;
-        bytes memory _acknowledgement = abi.encode(bytes32(0xd9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b));
+        bytes memory _acknowledgement = hex"d9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b";
 
         vm.expectEmit();
         emit AckMessage(_DESTINATION_IDENTIFIER, _acknowledgement);
@@ -116,6 +116,17 @@ contract AckMessageTest is TestCommon {
             uint64(GAS_SPENT_ON_SOURCE),
             uint128(_receive),
             0  // Same destination as source relayer.
+        );
+
+        vm.expectCall(
+            address(application),
+            abi.encodeCall(
+                application.ackMessage,
+                (
+                    bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    _acknowledgement
+                )
+            )
         );
 
         escrow.processMessage(

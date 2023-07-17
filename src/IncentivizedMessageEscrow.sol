@@ -229,6 +229,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             abi.encodeWithSignature("receiveMessage(bytes32,bytes,bytes)", sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
         );
         if (success) {
+            // TODO: Optimise gas?
             acknowledgement = abi.decode(acknowledgement, (bytes));
         } else {
             acknowledgement = abi.encodePacked(SWAP_REVERTED);
