@@ -223,7 +223,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
         // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
 
-        // TODO: If the caller doesn't implement receiveMessage, catch. //TODO: test
         // TODO: Optimise gas?
         (bool success, bytes memory acknowledgement) = toApplication.call{gas: maxGas}(
             abi.encodeWithSignature("receiveMessage(bytes32,bytes,bytes)", sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
@@ -318,7 +317,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
             // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-            if(!payable(destinationFeeRecipitent).send(deliveryFee)) {
+            if(!payable(destinationFeeRecipitent).send(deliveryFee)) { // TODO: test
                 payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
             }
             payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
