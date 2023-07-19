@@ -51,7 +51,7 @@ contract CallMessageTest is TestCommon {
 
     function test_application_does_not_implement_interface() public {
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 

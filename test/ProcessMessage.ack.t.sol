@@ -42,7 +42,7 @@ contract AckMessageTest is TestCommon {
         return (messageIdentifier, messageWithContext);
     }
 
-    function setupProcessMessage(bytes memory message, bytes memory destinationFeeRecipitent) internal returns(bytes memory) {
+    function setupProcessMessage(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
         bytes memory mockContext = abi.encode(v, r, s);
 
@@ -62,7 +62,7 @@ contract AckMessageTest is TestCommon {
     }
 
 
-    function setupForAck(bytes memory message, bytes memory destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
+    function setupForAck(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 
         return (messageIdentifier, setupProcessMessage(messageWithContext, destinationFeeRecipitent));
@@ -70,9 +70,9 @@ contract AckMessageTest is TestCommon {
 
     function test_ack_process_message() public {
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 
@@ -93,9 +93,9 @@ contract AckMessageTest is TestCommon {
 
     function test_ack_called_event() public {
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 
@@ -140,9 +140,9 @@ contract AckMessageTest is TestCommon {
     function test_ack_different_recipitents() public {
         vm.warp(1);
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_BOB;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 
@@ -187,9 +187,9 @@ contract AckMessageTest is TestCommon {
         _INCENTIVE.targetDelta = targetDelta;
         vm.warp(1);
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_BOB;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 
@@ -233,9 +233,9 @@ contract AckMessageTest is TestCommon {
         _INCENTIVE.targetDelta = targetDelta;
         vm.warp(1);
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_BOB;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 

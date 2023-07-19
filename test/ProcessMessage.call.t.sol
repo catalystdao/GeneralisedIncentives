@@ -36,7 +36,7 @@ contract CallMessageTest is TestCommon {
 
     function test_call_process_message() public {
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 
@@ -99,7 +99,7 @@ contract CallMessageTest is TestCommon {
 
     function test_call_process_message_twice() public {
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 

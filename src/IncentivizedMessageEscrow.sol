@@ -176,17 +176,18 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @dev This function is intended to be called by off-chain agents.
      *  Please ensure that feeRecipitent can receive gas token: Either it is an EOA or a implement fallback() / receive().
      *  Likewise for any non-evm chains. Otherwise the message fails (ack) or the relay payment is lost (call).
-     *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call fails. // TODO: Check
+     *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call might fail.
      * @param messagingProtocolContext Additional context required to verify the message by the messaging protocol.
      * @param rawMessage The raw message as it was emitted.
-     * @param feeRecipitent The fee recipitent encoded in 65 bytes: First byte is the length and last 64 is the destination address.
+     * @param feeRecipitent An identifier for the the fee recipitent. The identifier should identify the relayer on the source chain.
+     *  For EVM (and this contract as a source), use the bytes32 encoded address. For other VMs you might have to register your address.
      */
     function processMessage(
         bytes32 chainIdentifier,
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
-        bytes calldata feeRecipitent
-    ) checkBytes65Address(feeRecipitent) external {
+        bytes32 feeRecipitent
+    ) external {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
@@ -208,7 +209,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles call messages.
      */
-    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint256 gasLimit) internal {
+    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         bool messageState = _spentMessageIdentifier[messageIdentifier];
@@ -256,7 +257,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles ack messages.
      */
-    function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes calldata feeRecipitent, uint256 gasLimit) internal {
+    function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         IncentiveDescription memory incentive = _bounty[messageIdentifier];
@@ -296,9 +297,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if(!payable(incentive.refundGasTo).send(refund)) {
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
-        address destinationFeeRecipitent = address(bytes20(message[CTX1_RELAYER_RECIPITENT_START_EVM:CTX1_RELAYER_RECIPITENT_END]));
-        // feeRecipitent is bytes65, an EVM address is the last 20 bytes.
-        address sourceFeeRecipitent = address(bytes20(feeRecipitent[45:]));
+        address destinationFeeRecipitent = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPITENT_START:CTX1_RELAYER_RECIPITENT_END]))));
+        address sourceFeeRecipitent = address(uint160(uint256(feeRecipitent)));
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
             payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
