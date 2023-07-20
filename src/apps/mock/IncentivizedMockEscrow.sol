@@ -4,6 +4,8 @@ pragma solidity ^0.8.13;
 import { ProcessMessageV1 } from "../../versions/ProcessMessageV1.sol";
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { EscrowAddress } from "../../utils/EscrowAddress.sol";
+import { SourcetoDestination, DestinationtoSource } from "../../MessagePayload.sol";
+
 
 // This is a mock contract which should only be used for testing
 // It does not work as a authenticated message escrow!
@@ -49,7 +51,15 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, Pro
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
         bytes calldata message = _verifyMessage(chainIdentifier, messagingProtocolContext, rawMessage);
 
-        _processMessage(chainIdentifier, gasLimit, message, feeRecipitent);
+        // Figure out if this is a call or an ack.
+        bytes1 context = bytes1(message[0]);
+        if (context == SourcetoDestination) {
+            _handleCall(chainIdentifier, message, feeRecipitent, gasLimit);
+        } else if (context == DestinationtoSource) {
+            _handleAck(chainIdentifier, message, feeRecipitent, gasLimit);
+        } else {
+            revert NotImplementedError();
+        }
     }
 
     function _verifyMessage(bytes32 sourceIdentifier, bytes calldata _metadata, bytes calldata _message) view internal override returns(bytes calldata message_) {

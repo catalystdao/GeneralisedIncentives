@@ -168,35 +168,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return (0, messageIdentifier);
     }
 
-    /**
-     * @notice Deliver a message which has been *signed* by a messaging protocol.
-     * @dev This function is intended to be called by off-chain agents.
-     *  Please ensure that feeRecipitent can receive gas token: Either it is an EOA or a implement fallback() / receive().
-     *  Likewise for any non-evm chains. Otherwise the message fails (ack) or the relay payment is lost (call).
-     *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call might fail.
-     * @param gasLimit The gas limit recorded when the transaction first entered this contract.
-     * @param message The raw message as it was emitted.
-     * @param feeRecipitent An identifier for the the fee recipitent. The identifier should identify the relayer on the source chain.
-     *  For EVM (and this contract as a source), use the bytes32 encoded address. For other VMs you might have to register your address.
-     */
-    function _processMessage(
-        bytes32 chainIdentifier,
-        uint256 gasLimit,
-        bytes calldata message,
-        bytes32 feeRecipitent
-    ) internal {
-        // TODO: Optimize
-        // Figure out if this is a call or an ack.
-        bytes1 context = bytes1(message[0]);
-        if (context == SourcetoDestination) {
-            _handleCall(chainIdentifier, message, feeRecipitent, gasLimit);
-        } else if (context == DestinationtoSource) {
-            _handleAck(chainIdentifier, message, feeRecipitent, gasLimit);
-        } else {
-            revert NotImplementedError();
-        }
-    }
-
     //--- Internal Functions ---//
 
     /**

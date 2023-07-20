@@ -49,7 +49,9 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddres
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
-        _onReceive(chainIdentifier, rawMessage, feeRecipitent);
+        // _onReceive(chainIdentifier, rawMessage, feeRecipitent);
+        uint256 gasLimit = gasleft();
+        _handleCall(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
     }
 
     // The escrow manages acks, so any message can be directly provided to _onReceive.
@@ -58,7 +60,8 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddres
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
-        _onReceive(chainIdentifier, rawMessage, feeRecipitent);
+        uint256 gasLimit = gasleft();
+        _handleAck(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
     }
 
     // For timeouts, we need to construct the message.
@@ -68,16 +71,8 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddres
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
         // TODO: Figure out a solution where the message is still calldata. Alternativly, reimplement.
-        _onReceive(chainIdentifier, rawMessage, feeRecipitent);
-    }
-
-    function _onReceive(
-        bytes32 chainIdentifier,
-        bytes calldata rawMessage,
-        bytes32 feeRecipitent
-    ) internal {
         uint256 gasLimit = gasleft();
-        _processMessage(chainIdentifier, gasLimit, rawMessage, feeRecipitent);
+        _handleAck(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
     }
 
     // * Send to messaging_protocol 
