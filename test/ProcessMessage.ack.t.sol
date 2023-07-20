@@ -9,9 +9,9 @@ contract AckMessageTest is TestCommon {
     event AckMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes acknowledgement);
     event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes fromApplication, bytes message, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 8117;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33654;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6756800325;
+    uint256 constant GAS_SPENT_ON_SOURCE = 8120;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33657;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6758133657;
 
     uint256 _receive;
 
@@ -32,7 +32,7 @@ contract AckMessageTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return (messageIdentifier, messageWithContext);
     }
@@ -51,7 +51,7 @@ contract AckMessageTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[2].data, (bytes32, bytes, bytes));
 
         return messageWithContext;
     }

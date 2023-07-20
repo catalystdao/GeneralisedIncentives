@@ -142,16 +142,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             message                         // The message to deliver to the destination.
         );
 
-        // Send message to messaging protocol
-        _sendMessage(
-            destinationIdentifier,
-            messageWithContext
-        );
-
         // Emit the event for off-chain relayers.
         emit BountyPlaced(
             messageIdentifier,
             incentive
+        );
+
+        // Send message to messaging protocol
+        _sendMessage(
+            destinationIdentifier,
+            messageWithContext
         );
 
         // Return excess incentives to the sender. 
@@ -173,7 +173,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles call messages.
      */
-    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
+    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal returns(bytes memory ackMessageWithContext) {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         bool messageState = _spentMessageIdentifier[messageIdentifier];
@@ -201,7 +201,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
 
         // Encode a new message to send back. This lets the relayer claim their payment.
-        bytes memory ackMessageWithContext = abi.encodePacked(
+        ackMessageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource),    // This is a sendMessage
             messageIdentifier,              // message identifier
             fromApplication,
@@ -211,11 +211,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             acknowledgement
         );
 
-        // Send message to messaging protocol
-        _sendMessage(sourceIdentifier, ackMessageWithContext);
-
         // Message has been delivered and shouldn't be executed again.
         emit MessageDelivered(messageIdentifier);
+        
+        return ackMessageWithContext;
     }
 
     /**

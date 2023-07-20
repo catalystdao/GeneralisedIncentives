@@ -51,7 +51,11 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddres
     ) onlyMessagingProtocol external {
         // _onReceive(chainIdentifier, rawMessage, feeRecipitent);
         uint256 gasLimit = gasleft();
-        _handleCall(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+        bytes memory ackMessage = _handleCall(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+
+        // Send ack:
+        // * For an actual implementation, it might also be implemented as a return value for onReceive. 
+        _sendMessage(chainIdentifier, ackMessage);
     }
 
     // The escrow manages acks, so any message can be directly provided to _onReceive.

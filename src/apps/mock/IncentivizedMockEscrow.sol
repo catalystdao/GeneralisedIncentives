@@ -54,7 +54,10 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, Pro
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
         if (context == SourcetoDestination) {
-            _handleCall(chainIdentifier, message, feeRecipitent, gasLimit);
+            bytes memory ackMessage = _handleCall(chainIdentifier, message, feeRecipitent, gasLimit);
+
+            // Send the ack.
+            _sendMessage(chainIdentifier, ackMessage);
         } else if (context == DestinationtoSource) {
             _handleAck(chainIdentifier, message, feeRecipitent, gasLimit);
         } else {

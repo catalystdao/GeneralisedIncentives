@@ -38,7 +38,7 @@ contract NoReceiveTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[entries.length - 1].data, (bytes32, bytes, bytes));
 
         return (messageIdentifier, messageWithContext);
     }
@@ -53,6 +53,11 @@ contract NoReceiveTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
+
+
+        vm.expectEmit();
+        // Check MessageDelivered emitted
+        emit MessageDelivered(messageIdentifier);
 
         vm.expectEmit();
         // That a new message is sent back
@@ -69,14 +74,11 @@ contract NoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x73f8),  // Gas used
+                uint48(0x73f5),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff))
             )
         );
-        vm.expectEmit();
-        // Check MessageDelivered emitted
-        emit MessageDelivered(messageIdentifier);
 
         vm.expectCall(
             address(badApplication),

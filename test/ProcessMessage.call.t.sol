@@ -25,7 +25,7 @@ contract CallMessageTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return (messageIdentifier, messageWithContext);
     }
@@ -51,6 +51,10 @@ contract CallMessageTest is TestCommon {
             mockAck
         );
         vm.expectEmit();
+        // Check MessageDelivered emitted
+        emit MessageDelivered(messageIdentifier);
+
+        vm.expectEmit();
         // That a new message is sent back
         emit Message(
             _DESTINATION_IDENTIFIER,
@@ -65,14 +69,11 @@ contract CallMessageTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x8376),  // Gas used
+                uint48(0x8379),  // Gas used
                 uint64(1),
                 mockAck
             )
         );
-        vm.expectEmit();
-        // Check MessageDelivered emitted
-        emit MessageDelivered(messageIdentifier);
 
         vm.expectCall(
             address(application),

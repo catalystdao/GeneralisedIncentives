@@ -46,7 +46,7 @@ contract GasSpendControlTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return (messageIdentifier, messageWithContext);
     }
@@ -65,7 +65,7 @@ contract GasSpendControlTest is TestCommon {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return messageWithContext;
     }
@@ -104,7 +104,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_SPENDGAS,
                 destinationFeeRecipitent,
-                uint48(0x42efc),  // Gas used
+                uint48(0x42ef9),  // Gas used
                 uint64(1),
                 bytes1(0xff)  // This states that the call went wrong.
             )
@@ -144,7 +144,7 @@ contract GasSpendControlTest is TestCommon {
 
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        _INCENTIVE.maxGasDelivery = 247388*2;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
+        _INCENTIVE.maxGasDelivery = 247388;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(abi.encodePacked(bytes2(uint16(1000))));
 
@@ -153,7 +153,7 @@ contract GasSpendControlTest is TestCommon {
 
         uint256 snapshot_num = vm.snapshot();
 
-        escrow.processMessage{gas: 283536}(
+        escrow.processMessage{gas: 282917}(
             _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
@@ -176,7 +176,7 @@ contract GasSpendControlTest is TestCommon {
                 )
             )
         );
-        escrow.processMessage{gas: 283536 - 1}(
+        escrow.processMessage{gas: 282917 - 1}(
             _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
