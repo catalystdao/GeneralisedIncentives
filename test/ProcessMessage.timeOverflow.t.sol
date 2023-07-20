@@ -5,12 +5,12 @@ import "forge-std/Test.sol";
 import { TestCommon } from "./TestCommon.sol";
 
 
-contract CallMessageTest is TestCommon {
+contract TimeOverflowTest is TestCommon {
     event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 7845;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33383;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6636034878;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7826;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33350;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6625863948;
 
     uint256 _receive;
 
@@ -42,7 +42,7 @@ contract CallMessageTest is TestCommon {
         return (messageIdentifier, messageWithContext);
     }
 
-    function setupProcessMessage(bytes memory message, bytes memory destinationFeeRecipitent) internal returns(bytes memory) {
+    function setupProcessMessage(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
         bytes memory mockContext = abi.encode(v, r, s);
 
@@ -62,7 +62,7 @@ contract CallMessageTest is TestCommon {
     }
 
 
-    function setupForAck(bytes memory message, bytes memory destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
+    function setupForAck(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 
         return (messageIdentifier, setupProcessMessage(messageWithContext, destinationFeeRecipitent));
@@ -71,9 +71,9 @@ contract CallMessageTest is TestCommon {
     function test_larger_than_uint_time_is_fine() public {
         vm.warp(2**64 + 1 days);
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_BOB;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 
@@ -124,9 +124,9 @@ contract CallMessageTest is TestCommon {
         require(uint64(initialTime) > uint64(postTime));  // This is what we want to ensure works properly.
         vm.warp(initialTime);
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        bytes memory destinationFeeRecipitent = _DESTINATION_ADDRESS_BOB;
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(message, destinationFeeRecipitent);
 

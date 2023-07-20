@@ -6,7 +6,7 @@ import { TestCommon } from "./TestCommon.sol";
 import { BadlyDesignedRefundTo } from "./mocks/BadRefundTo.sol";
 
 
-contract CallMessageTest is TestCommon {
+contract NoReceiveTest is TestCommon {
     event ReceiveMessage(
         bytes32 sourceIdentifierbytes,
         bytes fromApplication,
@@ -51,7 +51,7 @@ contract CallMessageTest is TestCommon {
 
     function test_application_does_not_implement_interface() public {
         bytes memory message = _MESSAGE;
-        bytes memory feeRecipitent = _DESTINATION_ADDRESS_THIS;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
 
@@ -75,7 +75,7 @@ contract CallMessageTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x7428),  // Gas used
+                uint48(0x7401),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff))
             )

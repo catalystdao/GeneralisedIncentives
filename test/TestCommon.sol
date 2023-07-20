@@ -18,7 +18,6 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     address _REFUND_GAS_TO;
     bytes _MESSAGE;
     bytes _DESTINATION_ADDRESS_THIS;
-    bytes _DESTINATION_ADDRESS_BOB;
     bytes _DESTINATION_ADDRESS_APPLICATION;
 
     address SIGNER;
@@ -37,11 +36,6 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
             uint8(20),
             bytes32(0),
             bytes32(uint256(uint160(address(this))))
-        );
-        _DESTINATION_ADDRESS_BOB = abi.encodePacked(
-            uint8(20),
-            bytes32(0),
-            bytes32(uint256(uint160(BOB)))
         );
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),

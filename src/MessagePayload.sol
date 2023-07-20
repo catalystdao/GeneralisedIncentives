@@ -18,11 +18,10 @@ pragma solidity ^0.8.13;
 //     => MESSAGE_START                 169 (remainder)
 //
 //    CTX1 - 0x01 - Destination to Source
-//      + RELAYER_RECIPITENT_LENGTH     98  (1 byte)
-//      + RELAYER_RECIPITENT            99  (64 bytes)
-//      + GAS_SPENT                     163 (6 bytes)
-//      + EXECUTION_TIME                169 (8 bytes)
-//     => MESSAGE_START                 177 (remainder)
+//      + RELAYER_RECIPITENT            98  (32 bytes)
+//      + GAS_SPENT                     130 (6 bytes)
+//      + EXECUTION_TIME                136 (8 bytes)
+//     => MESSAGE_START                 144 (remainder)
 
 
 // Contexts *********************************************************************************************************************
@@ -58,15 +57,13 @@ uint constant CTX0_MESSAGE_START                    = 169;
 
 // CTX1 Destination to Source **************************************************************************************************
 
-uint constant CTX1_RELAYER_RECIPITENT_LENGTH_POS    = 98; 
-uint constant CTX1_RELAYER_RECIPITENT_START         = 99; 
-uint constant CTX1_RELAYER_RECIPITENT_START_EVM     = 143;  // If the address is an EVM address, this is the start
-uint constant CTX1_RELAYER_RECIPITENT_END           = 163;
+uint constant CTX1_RELAYER_RECIPITENT_START         = 98;
+uint constant CTX1_RELAYER_RECIPITENT_END           = 130;
 
-uint constant CTX1_GAS_SPENT_START                  = 163;
-uint constant CTX1_GAS_SPENT_END                    = 169;
+uint constant CTX1_GAS_SPENT_START                  = 130;
+uint constant CTX1_GAS_SPENT_END                    = 136;
 
-uint constant CTX1_EXECUTION_TIME_START             = 169;
-uint constant CTX1_EXECUTION_TIME_END               = 177;
+uint constant CTX1_EXECUTION_TIME_START             = 136;
+uint constant CTX1_EXECUTION_TIME_END               = 144;
 
-uint constant CTX1_MESSAGE_START                    = 177;
+uint constant CTX1_MESSAGE_START                    = 144;
