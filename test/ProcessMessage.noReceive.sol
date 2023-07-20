@@ -6,7 +6,7 @@ import { TestCommon } from "./TestCommon.sol";
 import { BadlyDesignedRefundTo } from "./mocks/BadRefundTo.sol";
 
 
-contract CallMessageTest is TestCommon {
+contract NoReceiveTest is TestCommon {
     event ReceiveMessage(
         bytes32 sourceIdentifierbytes,
         bytes fromApplication,
@@ -75,7 +75,7 @@ contract CallMessageTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x7428),  // Gas used
+                uint48(0x7401),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff))
             )
