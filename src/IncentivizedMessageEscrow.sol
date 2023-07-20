@@ -27,6 +27,24 @@ import "./MessagePayload.sol";
  * - Simple implementation of new messaging protocols.
  */
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
+
+    //--- Virtual Functions ---//
+    // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
+
+    /// @notice Send the message to the messaging protocol.
+    /// @dev Should be overwritten to send a message using the specific messaging protocol.
+    function _sendMessage(bytes32 destinationIdentifier, bytes memory message) virtual internal;
+
+    /// @notice Generates a unique message identifier for a message
+    /// @dev Can be overwritten. The identifier should:
+    ///  - Be unique over time: Use blocknumber or blockhash
+    ///  - Be unique on destination chain: Use a unique source identifier 
+    ///  - Be unique on the source chain: Use a unique destinationIdentifier
+    ///  - Depend on the message
+    function _getMessageIdentifier(
+        bytes32 destinationIdentifier,
+        bytes calldata message
+    ) view internal virtual returns(bytes32);
     
     //--- Constants ---//
 
@@ -42,27 +60,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     mapping(bytes32 => bool) _spentMessageIdentifier;
 
-    //--- Virtual Functions ---//
-    // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
-
-    /// @notice Verify a message's authenticity.
-    /// @dev Should be overwritten by the specific messaging protocol verification structure.
-    function _verifyMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes calldata message);
-
-    /// @notice Send the message to the messaging protocol.
-    /// @dev Should be overwritten to send a message using the specific messaging protocol.
-    function _sendMessage(bytes32 destinationIdentifier, bytes memory message) virtual internal;
-
-    /// @notice Generates a unique message identifier for a message
-    /// @dev Should be overwritten. The identifier should:
-    ///  - Be unique over time: Use blocknumber or blockhash
-    ///  - Be unique on destination chain: Use a unique source identifier 
-    ///  - Be unique on the source chain: Use a unique destinationIdentifier
-    ///  - Depend on the message
-    function _getMessageIdentifier(
-        bytes32 destinationIdentifier,
-        bytes calldata message
-    ) view internal virtual returns(bytes32);
 
     //--- Getter Functions ---//
     function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive) {
@@ -177,22 +174,18 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      *  Please ensure that feeRecipitent can receive gas token: Either it is an EOA or a implement fallback() / receive().
      *  Likewise for any non-evm chains. Otherwise the message fails (ack) or the relay payment is lost (call).
      *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call might fail.
-     * @param messagingProtocolContext Additional context required to verify the message by the messaging protocol.
-     * @param rawMessage The raw message as it was emitted.
+     * @param gasLimit The gas limit recorded when the transaction first entered this contract.
+     * @param message The raw message as it was emitted.
      * @param feeRecipitent An identifier for the the fee recipitent. The identifier should identify the relayer on the source chain.
      *  For EVM (and this contract as a source), use the bytes32 encoded address. For other VMs you might have to register your address.
      */
-    function processMessage(
+    function _processMessage(
         bytes32 chainIdentifier,
-        bytes calldata messagingProtocolContext,
-        bytes calldata rawMessage,
+        uint256 gasLimit,
+        bytes calldata message,
         bytes32 feeRecipitent
-    ) external {
-        uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
-
-        // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
-        bytes calldata message = _verifyMessage(chainIdentifier, messagingProtocolContext, rawMessage);
-
+    ) internal {
+        // TODO: Optimize
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
         if (context == SourcetoDestination) {
@@ -226,7 +219,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // TODO: Optimise gas?
         (bool success, bytes memory acknowledgement) = toApplication.call{gas: maxGas}(
-            abi.encodeWithSignature("receiveMessage(bytes32,bytes,bytes)", sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
+            abi.encodeWithSignature("receiveMessage(bytes32,bytes32,bytes,bytes)", sourceIdentifier, messageIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
         );
         if (success) {
             // TODO: Optimise gas?
@@ -261,13 +254,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         IncentiveDescription memory incentive = _bounty[messageIdentifier];
+        if (incentive.refundGasTo == address(0)) revert MessageAlreadySpent();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
         // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
         // Ensure that if the call reverts it doesn't boil up.  // TODO: Optimise gas?
         fromApplication.call{gas: incentive.maxGasAck}(
-            abi.encodeWithSignature("ackMessage(bytes32,bytes)", destinationIdentifier, message[CTX1_MESSAGE_START: ])
+            abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ])
         );
 
         // Get the gas used by the destination call.
@@ -397,33 +391,5 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
         
         _bounty[messageIdentifier] = incentive;
-    }
-
-
-    /// @notice Allows anyone to re-execute an ack which didn't properly execute.
-    /// @dev No applciation should rely on this function. It should only be used in-case an
-    /// application has faulty logic. 
-    /// Example: Faulty logic results in wrong enforcement on gas limit => out of gas?
-    function recoverAck(
-        bytes32 chainIdentifier,
-        bytes calldata messagingProtocolContext,
-        bytes calldata message
-    ) external {
-        _verifyMessage(chainIdentifier, messagingProtocolContext, message);
-
-        bytes1 context = bytes1(message[0]);
-        
-        // Only allow acks to do this. Normal messages are invalid after first execution.
-        if (context == DestinationtoSource) {
-            bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-            if(_bounty[messageIdentifier].refundGasTo != address(0)) revert AckHasNotBeenExecuted(); 
-
-            address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-            ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
-
-            emit MessageAcked(messageIdentifier);
-        } else {
-            revert NotImplementedError();
-        }
     }
 }

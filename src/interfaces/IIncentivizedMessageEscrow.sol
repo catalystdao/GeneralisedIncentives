@@ -25,5 +25,6 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
         IncentiveDescription calldata incentive
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 
-    function processMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata message, bytes32 feeRecipitent) external;
+    /// @notice Describes the implementation
+    function implementationVersion() view external returns(string memory versionDescriptor);
 }

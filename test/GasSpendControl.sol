@@ -7,7 +7,7 @@ import { MockSpendGas } from "./mocks/MockSpendGas.sol";
 
 
 contract GasSpendControlTest is TestCommon {
-    event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
+    event AckMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes acknowledgement);
 
     event ReceiveMessage(
         bytes32 sourceIdentifierbytes,
@@ -104,7 +104,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_SPENDGAS,
                 destinationFeeRecipitent,
-                uint48(0x42f05),  // Gas used
+                uint48(0x42efc),  // Gas used
                 uint64(1),
                 bytes1(0xff)  // This states that the call went wrong.
             )
@@ -144,7 +144,7 @@ contract GasSpendControlTest is TestCommon {
 
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        _INCENTIVE.maxGasDelivery = 247388;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
+        _INCENTIVE.maxGasDelivery = 247388*2;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(abi.encodePacked(bytes2(uint16(1000))));
 
@@ -153,7 +153,7 @@ contract GasSpendControlTest is TestCommon {
 
         uint256 snapshot_num = vm.snapshot();
 
-        escrow.processMessage{gas: 283509}(
+        escrow.processMessage{gas: 283536}(
             _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
@@ -170,12 +170,13 @@ contract GasSpendControlTest is TestCommon {
                 spendGasApplication.receiveMessage,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
                     hex"140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f62849f9a0b5bf2913b396098f7c7019b51a820a",
                     hex"03e8"
                 )
             )
         );
-        escrow.processMessage{gas: 283509 - 1}(
+        escrow.processMessage{gas: 283536 - 1}(
             _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,

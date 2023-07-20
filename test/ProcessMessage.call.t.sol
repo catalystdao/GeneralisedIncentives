@@ -6,12 +6,8 @@ import { TestCommon } from "./TestCommon.sol";
 
 
 contract CallMessageTest is TestCommon {
-    event ReceiveMessage(
-        bytes32 sourceIdentifierbytes,
-        bytes fromApplication,
-        bytes message,
-        bytes acknowledgement
-    );
+    event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes fromApplication, bytes message, bytes acknowledgement);
+
     event Message(
         bytes32 destinationIdentifier,
         bytes recipitent,
@@ -49,6 +45,7 @@ contract CallMessageTest is TestCommon {
         // Check that the application was called
         emit ReceiveMessage(
             _DESTINATION_IDENTIFIER,
+            messageIdentifier,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
             mockAck
@@ -68,7 +65,7 @@ contract CallMessageTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x8246),  // Gas used
+                uint48(0x8376),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -83,6 +80,7 @@ contract CallMessageTest is TestCommon {
                 application.receiveMessage,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
                     hex"1400000000000000000000000000000000000000000000000000000000000000000000000000000000000000002e234dae75c793f67a35089c9d99245e1c58470b",
                     hex"b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
                 )

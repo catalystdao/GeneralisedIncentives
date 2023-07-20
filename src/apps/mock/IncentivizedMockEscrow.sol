@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import { ProcessMessageV1 } from "../../versions/ProcessMessageV1.sol";
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { EscrowAddress } from "../../utils/EscrowAddress.sol";
 
 // This is a mock contract which should only be used for testing
 // It does not work as a authenticated message escrow!
 // There are several bugs, it is insure and there isn't enough data validation.
-contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress {
+contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, ProcessMessageV1 {
 
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
 
@@ -38,7 +39,20 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress {
         );
     }
 
-    function _verifyMessage(bytes32 sourceIdentifier, bytes calldata _metadata, bytes calldata _message) internal override returns(bytes calldata message_) {
+    function processMessage(
+        bytes32 chainIdentifier,
+        bytes calldata messagingProtocolContext,
+        bytes calldata rawMessage,
+        bytes32 feeRecipitent
+    ) override external {
+        uint256 gasLimit = gasleft();
+        // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
+        bytes calldata message = _verifyMessage(chainIdentifier, messagingProtocolContext, rawMessage);
+
+        _processMessage(chainIdentifier, gasLimit, message, feeRecipitent);
+    }
+
+    function _verifyMessage(bytes32 sourceIdentifier, bytes calldata _metadata, bytes calldata _message) view internal override returns(bytes calldata message_) {
 
         bytes32 sourceIdentifierFromMessage = bytes32(_message[0:32]);
 

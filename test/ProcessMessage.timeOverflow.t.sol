@@ -6,10 +6,10 @@ import { TestCommon } from "./TestCommon.sol";
 
 
 contract TimeOverflowTest is TestCommon {
-    event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
+    event AckMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 7826;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33350;
+    uint256 constant GAS_SPENT_ON_SOURCE = 8117;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33654;
     uint256 constant GAS_RECEIVE_CONSTANT = 6625863948;
 
     uint256 _receive;
@@ -85,7 +85,7 @@ contract TimeOverflowTest is TestCommon {
         bytes memory _acknowledgement = abi.encode(bytes32(0xd9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b));
 
         vm.expectEmit();
-        emit AckMessage(_DESTINATION_IDENTIFIER, _acknowledgement);
+        emit AckMessage(_DESTINATION_IDENTIFIER, messageIdentifier, _acknowledgement);
         vm.expectEmit();
         emit MessageAcked(messageIdentifier);
 
@@ -138,7 +138,7 @@ contract TimeOverflowTest is TestCommon {
         bytes memory _acknowledgement = abi.encode(bytes32(0xd9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b));
 
         vm.expectEmit();
-        emit AckMessage(_DESTINATION_IDENTIFIER, _acknowledgement);
+        emit AckMessage(_DESTINATION_IDENTIFIER, messageIdentifier, _acknowledgement);
         vm.expectEmit();
         emit MessageAcked(messageIdentifier);
 

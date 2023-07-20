@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "../src/apps/mock/IncentivizedMockEscrow.sol";
-import "../src/interfaces/IIncentivizedMessageEscrow.sol";
+import {IProcessMessageEscrow} from "../src/interfaces/IProcessMessageEscrow.sol";
 import { IMessageEscrowEvents } from "../src/interfaces/IMessageEscrowEvents.sol";
 import { IMessageEscrowStructs } from "../src/interfaces/IMessageEscrowStructs.sol";
 import "./mocks/MockApplication.sol";
@@ -11,7 +11,7 @@ import "./mocks/MockApplication.sol";
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
-    IIncentivizedMessageEscrow public escrow;
+    IProcessMessageEscrow public escrow;
     MockApplication public application;
     
     IncentiveDescription _INCENTIVE;

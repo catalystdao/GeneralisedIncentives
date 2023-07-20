@@ -6,20 +6,15 @@ import { TestCommon } from "./TestCommon.sol";
 
 
 contract AckMessageTest is TestCommon {
-    event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
+    event AckMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes acknowledgement);
+    event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes fromApplication, bytes message, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 7826;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33350;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6625863948;
+    uint256 constant GAS_SPENT_ON_SOURCE = 8117;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33654;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6756800325;
 
     uint256 _receive;
 
-    event ReceiveMessage(
-        bytes32 sourceIdentifierbytes,
-        bytes fromApplication,
-        bytes message,
-        bytes acknowledgement
-    );
     event Message(
         bytes32 destinationIdentifier,
         bytes recipitent,
@@ -106,7 +101,7 @@ contract AckMessageTest is TestCommon {
         bytes memory _acknowledgement = hex"d9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b";
 
         vm.expectEmit();
-        emit AckMessage(_DESTINATION_IDENTIFIER, _acknowledgement);
+        emit AckMessage(_DESTINATION_IDENTIFIER, messageIdentifier, _acknowledgement);
         vm.expectEmit();
         emit MessageAcked(messageIdentifier);
         vm.expectEmit();
@@ -124,6 +119,7 @@ contract AckMessageTest is TestCommon {
                 application.ackMessage,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
                     _acknowledgement
                 )
             )
@@ -154,7 +150,7 @@ contract AckMessageTest is TestCommon {
         bytes memory _acknowledgement = abi.encode(bytes32(0xd9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b));
 
         vm.expectEmit();
-        emit AckMessage(_DESTINATION_IDENTIFIER, _acknowledgement);
+        emit AckMessage(_DESTINATION_IDENTIFIER, messageIdentifier, _acknowledgement);
         vm.expectEmit();
         emit MessageAcked(messageIdentifier);
 
