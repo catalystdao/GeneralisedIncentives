@@ -222,20 +222,23 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
         // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
 
-        // TODO: Optimise gas?
-        (bool success, bytes memory acknowledgement) = toApplication.call{gas: maxGas}(
-            abi.encodeWithSignature("receiveMessage(bytes32,bytes,bytes)", sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
-        );
-        if (success) {
-            // TODO: Optimise gas?
-            acknowledgement = abi.decode(acknowledgement, (bytes));
-        } else {
+        // Call the application.
+        // This call might fail because the abi.decode of the return value can fail. It is too gas costly to check all correctness 
+        // of the returned value and then error if decoding is not possible.
+        // As a result, relayers needs to simulate the tx. If the call fails, then they should blacklist the message.
+        // The call will only fall if the application doesn't expose receiveMessage or captures the message via a fallback. 
+        // As a result, if message delivery once executed, then it will always execute.
+        bytes memory acknowledgement;
+        try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
+         returns (bytes memory ack) {
+            acknowledgement = ack;
+        } catch (bytes memory err) {
             // Send the message back if the execution failed.
             // This lets you store information in the message that you can trust 
-            // gets returned. (You just have to understand that the status might be appended as the first byte.)
+            // gets returned. (You just have to understand that the status is appended as the first byte.)
             acknowledgement = abi.encodePacked(
                 SWAP_REVERTED,
-                message
+                message[CTX0_MESSAGE_START: ]
             );
         }
 
