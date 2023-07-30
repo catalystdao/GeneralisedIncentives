@@ -157,14 +157,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             incentive
         );
 
-        // Return excess incentives to the sender. 
-        // TODO: DO we want to return the excess to incentive.refundGasTo instead? 
-        // TODO: What if an application what to take the excess? Should they be allowed to do that?
+        // Return excess incentives to the user (found from incentive.refundGasTo).
         unchecked {
             if (msg.value > sum) {
                 // We know: msg.value >= sum, thus msg.value - sum >= 0.
                 gasRefund = msg.value - sum;
-                payable(msg.sender).transfer(gasRefund);
+                payable(incentive.refundGasTo).transfer(gasRefund);
                 return (gasRefund, messageIdentifier);
             }
         }
@@ -232,7 +230,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // TODO: Optimise gas?
             acknowledgement = abi.decode(acknowledgement, (bytes));
         } else {
-            acknowledgement = abi.encodePacked(SWAP_REVERTED);
+            // Send the message back if the execution failed.
+            // This lets you store information in the message that you can trust 
+            // gets returned. (You just have to understand that the status might be appended as the first byte.)
+            acknowledgement = abi.encodePacked(
+                SWAP_REVERTED,
+                message
+            );
         }
 
 
