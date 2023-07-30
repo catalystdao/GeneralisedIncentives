@@ -75,9 +75,10 @@ contract NoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x7401),  // Gas used
+                uint48(0x73ea),  // Gas used
                 uint64(1),
-                abi.encodePacked(bytes1(0xff))
+                abi.encodePacked(bytes1(0xff)),
+                message
             )
         );
         vm.expectEmit();
