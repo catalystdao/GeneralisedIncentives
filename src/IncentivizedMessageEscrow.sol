@@ -5,6 +5,7 @@ import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEsc
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MessagePayload.sol";
 
 /**
@@ -26,7 +27,7 @@ import "./MessagePayload.sol";
  * - Seperate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
  */
-abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
+abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65, ReentrancyGuard {
     
     //--- Constants ---//
 
@@ -185,7 +186,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
-    ) external {
+    ) nonReentrant external {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
@@ -267,12 +268,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-        IncentiveDescription memory incentive = _bounty[messageIdentifier];
-        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
+        IncentiveDescription storage incentive = _bounty[messageIdentifier];
+        if (incentive.refundGasTo == address(0)) revert MessageAlreadyAcked();
 
         // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-        // Ensure that if the call reverts it doesn't boil up.  // TODO: Optimise gas?
+        // Ensure that if the call reverts it doesn't boil up.
         fromApplication.call{gas: incentive.maxGasAck}(
             abi.encodeWithSignature("ackMessage(bytes32,bytes)", destinationIdentifier, message[CTX1_MESSAGE_START: ])
         );
@@ -309,6 +310,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
             payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+            delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
             emit MessageAcked(messageIdentifier);
             emit BountyClaimed(
                 messageIdentifier,
@@ -324,7 +326,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
             // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-            if(!payable(destinationFeeRecipitent).send(deliveryFee)) { // TODO: test
+            if(!payable(destinationFeeRecipitent).send(deliveryFee)) {
                 payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
             }
             payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
@@ -376,8 +378,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // min forDestinationRelayer = 0 => sumFee - 0 = sumFee
             forSourceRelayer = sumFee - forDestinationRelayer;
         }
-            payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+        payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
+        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,

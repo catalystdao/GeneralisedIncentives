@@ -104,7 +104,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_SPENDGAS,
                 destinationFeeRecipitent,
-                uint48(0x42eea),  // Gas used
+                uint48(0x42eed),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
@@ -154,7 +154,7 @@ contract GasSpendControlTest is TestCommon {
 
         uint256 snapshot_num = vm.snapshot();
 
-        escrow.processMessage{gas: 283302}(
+        escrow.processMessage{gas: 285658+5000 - 2}(
             _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
@@ -176,7 +176,7 @@ contract GasSpendControlTest is TestCommon {
                 )
             )
         );
-        escrow.processMessage{gas: 283302 - 1}(
+        escrow.processMessage{gas: 285658+5000 - 3}(
             _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,

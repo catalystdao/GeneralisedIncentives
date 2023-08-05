@@ -8,9 +8,9 @@ import { TestCommon } from "./TestCommon.sol";
 contract AckMessageTest is TestCommon {
     event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 7841;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33143;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6605153346;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7414;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33146;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6468403788;
 
     uint256 _receive;
 

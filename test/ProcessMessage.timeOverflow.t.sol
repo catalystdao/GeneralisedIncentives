@@ -8,8 +8,8 @@ import { TestCommon } from "./TestCommon.sol";
 contract TimeOverflowTest is TestCommon {
     event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 7841;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33143;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7414;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33146;
     uint256 constant GAS_RECEIVE_CONSTANT = 6625863948;
 
     uint256 _receive;
@@ -142,7 +142,7 @@ contract TimeOverflowTest is TestCommon {
         vm.expectEmit();
         emit MessageAcked(messageIdentifier);
 
-        uint256 gas_on_destination = GAS_SPENT_ON_DESTINATION;
+        uint256 gas_on_destination = GAS_SPENT_ON_DESTINATION;X
         uint256 gas_on_source = GAS_SPENT_ON_SOURCE;
         uint256 BOB_incentive = gas_on_destination * _INCENTIVE.priceOfDeliveryGas;
         _receive = gas_on_source * _INCENTIVE.priceOfAckGas;
