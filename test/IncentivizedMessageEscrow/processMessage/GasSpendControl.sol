@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "./TestCommon.sol";
-import { MockSpendGas } from "./mocks/MockSpendGas.sol";
-import { ICrossChainReceiver } from "../src/interfaces/ICrossChainReceiver.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
+import { MockSpendGas } from "../../mocks/MockSpendGas.sol";
+import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver.sol";
 
 
 contract GasSpendControlTest is TestCommon {

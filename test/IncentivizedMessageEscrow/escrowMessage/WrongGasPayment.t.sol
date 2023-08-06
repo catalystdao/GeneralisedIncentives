@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "../TestCommon.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
 
-contract GasPaymentTest is TestCommon {
+contract EscrowWrongGasPaymentTest is TestCommon {
 
     function test_place_incentive() public {
         IncentiveDescription memory incentive = IncentiveDescription({

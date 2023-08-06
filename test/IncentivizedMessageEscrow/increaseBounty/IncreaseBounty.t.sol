@@ -2,9 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "./TestCommon.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
 
-contract EscrowInformationTest is TestCommon {
+contract IncreaseBountyTest is TestCommon {
 
     function test_fail_bounty_does_not_exist() public {
         // Do not escrow the message

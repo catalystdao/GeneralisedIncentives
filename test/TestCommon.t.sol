@@ -18,7 +18,6 @@ interface ICanEscrowMessage is IMessageEscrowStructs{
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 }
 
-
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "./TestCommon.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
 
 
-contract AckMessageTest is TestCommon {
+contract ProcessMessageAckTest is TestCommon {
     uint256 constant GAS_SPENT_ON_SOURCE = 5467;
     uint256 constant GAS_SPENT_ON_DESTINATION = 28673;
     uint256 constant GAS_RECEIVE_CONSTANT = 5291562474;

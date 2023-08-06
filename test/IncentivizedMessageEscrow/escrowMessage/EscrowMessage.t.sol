@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "./TestCommon.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
 
 contract EscrowInformationTest is TestCommon {
     uint256 _overpay;
