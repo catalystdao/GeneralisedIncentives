@@ -38,7 +38,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress {
         );
     }
 
-    function _verifyMessage(bytes32 sourceIdentifier, bytes calldata _metadata, bytes calldata _message) internal override returns(bytes calldata message_) {
+    function _verifyMessage(bytes32 sourceIdentifier, bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes calldata message_) {
 
         bytes32 sourceIdentifierFromMessage = bytes32(_message[0:32]);
 

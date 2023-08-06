@@ -325,9 +325,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint64 targetDelta = incentive.targetDelta;
         // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
-            // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-            if(!payable(destinationFeeRecipitent).send(deliveryFee)) {
-                payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
+            // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
+            if(!payable(destinationFeeRecipitent).send(deliveryFee)) {  // If this returns false, it implies that the transfer failed.
+                // The result is that this contract still has deliveryFee. As a result, send it somewhere else.
+                payable(SEND_LOST_GAS_TO).transfer(deliveryFee);  // If we don't send the gas somewhere, the gas is lost forever.
             }
             payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             return;
@@ -370,7 +371,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         }
         // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
         if(!payable(destinationFeeRecipitent).send(forDestinationRelayer)) {
-            payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
+            payable(SEND_LOST_GAS_TO).transfer(forDestinationRelayer);  // If we don't send the gas somewhere, the gas is lost forever.
         }
         uint256 forSourceRelayer;
         unchecked {

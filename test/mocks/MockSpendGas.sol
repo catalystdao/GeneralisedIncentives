@@ -8,11 +8,6 @@ import { ICrossChainReceiver } from "../../src/interfaces/ICrossChainReceiver.so
  * @title Example application contract
  */
 contract MockSpendGas is ICrossChainReceiver {
-    
-    event EscrowMessage(uint256 gasRefund, bytes32 messageIdentifier);
-    event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
-    event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes fromApplication, bytes message, bytes acknowledgement);
-
     IIncentivizedMessageEscrow immutable MESSAGE_ESCROW;
 
     constructor(address messageEscrow_) {
@@ -31,15 +26,13 @@ contract MockSpendGas is ICrossChainReceiver {
             message,
             incentive
         );
-
-        emit EscrowMessage(gasRefund, messageIdentifier);
     }
 
     function ackMessage(bytes32 destinationIdentifier, bytes calldata acknowledgement) external {
         this.receiveMessage(destinationIdentifier, abi.encodePacked(bytes1(0x00)), acknowledgement);
     }
 
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes calldata fromApplication, bytes calldata message) public returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 sourceIdentifierbytes, bytes calldata fromApplication, bytes calldata message) public pure returns(bytes memory acknowledgement) {
         uint16 iterators = uint16(bytes2(message[0:2]));
         bytes memory comp_hash = abi.encodePacked(keccak256(abi.encodePacked(iterators)));
         for (uint i = 0; i < iterators; ++i) {

@@ -5,16 +5,6 @@ import "forge-std/Test.sol";
 import { TestCommon } from "./TestCommon.sol";
 
 contract EscrowInformationTest is TestCommon {
-    function escrowMessage(bytes memory message) internal returns(bytes32) {
-        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
-            _DESTINATION_IDENTIFIER,
-            _DESTINATION_ADDRESS_APPLICATION,
-            message,
-            _INCENTIVE
-        );
-
-        return messageIdentifier;
-    }
 
     function test_fail_bounty_does_not_exist() public {
         // Do not escrow the message
