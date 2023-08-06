@@ -38,7 +38,7 @@ contract ProcessMessageCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x80de),  // Gas used
+                uint48(0x80df),  // Gas used
                 uint64(1),
                 mockAck
             )

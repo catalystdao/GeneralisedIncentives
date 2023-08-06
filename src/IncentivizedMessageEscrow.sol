@@ -7,8 +7,6 @@ import { Bytes65 } from "./utils/Bytes65.sol";
 import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
 import "./MessagePayload.sol";
 
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 
 /**
  * @title Generalised Incentive Escrow
@@ -29,7 +27,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
  * - Seperate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
  */
-abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65, ReentrancyGuard {
+abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
     
     //--- Constants ---//
 
@@ -187,7 +185,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
-    ) nonReentrant external {
+    ) external {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
@@ -272,17 +270,24 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
-        // The 2 next lines are not a reentry guard. The incentive is loaded into storage rather than memory.
-        // If we were to delete the incentive, the storage pointer would return 0 values.
+        // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
         IncentiveDescription storage incentive = _bounty[messageIdentifier];
-        if (incentive.refundGasTo == address(0)) revert MessageAlreadyAcked();
+        // Load all variables from storage onto the stack.
+        uint48 maxGasDelivery = incentive.maxGasDelivery;
+        uint48 maxGasAck = incentive.maxGasAck;
+        address refundGasTo = incentive.refundGasTo;
+        uint96 priceOfDeliveryGas = incentive.priceOfDeliveryGas;
+        uint96 priceOfAckGas = incentive.priceOfAckGas;
+        uint64 targetDelta = incentive.targetDelta;
+        if (refundGasTo == address(0)) revert MessageAlreadyAcked();
+        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
         // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
         // Ensure that if the call reverts it doesn't boil up.
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
-        fromApplication.call{gas: incentive.maxGasAck}(
+        fromApplication.call{gas: maxGasAck}(
             abi.encodeWithSignature("ackMessage(bytes32,bytes)", destinationIdentifier, message[CTX1_MESSAGE_START: ])
         );
 
@@ -292,25 +297,25 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Find the respective rewards for delivery and ack.
         uint256 deliveryFee; uint256 ackFee; uint256 sumFee; uint256 refund; uint256 gasSpentOnSource;
         unchecked {
-            // gasSpentOnDestination * incentive.priceOfDeliveryGas < 2**48 * 2**96 = 2**144
-            if (incentive.maxGasDelivery <= gasSpentOnDestination) gasSpentOnDestination = incentive.maxGasDelivery;  // If more gas was spent then allocated, then only use the allocation.
-            deliveryFee = gasSpentOnDestination * incentive.priceOfDeliveryGas;  
+            // gasSpentOnDestination * priceOfDeliveryGas < 2**48 * 2**96 = 2**144
+            if (maxGasDelivery <= gasSpentOnDestination) gasSpentOnDestination = maxGasDelivery;  // If more gas was spent then allocated, then only use the allocation.
+            deliveryFee = gasSpentOnDestination * priceOfDeliveryGas;  
             // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
             // gasLimit = gasleft() when less gas was spent, thus it is always larger than gasleft().
             gasSpentOnSource = gasLimit - gasleft();
-            if (incentive.maxGasAck <= gasSpentOnSource) gasSpentOnSource = incentive.maxGasAck;  // If more gas was spent then allocated, then only use the allocation.
-            // gasSpentOnSource * incentive.priceOfAckGas < 2**48 * 2**96 = 2**144
-            ackFee = gasSpentOnSource * incentive.priceOfAckGas;  
+            if (maxGasAck <= gasSpentOnSource) gasSpentOnSource = maxGasAck;  // If more gas was spent then allocated, then only use the allocation.
+            // gasSpentOnSource * priceOfAckGas < 2**48 * 2**96 = 2**144
+            ackFee = gasSpentOnSource * priceOfAckGas;  
             // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
             sumFee = deliveryFee + ackFee;
-            // (incentive.priceOfDeliveryGas * incentive.maxGasDelivery + incentive.priceOfDeliveryGas * incentive.maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
-            uint256 maxDeliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
-            uint256 maxAckGas = incentive.maxGasAck * incentive.priceOfAckGas;
+            // (priceOfDeliveryGas * maxGasDelivery + priceOfDeliveryGas * maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
+            uint256 maxDeliveryGas = maxGasDelivery * priceOfDeliveryGas;
+            uint256 maxAckGas = maxGasAck * priceOfAckGas;
             uint256 maxSum = maxDeliveryGas + maxAckGas;
             refund = maxSum - sumFee;
         }
         // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-        if(!payable(incentive.refundGasTo).send(refund)) {
+        if(!payable(refundGasTo).send(refund)) {
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
         address destinationFeeRecipitent = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPITENT_START:CTX1_RELAYER_RECIPITENT_END]))));
@@ -318,7 +323,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
             payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
-            delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
             emit MessageAcked(messageIdentifier);
             emit BountyClaimed(
                 messageIdentifier,
@@ -330,7 +334,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             return;
         }
 
-        uint64 targetDelta = incentive.targetDelta;
         // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
             // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
@@ -348,7 +351,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // past the time when uint64 stops working. *As long as any timedelta is less than uint64.
             executionTime = uint64(block.timestamp) - uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]));
         }
-        // The incentive scheme is as follows: When executionTime = incentive.targetDelta then 
+        // The incentive scheme is as follows: When executionTime = targetDelta then 
         // The rewards are distributed as per the incentive spec. If the time is less, then
         // more incentives are given to the destination relayer while if the time is more, 
         // then more incentives are given to the sourceRelayer.
