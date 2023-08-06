@@ -270,7 +270,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
-        // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
+        // The 3 (9, loading the variables out of storage fills a bit.) next lines act as a reentry guard,
+        // so this call doesn't have to be protected by reentry.
         IncentiveDescription storage incentive = _bounty[messageIdentifier];
         // Load all variables from storage onto the stack.
         uint48 maxGasDelivery = incentive.maxGasDelivery;
