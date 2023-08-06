@@ -3,10 +3,12 @@ pragma solidity ^0.8.13;
 
 import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEscrow.sol";
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
-import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
 import "./MessagePayload.sol";
+
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 
 /**
  * @title Generalised Incentive Escrow
@@ -48,7 +50,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice Verify a message's authenticity.
     /// @dev Should be overwritten by the specific messaging protocol verification structure.
-    function _verifyMessage(bytes32 sourceIdentifier, bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes calldata message);
+    function _verifyMessage(bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes32 sourceIdentifier, bytes calldata message);
 
     /// @notice Send the message to the messaging protocol.
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
@@ -182,7 +184,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      *  For EVM (and this contract as a source), use the bytes32 encoded address. For other VMs you might have to register your address.
      */
     function processMessage(
-        bytes32 chainIdentifier,
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
@@ -190,7 +191,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
-        bytes calldata message = _verifyMessage(chainIdentifier, messagingProtocolContext, rawMessage);
+        (bytes32 chainIdentifier, bytes calldata message) = _verifyMessage(messagingProtocolContext, rawMessage);
 
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
@@ -211,6 +212,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
+
+        // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
         bool messageState = _spentMessageIdentifier[messageIdentifier];
         if (messageState) revert MessageAlreadySpent();
         _spentMessageIdentifier[messageIdentifier] = true;
@@ -268,12 +271,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
+
+        // The 2 next lines are not a reentry guard. The incentive is loaded into storage rather than memory.
+        // If we were to delete the incentive, the storage pointer would return 0 values.
         IncentiveDescription storage incentive = _bounty[messageIdentifier];
         if (incentive.refundGasTo == address(0)) revert MessageAlreadyAcked();
 
         // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
         // Ensure that if the call reverts it doesn't boil up.
+        // We don't need any return values and don't care if the call reverts.
+        // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
         fromApplication.call{gas: incentive.maxGasAck}(
             abi.encodeWithSignature("ackMessage(bytes32,bytes)", destinationIdentifier, message[CTX1_MESSAGE_START: ])
         );
@@ -416,11 +424,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// application has faulty logic. 
     /// Example: Faulty logic results in wrong enforcement on gas limit => out of gas?
     function recoverAck(
-        bytes32 chainIdentifier,
         bytes calldata messagingProtocolContext,
-        bytes calldata message
+        bytes calldata rawMessage
     ) external {
-        _verifyMessage(chainIdentifier, messagingProtocolContext, message);
+        (bytes32 chainIdentifier, bytes calldata message) = _verifyMessage(messagingProtocolContext, rawMessage);
 
         bytes1 context = bytes1(message[0]);
         

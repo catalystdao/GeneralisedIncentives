@@ -7,10 +7,6 @@ import { TestCommon } from "../../TestCommon.t.sol";
 
 contract TimeOverflowTest is TestCommon {
 
-    uint256 constant GAS_SPENT_ON_SOURCE = 5467;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 28673;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6625863948;
-
     uint256 _receive;
 
     event Message(
@@ -53,7 +49,6 @@ contract TimeOverflowTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -104,7 +99,6 @@ contract TimeOverflowTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent

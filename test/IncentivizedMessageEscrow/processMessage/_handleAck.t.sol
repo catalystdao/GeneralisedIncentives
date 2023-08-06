@@ -6,9 +6,6 @@ import { TestCommon } from "../../TestCommon.t.sol";
 
 
 contract ProcessMessageAckTest is TestCommon {
-    uint256 constant GAS_SPENT_ON_SOURCE = 5467;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 28673;
-    uint256 constant GAS_RECEIVE_CONSTANT = 5291562474;
 
     uint256 _receive;
 
@@ -32,7 +29,6 @@ contract ProcessMessageAckTest is TestCommon {
         _receive = GAS_RECEIVE_CONSTANT;
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -78,7 +74,6 @@ contract ProcessMessageAckTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -123,7 +118,6 @@ contract ProcessMessageAckTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -167,7 +161,6 @@ contract ProcessMessageAckTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -217,7 +210,6 @@ contract ProcessMessageAckTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent

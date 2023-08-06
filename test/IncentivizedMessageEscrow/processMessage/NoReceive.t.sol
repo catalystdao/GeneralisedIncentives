@@ -51,7 +51,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x75c8),  // Gas used
+                uint48(0x7df1),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message
@@ -74,7 +74,6 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent

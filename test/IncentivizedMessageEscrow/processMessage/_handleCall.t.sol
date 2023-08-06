@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
 
 
-contract ProcessMessageAckTest is TestCommon {
+contract ProcessMessageCallTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
         bytes recipitent,
@@ -38,7 +38,7 @@ contract ProcessMessageAckTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x7001),  // Gas used
+                uint48(0x7829),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -60,7 +60,6 @@ contract ProcessMessageAckTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -77,7 +76,6 @@ contract ProcessMessageAckTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -87,7 +85,6 @@ contract ProcessMessageAckTest is TestCommon {
             abi.encodeWithSignature("MessageAlreadySpent()")
         ); 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
