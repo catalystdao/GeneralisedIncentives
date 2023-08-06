@@ -55,7 +55,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 destinationFeeRecipitent,
-                uint48(0x3642e),  // Gas used
+                uint48(0x36ce4),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
@@ -105,7 +105,7 @@ contract GasSpendControlTest is TestCommon {
 
         // The strange gas limit of '<gas> + 5000 - 2' here is because <gas> is how much is actually spent (read from trace) and + 5000 - 2 is some kind of refund that
         // the relayer needs to add as extra. (reentry refund)
-        escrow.processMessage{gas: 239942+5000 - 2}(
+        escrow.processMessage{gas: 242171+5000 - 2}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -126,7 +126,7 @@ contract GasSpendControlTest is TestCommon {
                 )
             )
         );
-        escrow.processMessage{gas: 239942+5000 - 3}(
+        escrow.processMessage{gas: 242171+5000 - 3}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent

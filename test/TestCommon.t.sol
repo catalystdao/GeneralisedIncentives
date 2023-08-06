@@ -20,9 +20,9 @@ interface ICanEscrowMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 5556;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 30761;
-    uint256 constant GAS_RECEIVE_CONSTANT = 5577636669;
+    uint256 constant GAS_SPENT_ON_SOURCE = 5785;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 32990;
+    uint256 constant GAS_RECEIVE_CONSTANT = 5926056345;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -44,6 +44,10 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
         escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER);
+
+        vm.prank(SIGNER);
+        IncentivizedMockEscrow(address(escrow)).setImplementationAddress(_DESTINATION_IDENTIFIER, bytes32(uint256(uint160(address(escrow)))));
+
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 
         _MESSAGE = abi.encode(keccak256(abi.encode(1)));
@@ -103,7 +107,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
 
-        return (messageIdentifier, messageWithContext);
+        return (messageIdentifier, abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext));
     }
 
     function setupProcessMessage(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes memory) {
@@ -121,7 +125,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
 
-        return messageWithContext;
+        return abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext);
     }
 
     function setupForAck(address fromAddress, bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
