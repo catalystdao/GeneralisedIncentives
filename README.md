@@ -24,4 +24,11 @@ To run tests, do:
 forge tests
 ```
 
-Coverage doesn't work because the contracts depends on the Solidity flag `--via-ir` to overcome a stack too deep issue. Foundry should support coverage testing very soon with this option.
+To view coverage, run:
+```
+forge coverage --ir-minimum
+```
+
+This will return a coverage report. You can also add `--report lcov` and use a suitable program to view the coverage report graphically. VS code has `Coverage Gutters` but other online tools also exist.
+
+Note that the coverage report isn't perfect. Several lines which are tested are reported as untested. It is unknown if this is caused by the `--ir-minimum` flag or bad test configuration.
