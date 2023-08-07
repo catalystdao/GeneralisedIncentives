@@ -416,7 +416,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 ackGas = incentive.maxGasAck * incentive.priceOfAckGas;
         sum = deliveryGas + ackGas;
         // Check that the provided gas is sufficient. The refund will be sent later. (reentry? concern).
-        if (sum == 0) revert ZeroIncentiveNotAllowed();
         if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
         
         _bounty[messageIdentifier] = incentive;

@@ -4,7 +4,6 @@ pragma solidity ^0.8.13;
 interface IMessageEscrowErrors {
     error NotEnoughGasProvided(uint128 expected, uint128 actual);
     error InvalidTotalIncentive(uint128 expected, uint128 actual);
-    error ZeroIncentiveNotAllowed();
     error MessageAlreadyBountied();
     error MessageDoesNotExist();
     error MessageAlreadyAcked();
