@@ -155,6 +155,16 @@ Because of the centralization associated with adding new chains / deployments, a
 5. The fradulent deployment on Beta sends `0xabcedf` to the application on chain Alpha
 6. On Alpha the message is verified.
 
+As a result, each application needs to tell the escrow where the other escrow sits and which escrow is allowed to send it messages. These mappings are 1:1, each chain identifier is only allowed a single escrow deployment.
+
+If on the destination chain, the application which is being called hasn't set the escrow implementation as the sending address of the message, the message will be sent back with a failure identifier (`0xfe`)
+
+## Failure Codes & Fallback
+
+If a message fails, a failure code is prepended to the original message and sent back. Below a list of failure codes can be found:
+- `0xff`: Generic application logic failure. Destination application couldn't be called, reverted or out of gas.
+- `0xfe`: Sending escrow implementation is not authenticated to call the application.
+
 ## Repository Structure
 
 The base implementation can be found in /src/IncentivizedMessageEscrow.sol. This contract is an abstract and is intended to be inherited by a true implementation. AMB implementations can be found under /src/apps.
