@@ -37,6 +37,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
                 application.receiveMessage,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
                     hex"1400000000000000000000000000000000000000000000000000000000000000000000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496",
                     hex"b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
                 )
@@ -60,7 +61,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0xf9c9),  // Gas used
+                uint48(0xfa78),  // Gas used
                 uint64(1),
                 uint8(1)
             )
@@ -82,7 +83,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
     bool flag;
 
     // Receive the message and reentry.
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement) {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadySpent()")
         ); 
@@ -98,7 +99,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
     }
 
     // Placeholder
-    function ackMessage(bytes32 destinationIdentifier, bytes calldata acknowledgement) external {
+    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external {
     }
     
 }

@@ -50,7 +50,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x83cf),  // Gas used
+                uint48(0x83ba),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message
@@ -66,6 +66,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
                 application.receiveMessage,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
                     hex"1400000000000000000000000000000000000000000000000000000000000000000000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496",
                     hex"b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
                 )

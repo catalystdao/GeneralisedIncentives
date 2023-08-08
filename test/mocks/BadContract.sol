@@ -8,11 +8,11 @@ import { ICrossChainReceiver } from "../../src/interfaces/ICrossChainReceiver.so
  * @title BadContract
  */
 contract BadContract is ICrossChainReceiver {
-    function ackMessage(bytes32 destinationIdentifier, bytes calldata acknowledgement) pure external {
+    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) pure external {
         require(false);
     }
 
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes calldata fromApplication, bytes calldata message) pure external returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) pure external returns(bytes memory acknowledgement) {
         require(false);
     }
 }

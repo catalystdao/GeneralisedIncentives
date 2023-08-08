@@ -264,7 +264,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // As a result, relayers needs to simulate the tx. If the call fails, then they should blacklist the message.
             // The call will only fall if the application doesn't expose receiveMessage or captures the message via a fallback. 
             // As a result, if message delivery once executed, then it will always execute.
-            try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
+            try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, messageIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
             returns (bytes memory ack) {
                 acknowledgement = ack;
             } catch (bytes memory err) {
@@ -330,7 +330,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
         fromApplication.call{gas: maxGasAck}(
-            abi.encodeWithSignature("ackMessage(bytes32,bytes)", destinationIdentifier, message[CTX1_MESSAGE_START: ])
+            abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ])
         );
 
         // Get the gas used by the destination call.
@@ -494,7 +494,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             bytes memory expectedDestinationImplementation = implementationAddress[msg.sender][chainIdentifier];
             if (keccak256(expectedDestinationImplementation) != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
 
-            ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
+            ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
 
             emit MessageAcked(messageIdentifier);
         } else {

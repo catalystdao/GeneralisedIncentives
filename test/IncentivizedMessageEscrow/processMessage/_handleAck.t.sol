@@ -68,6 +68,7 @@ contract ProcessMessageAckTest is TestCommon {
                 application.ackMessage,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
                     _acknowledgement
                 )
             )
