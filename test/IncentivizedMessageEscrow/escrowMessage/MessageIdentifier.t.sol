@@ -54,14 +54,19 @@ contract MessageIdentifierTest is TestCommon {
     }
 
     // With different destination identifiers they should produce different identifiers.
-    function test_DESTINATION_IDENTIFIER_impacts_MESSAGE_identifier() public {
+    function test_destination_identifier_impacts_message_identifier() public {
         IncentiveDescription storage incentive = _INCENTIVE;
+
+        escrow.setRemoteEscrowImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)), abi.encode(address(escrow)));
+
         (uint256 unused1, bytes32 messageIdentifier1) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
             incentive
         );
+
+        escrow.setRemoteEscrowImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)), abi.encode(address(escrow)));
 
         (uint256 unused2, bytes32 messageIdentifier2) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)),

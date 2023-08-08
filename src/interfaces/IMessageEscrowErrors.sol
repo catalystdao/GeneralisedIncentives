@@ -14,4 +14,6 @@ interface IMessageEscrowErrors {
     error DeliveryGasPriceMustBeIncreased();
     error AckGasPriceMustBeIncreased();
     error AckHasNotBeenExecuted();
+    error NoImplementationAddressSet();
+    error InvalidImplementationAddress();
 }

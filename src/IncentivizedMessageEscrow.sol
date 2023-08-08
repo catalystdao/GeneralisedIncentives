@@ -32,7 +32,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     //--- Constants ---//
 
     /// @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte.
-    bytes1 constant public SWAP_REVERTED = 0xff;
+    bytes1 constant public MESSAGE_REVERTED = 0xff;
+
+    /// @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte.
+    bytes1 constant public NO_AUTHENTICATION = 0xfe;
 
     /// @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
     /// the gas is sent here instead.
@@ -43,16 +46,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     mapping(bytes32 => bool) _spentMessageIdentifier;
 
+    // Maps applications to their escrow implementations.
+    mapping(address => mapping(bytes32 => bytes)) public implementationAddress;
+
     //--- Virtual Functions ---//
     // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
 
     /// @notice Verify a message's authenticity.
     /// @dev Should be overwritten by the specific messaging protocol verification structure.
-    function _verifyMessage(bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes32 sourceIdentifier, bytes calldata message);
+    function _verifyMessage(bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes32 sourceIdentifier, bytes calldata destinationIdentifier, bytes calldata message);
 
     /// @notice Send the message to the messaging protocol.
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
-    function _sendMessage(bytes32 destinationIdentifier, bytes memory message) virtual internal;
+    function _sendMessage(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal;
+
 
     /// @notice Generates a unique message identifier for a message
     /// @dev Should be overwritten. The identifier should:
@@ -73,6 +80,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
    function spentMessageIdentifier(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted) {
         return _spentMessageIdentifier[messageIdentifier];
    }
+
+
+    /// @notice Sets the escrow implementation for a specific chain
+    function setRemoteEscrowImplementation(bytes32 chainIdentifier, bytes calldata implementation) external {
+        implementationAddress[msg.sender][chainIdentifier] = implementation;
+
+        emit RemoteEscrowSet(msg.sender, chainIdentifier, implementation);
+    }
 
     //--- Public Endpoints ---//
 
@@ -128,6 +143,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata message,
         IncentiveDescription calldata incentive
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
+        // Check that the application has set a destination implementation
+        bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
+        // It is assumed that it is enough to check the first 32 bytes.
+        if (bytes32(destinationImplementation) == bytes32(0)) revert NoImplementationAddressSet();
+
         // Prepare to store incentive
         messageIdentifier = _getMessageIdentifier(
             destinationIdentifier,
@@ -149,6 +169,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send message to messaging protocol
         _sendMessage(
             destinationIdentifier,
+            destinationImplementation,
             messageWithContext
         );
 
@@ -189,14 +210,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
-        (bytes32 chainIdentifier, bytes calldata message) = _verifyMessage(messagingProtocolContext, rawMessage);
+        (bytes32 chainIdentifier, bytes calldata implementationIdentifier, bytes calldata message) = _verifyMessage(messagingProtocolContext, rawMessage);
 
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
         if (context == SourcetoDestination) {
-            _handleCall(chainIdentifier, message, feeRecipitent, gasLimit);
+            _handleCall(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
         } else if (context == DestinationtoSource) {
-            _handleAck(chainIdentifier, message, feeRecipitent, gasLimit);
+            _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
         } else {
             revert NotImplementedError();
         }
@@ -207,7 +228,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles call messages.
      */
-    function _handleCall(bytes32 sourceIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
+    function _handleCall(bytes32 sourceIdentifier, bytes calldata sourceImplementationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
@@ -222,26 +243,39 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint48 maxGas = uint48(bytes6(message[CTX0_MIN_GAS_LIMIT_START:CTX0_MIN_GAS_LIMIT_END]));
         address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
-        // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
 
-        // Call the application.
-        // This call might fail because the abi.decode of the return value can fail. It is too gas costly to check all correctness 
-        // of the returned value and then error if decoding is not possible.
-        // As a result, relayers needs to simulate the tx. If the call fails, then they should blacklist the message.
-        // The call will only fall if the application doesn't expose receiveMessage or captures the message via a fallback. 
-        // As a result, if message delivery once executed, then it will always execute.
         bytes memory acknowledgement;
-        try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
-         returns (bytes memory ack) {
-            acknowledgement = ack;
-        } catch (bytes memory err) {
-            // Send the message back if the execution failed.
-            // This lets you store information in the message that you can trust 
-            // gets returned. (You just have to understand that the status is appended as the first byte.)
+
+        bytes memory expectedSourceImplementation = implementationAddress[msg.sender][sourceIdentifier];
+        // Check that the application allows the source implementation.
+        // This is not the case when another implementation calls this contract from the source chain.
+        // Since this could be a mistake, send back an ack with the relevant information.
+        if (keccak256(expectedSourceImplementation) != keccak256(sourceImplementationIdentifier)) {
+            // If they are different, return send a failed message back with `0xfe`.
             acknowledgement = abi.encodePacked(
-                SWAP_REVERTED,
+                MESSAGE_REVERTED,
                 message[CTX0_MESSAGE_START: ]
             );
+        } else {
+            // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
+
+            // This call might fail because the abi.decode of the return value can fail. It is too gas costly to check all correctness 
+            // of the returned value and then error if decoding is not possible.
+            // As a result, relayers needs to simulate the tx. If the call fails, then they should blacklist the message.
+            // The call will only fall if the application doesn't expose receiveMessage or captures the message via a fallback. 
+            // As a result, if message delivery once executed, then it will always execute.
+            try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
+            returns (bytes memory ack) {
+                acknowledgement = ack;
+            } catch (bytes memory err) {
+                // Send the message back if the execution failed.
+                // This lets you store information in the message that you can trust 
+                // gets returned. (You just have to understand that the status is appended as the first byte.)
+                acknowledgement = abi.encodePacked(
+                    MESSAGE_REVERTED,
+                    message[CTX0_MESSAGE_START: ]
+                );
+            }
         }
 
 
@@ -257,7 +291,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         // Send message to messaging protocol
-        _sendMessage(sourceIdentifier, ackMessageWithContext);
+        _sendMessage(sourceIdentifier, sourceImplementationIdentifier, ackMessageWithContext);
 
         // Message has been delivered and shouldn't be executed again.
         emit MessageDelivered(messageIdentifier);
@@ -266,7 +300,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles ack messages.
      */
-    function _handleAck(bytes32 destinationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
+    function _handleAck(bytes32 destinationIdentifier, bytes calldata destinationImplementationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
@@ -283,8 +317,15 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
-        // Deliver the ack to the application.
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
+
+        // First check if the application trusts the implementation on the destination chain.
+        bytes memory expectedDestinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
+        // Check that the application approves the source implementation
+        // For acks, this should always be the case except when a fradulent applications sends a message to this contract.
+        if (keccak256(expectedDestinationImplementation) != keccak256(destinationImplementationIdentifier)) revert InvalidImplementationAddress();
+
+        // Deliver the ack to the application.
         // Ensure that if the call reverts it doesn't boil up.
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
@@ -343,6 +384,15 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 payable(SEND_LOST_GAS_TO).transfer(deliveryFee);  // If we don't send the gas somewhere, the gas is lost forever.
             }
             payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+            delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
+            emit MessageAcked(messageIdentifier);
+            emit BountyClaimed(
+                messageIdentifier,
+                uint64(gasSpentOnDestination),
+                uint64(gasSpentOnSource),
+                uint128(deliveryFee),
+                uint128(ackFee)
+            );
             return;
         }
         // Compute the reward distribution. We need the time it took to deliver the ack back.
@@ -430,7 +480,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage
     ) external {
-        (bytes32 chainIdentifier, bytes calldata message) = _verifyMessage(messagingProtocolContext, rawMessage);
+        (bytes32 chainIdentifier,  bytes calldata implementationIdentifier, bytes calldata message) = _verifyMessage(messagingProtocolContext, rawMessage);
 
         bytes1 context = bytes1(message[0]);
         
@@ -440,6 +490,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if(_bounty[messageIdentifier].refundGasTo != address(0)) revert AckHasNotBeenExecuted(); 
 
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
+
+            
+            // check if the application trusts the implementation on the destination chain.
+            bytes memory expectedDestinationImplementation = implementationAddress[msg.sender][chainIdentifier];
+            if (keccak256(expectedDestinationImplementation) != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
+
             ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, message[CTX1_MESSAGE_START: ]);
 
             emit MessageAcked(messageIdentifier);

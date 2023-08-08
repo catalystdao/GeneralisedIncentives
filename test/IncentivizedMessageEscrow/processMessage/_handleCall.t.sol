@@ -27,18 +27,17 @@ contract ProcessMessageCallTest is TestCommon {
         // That a new message is sent back
         emit Message(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(
-                uint8(20),
-                bytes32(0),
-                bytes32(uint256(uint160(address(escrow))))
+            abi.encode(
+                escrow
             ),
             abi.encodePacked(
+                _DESTINATION_IDENTIFIER,
                 _DESTINATION_IDENTIFIER,
                 bytes1(0x01),
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x80df),  // Gas used
+                uint48(0x8d7e),  // Gas used
                 uint64(1),
                 mockAck
             )

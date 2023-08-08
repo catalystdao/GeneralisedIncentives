@@ -26,4 +26,7 @@ interface IMessageEscrowEvents {
         uint96 deliveryGasPriceIncrease,
         uint96 ackGasPriceIncrease 
     );
+
+
+    event RemoteEscrowSet(address application, bytes32 chainIdentifier, bytes implementationAddress);
 }

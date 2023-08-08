@@ -144,6 +144,17 @@ The destination-to-source relayer will result in the message reverting. They sho
 
 "Only" 32 bytes are used to identificate the source-to-destination relayer on the source chain. For some chains, this is not enough. For implementations where this is not enough, a registry should be created on the source implementation which can convert a bytes32 identifier to an address. The bytes32 identifier must be based on the address (say `hash(address)`).
 
+### Other-chain deployments
+
+Because of the centralization associated with adding new chains / deployments, applications has to opt-in to these new chains. To understand the issue better, examine the following flow:
+
+1. An escrow with honest logic with no flaws exist on chain Alpha. 
+2. An application on chain Alpha can be drained by sending the fradulent key `0xabcdef` to the source chain. Ordinarly this never happens. This application trusts Alpha.
+3. The administrator adds another deployment on chain Beta with same address as Alpha but with another bytecode deployed. Specifically, when the administrator calls this contract it sends `0xabcdef` to the application.
+4. The application adds chain Beta to the allow list since the address matches the Beta address (thinking the byte code deployed must be the same).
+5. The fradulent deployment on Beta sends `0xabcedf` to the application on chain Alpha
+6. On Alpha the message is verified.
+
 ## Repository Structure
 
 The base implementation can be found in /src/IncentivizedMessageEscrow.sol. This contract is an abstract and is intended to be inherited by a true implementation. AMB implementations can be found under /src/apps.

@@ -21,6 +21,10 @@ contract GasSpendControlTest is TestCommon {
         // Set a new application
         application = ICrossChainReceiver(address(new MockSpendGas(address(escrow))));
 
+        // Set implementations to the escrow address.
+        vm.prank(address(application));
+        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),
             bytes32(0),
@@ -44,18 +48,17 @@ contract GasSpendControlTest is TestCommon {
         // Check that the ack is set to 0xff
         emit Message(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(
-                uint8(20),
-                bytes32(0),
-                bytes32(uint256(uint160(address(escrow))))
+            abi.encode(
+                escrow
             ),
             abi.encodePacked(
+                _DESTINATION_IDENTIFIER,
                 _DESTINATION_IDENTIFIER,
                 bytes1(0x01),
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 destinationFeeRecipitent,
-                uint48(0x36ce4),  // Gas used
+                uint48(0x379ad),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
@@ -105,7 +108,7 @@ contract GasSpendControlTest is TestCommon {
 
         // The strange gas limit of '<gas> + 5000 - 2' here is because <gas> is how much is actually spent (read from trace) and + 5000 - 2 is some kind of refund that
         // the relayer needs to add as extra. (reentry refund)
-        escrow.processMessage{gas: 239805}(
+        escrow.processMessage{gas: 242833}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -126,7 +129,7 @@ contract GasSpendControlTest is TestCommon {
                 )
             )
         );
-        escrow.processMessage{gas: 239805 - 1}(
+        escrow.processMessage{gas: 242833 - 1}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent

@@ -20,9 +20,9 @@ interface ICanEscrowMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 5957;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 32991;
-    uint256 constant GAS_RECEIVE_CONSTANT = 5981412822;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7192;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 36222;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6776449878;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -45,10 +45,14 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         BOB = makeAddr("Bob");
         escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER);
 
-        vm.prank(SIGNER);
-        IncentivizedMockEscrow(address(escrow)).setImplementationAddress(_DESTINATION_IDENTIFIER, bytes32(uint256(uint160(address(escrow)))));
-
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
+
+        // Set implementations to the escrow address.
+        vm.prank(address(application));
+        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+
+        vm.prank(address(this));
+        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         _MESSAGE = abi.encode(keccak256(abi.encode(1)));
         _DESTINATION_ADDRESS_THIS = abi.encodePacked(

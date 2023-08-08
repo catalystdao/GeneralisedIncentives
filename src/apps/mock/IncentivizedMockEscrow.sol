@@ -2,17 +2,12 @@
 pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
-import { EscrowAddress } from "../../utils/EscrowAddress.sol";
 
 import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 // This is a mock contract which should only be used for testing.
-contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, Ownable2Step {
-    event ImplementationAddressSet(bytes32 chainIdentifier, bytes32 implementationAddress);
-
+contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
-
-    mapping(bytes32 => bytes32) public implementationAddress;
 
     event Message(
         bytes32 destinationIdentifier,
@@ -23,12 +18,6 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, Own
     constructor(bytes32 uniqueChainIndex, address signer) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
         _transferOwnership(signer);
-    }
-
-    function setImplementationAddress(bytes32 chainIdentifier, bytes32 address_) external onlyOwner {
-        implementationAddress[chainIdentifier] = address_;
-
-        emit ImplementationAddressSet(chainIdentifier, address_);
     }
 
     function _getMessageIdentifier(
@@ -45,7 +34,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, Own
         );
     }
 
-    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes calldata message_) {
+    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes calldata implementationIdentifier, bytes calldata message_) {
 
         // Get signature from message payload
         (uint8 v, bytes32 r, bytes32 s) = abi.decode(_metadata, (uint8, bytes32, bytes32));
@@ -55,22 +44,30 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, Own
 
         // Check signer is the same as the stored signer.
         require(messageSigner == owner(), "!signer");
-        // Get the source identifier from message payload.
-        bytes32 messageSenderIdentifier = bytes32(_message[0:32]);
-        sourceIdentifier = bytes32(_message[32:64]);
 
-        require(implementationAddress[sourceIdentifier] == messageSenderIdentifier, "!caller");
+        // Load the identifier for the calling contract.
+        implementationIdentifier = _message[0:32];
+
+        // Local "supposedly" this chain identifier.
+        bytes32 thisChainIdentifier = bytes32(_message[64:96]);
+
+        // Check that the message is intended for this chain.
+        require(thisChainIdentifier == UNIQUE_SOURCE_IDENTIFIER, "!Identifier");
+
+        // Local the identifier for the source chain.
+        sourceIdentifier = bytes32(_message[64:96]);
 
         // Get the application message.
-        message_ = _message[64:];
+        message_ = _message[96:];
     }
 
-    function _sendMessage(bytes32 destinationIdentifier, bytes memory message) internal override {
+    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override {
         emit Message(
-            destinationIdentifier,
-            _getEscrowAddress(destinationIdentifier),
+            destinationChainIdentifier,
+            destinationImplementation,
             abi.encodePacked(
                 UNIQUE_SOURCE_IDENTIFIER,
+                destinationChainIdentifier,
                 message
             )
         );

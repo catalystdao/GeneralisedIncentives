@@ -40,18 +40,17 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         // That a new message is sent back
         emit Message(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(
-                uint8(20),
-                bytes32(0),
-                bytes32(uint256(uint160(address(escrow))))
+            abi.encode(
+                escrow
             ),
             abi.encodePacked(
+                _DESTINATION_IDENTIFIER,
                 _DESTINATION_IDENTIFIER,
                 bytes1(0x01),
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x86a6),  // Gas used
+                uint48(0x83cf),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message

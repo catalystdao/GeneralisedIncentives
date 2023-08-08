@@ -26,4 +26,6 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 
     function processMessage(bytes calldata messagingProtocolContext, bytes calldata message, bytes32 feeRecipitent) external;
+
+    function setRemoteEscrowImplementation(bytes32 chainIdentifier, bytes calldata implementation) external;
 }
