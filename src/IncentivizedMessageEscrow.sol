@@ -384,7 +384,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 payable(SEND_LOST_GAS_TO).transfer(deliveryFee);  // If we don't send the gas somewhere, the gas is lost forever.
             }
             payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
-            delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
             emit MessageAcked(messageIdentifier);
             emit BountyClaimed(
                 messageIdentifier,
@@ -443,7 +442,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         }
         payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
-        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,
