@@ -20,9 +20,9 @@ interface ICanEscrowMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 7248;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 36216;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6793692840;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7257;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 36263;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6802379034;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -109,7 +109,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return (messageIdentifier, abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext));
     }
@@ -127,7 +127,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[0].data, (bytes32, bytes, bytes));
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext);
     }

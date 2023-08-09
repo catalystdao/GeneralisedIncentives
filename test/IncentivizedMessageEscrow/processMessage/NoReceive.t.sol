@@ -37,6 +37,9 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
 
         vm.expectEmit();
+        // Check MessageDelivered emitted
+        emit MessageDelivered(messageIdentifier);
+        vm.expectEmit();
         // That a new message is sent back
         emit Message(
             _DESTINATION_IDENTIFIER,
@@ -50,15 +53,12 @@ contract ProcessMessageNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x83ba),  // Gas used
+                uint48(0x83e3),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message
             )
         );
-        vm.expectEmit();
-        // Check MessageDelivered emitted
-        emit MessageDelivered(messageIdentifier);
 
         vm.expectCall(
             address(application),

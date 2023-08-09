@@ -24,6 +24,9 @@ contract ProcessMessageCallTest is TestCommon {
         bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
         
         vm.expectEmit();
+        // Check MessageDelivered emitted
+        emit MessageDelivered(messageIdentifier);
+        vm.expectEmit();
         // That a new message is sent back
         emit Message(
             _DESTINATION_IDENTIFIER,
@@ -37,14 +40,11 @@ contract ProcessMessageCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x8d78),  // Gas used
+                uint48(0x8da7),  // Gas used
                 uint64(1),
                 mockAck
             )
         );
-        vm.expectEmit();
-        // Check MessageDelivered emitted
-        emit MessageDelivered(messageIdentifier);
 
         vm.expectCall(
             address(application),

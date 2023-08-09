@@ -166,6 +166,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             message                         // The message to deliver to the destination.
         );
 
+        // Emit the event for off-chain relayers.
+        emit BountyPlaced(
+            messageIdentifier,
+            incentive
+        );
+
+        // Bounty is emitted before event to standardized with the other event before sending message scheme.
+
         // Send message to messaging protocol
         _sendMessage(
             destinationIdentifier,
@@ -173,11 +181,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             messageWithContext
         );
 
-        // Emit the event for off-chain relayers.
-        emit BountyPlaced(
-            messageIdentifier,
-            incentive
-        );
 
         // Return excess incentives to the user (found from incentive.refundGasTo).
         unchecked {
@@ -278,7 +281,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             }
         }
 
-
+    
         // Encode a new message to send back. This lets the relayer claim their payment.
         bytes memory ackMessageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource),    // This is a sendMessage
@@ -290,11 +293,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             acknowledgement
         );
 
+        // Message has been delivered and shouldn't be executed again.
+        emit MessageDelivered(messageIdentifier);
+
+        // Why is the messageDelivered event emitted before _sendMessage?
+        // Because it lets us pop messageIdentifier from the stack. This avoid a stack limit reached error. 
+        // Not optimal but okay-ish.
+
         // Send message to messaging protocol
         _sendMessage(sourceIdentifier, sourceImplementationIdentifier, ackMessageWithContext);
 
-        // Message has been delivered and shouldn't be executed again.
-        emit MessageDelivered(messageIdentifier);
     }
 
     /**
