@@ -18,6 +18,9 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         super.setUp();
         application = ICrossChainReceiver(address(new BadContract()));
 
+        vm.prank(address(application));
+        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),
             bytes32(0),
@@ -53,7 +56,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x83f2),  // Gas used
+                uint48(0x8935),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message

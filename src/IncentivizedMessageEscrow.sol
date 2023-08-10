@@ -41,6 +41,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// the gas is sent here instead.
     address constant public SEND_LOST_GAS_TO = address(0);
 
+    bytes32 constant KECCACK_OF_NOTHING = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
 
@@ -48,7 +50,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     // Maps applications to their escrow implementations.
     mapping(address => mapping(bytes32 => bytes)) public implementationAddress;
-
+    mapping(address => mapping(bytes32 => bytes32)) public implementationAddressHash;
     //--- Virtual Functions ---//
     // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
 
@@ -85,8 +87,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice Sets the escrow implementation for a specific chain
     function setRemoteEscrowImplementation(bytes32 chainIdentifier, bytes calldata implementation) external {
         implementationAddress[msg.sender][chainIdentifier] = implementation;
+        implementationAddressHash[msg.sender][chainIdentifier] = keccak256(implementation);
 
-        emit RemoteEscrowSet(msg.sender, chainIdentifier, implementation);
+        emit RemoteEscrowSet(msg.sender, chainIdentifier, keccak256(implementation), implementation);
     }
 
     //--- Public Endpoints ---//
@@ -146,7 +149,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that the application has set a destination implementation
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
         // It is assumed that it is enough to check the first 32 bytes.
-        if (bytes32(destinationImplementation) == bytes32(0)) revert NoImplementationAddressSet();
+        if (keccak256(destinationImplementation) == KECCACK_OF_NOTHING) revert NoImplementationAddressSet();
 
         // Prepare to store incentive
         messageIdentifier = _getMessageIdentifier(
@@ -249,11 +252,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         bytes memory acknowledgement;
 
-        bytes memory expectedSourceImplementation = implementationAddress[msg.sender][sourceIdentifier];
+        bytes32 expectedSourceImplementationHash = implementationAddressHash[toApplication][sourceIdentifier];
         // Check that the application allows the source implementation.
         // This is not the case when another implementation calls this contract from the source chain.
         // Since this could be a mistake, send back an ack with the relevant information.
-        if (keccak256(expectedSourceImplementation) != keccak256(sourceImplementationIdentifier)) {
+        if (expectedSourceImplementationHash != keccak256(sourceImplementationIdentifier)) {
             // If they are different, return send a failed message back with `0xfe`.
             acknowledgement = abi.encodePacked(
                 MESSAGE_REVERTED,
@@ -328,10 +331,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
 
         // First check if the application trusts the implementation on the destination chain.
-        bytes memory expectedDestinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
+        bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][destinationIdentifier];
         // Check that the application approves the source implementation
         // For acks, this should always be the case except when a fradulent applications sends a message to this contract.
-        if (keccak256(expectedDestinationImplementation) != keccak256(destinationImplementationIdentifier)) revert InvalidImplementationAddress();
+        if (expectedDestinationImplementationHash != keccak256(destinationImplementationIdentifier)) revert InvalidImplementationAddress();
 
         // Deliver the ack to the application.
         // Ensure that if the call reverts it doesn't boil up.
@@ -499,8 +502,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
             
             // check if the application trusts the implementation on the destination chain.
-            bytes memory expectedDestinationImplementation = implementationAddress[msg.sender][chainIdentifier];
-            if (keccak256(expectedDestinationImplementation) != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
+            bytes32 expectedDestinationImplementationHash = implementationAddressHash[msg.sender][chainIdentifier];
+            if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
 
             ICrossChainReceiver(fromApplication).ackMessage(chainIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
 
