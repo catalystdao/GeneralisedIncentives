@@ -55,7 +55,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         require(thisChainIdentifier == UNIQUE_SOURCE_IDENTIFIER, "!Identifier");
 
         // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(_message[64:96]);
+        sourceIdentifier = bytes32(_message[32:64]);
 
         // Get the application message.
         message_ = _message[96:];

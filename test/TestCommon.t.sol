@@ -20,9 +20,9 @@ interface ICanEscrowMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 7257;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 36263;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6802379034;
+    uint256 constant GAS_SPENT_ON_SOURCE = 7272;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 36278;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6809045694;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -85,11 +85,12 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     }
 
     function getVerifiedMessage(address emitter, bytes memory message) internal view returns(bytes memory _metadata, bytes memory newMessage) {
-        (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
-
-        _metadata = abi.encode(v, r, s);
 
         newMessage = abi.encodePacked(bytes32(uint256(uint160(emitter))), message);
+
+        (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(newMessage);
+
+        _metadata = abi.encode(v, r, s);
     }
 
     function escrowMessage(bytes memory message) internal returns(bytes32) {
