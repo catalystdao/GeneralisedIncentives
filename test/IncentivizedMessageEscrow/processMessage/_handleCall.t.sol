@@ -90,4 +90,52 @@ contract ProcessMessageCallTest is TestCommon {
             feeRecipitent
         );
     }
+
+    function test_expect_caller(address caller) public {
+        bytes memory message = _MESSAGE;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+
+        vm.deal(caller, _getTotalIncentive(_INCENTIVE));
+        vm.prank(caller);
+        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(escrow));
+
+
+        vm.recordLogs();
+        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_APPLICATION,
+            message,
+            _INCENTIVE
+        );
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+
+        (bytes memory _metadata, bytes memory newMessage) = getVerifiedMessage(address(escrow), messageWithContext);
+        
+        vm.expectCall(
+            address(application),
+            abi.encodeCall(
+                application.receiveMessage,
+                (
+                    bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
+                    abi.encodePacked(
+                        uint8(20),
+                        bytes32(0),
+                        bytes32(uint256(uint160(caller)))
+                    ),
+                    hex"b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
+                )
+            )
+        );
+
+        escrow.processMessage(
+            _metadata,
+            newMessage,
+            feeRecipitent
+        );
+    }
 }
