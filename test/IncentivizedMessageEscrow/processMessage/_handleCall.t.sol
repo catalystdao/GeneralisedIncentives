@@ -95,12 +95,12 @@ contract ProcessMessageCallTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        vm.deal(caller, _getTotalIncentive(_INCENTIVE));
         vm.prank(caller);
         escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(escrow));
 
-
         vm.recordLogs();
+        vm.deal(caller, _getTotalIncentive(_INCENTIVE));
+        vm.prank(caller);
         (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
