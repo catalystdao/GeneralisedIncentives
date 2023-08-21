@@ -25,7 +25,14 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
         IncentiveDescription calldata incentive
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 
-    function processMessage(bytes calldata messagingProtocolContext, bytes calldata message, bytes32 feeRecipitent) external;
+    function processMessage(bytes calldata messagingProtocolContext, bytes calldata message, bytes32 feeRecipitent) payable external;
 
     function setRemoteEscrowImplementation(bytes32 chainIdentifier, bytes calldata implementation) external;
+
+    /**
+     * @notice Estimates the additional cost to the messaging router to validate the message
+     * @return asset The asset the token is in. If native token, returns address(0);
+     * @return amount The number of assets to pay.
+     */
+    function estimateAdditionalCost() external view returns(address asset, uint256 amount);
 }

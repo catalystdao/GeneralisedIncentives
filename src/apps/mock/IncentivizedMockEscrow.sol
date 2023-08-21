@@ -8,6 +8,7 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
+    uint256 public costOfMessages;
 
     event Message(
         bytes32 destinationIdentifier,
@@ -15,9 +16,19 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         bytes message
     );
 
-    constructor(bytes32 uniqueChainIndex, address signer) {
+    constructor(bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
         _transferOwnership(signer);
+        costOfMessages = costOfMessages_;
+    }
+
+    function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = costOfMessages;
+    }
+
+    function collectPayments() external {
+        payable(owner()).transfer(address(this).balance);
     }
 
     function _getMessageIdentifier(
@@ -61,7 +72,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         message_ = _message[96:];
     }
 
-    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override {
+    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
         emit Message(
             destinationChainIdentifier,
             destinationImplementation,
@@ -71,5 +82,9 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
                 message
             )
         );
+        // notice that this implemention makes delivering the message (and sending the ack) free. Since it is not deliveratly inforced
+        // only on sending the first message.
+        // If you want to also enforce it on delivery, then add either payable(owner()).transfer(costOfMessages); or if (msg.value < costOfMessages) revert CustomErrorNotEnough(...);
+        return costOfSendMessageInNativeToken = uint128(costOfMessages);
     }
 }
