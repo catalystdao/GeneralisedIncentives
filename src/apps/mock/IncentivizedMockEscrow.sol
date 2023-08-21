@@ -7,8 +7,10 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
+    error NotEnoughGasProvidedForVerification();
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
     uint256 public costOfMessages;
+    uint256 public accumulator = 1;
 
     event Message(
         bytes32 destinationIdentifier,
@@ -28,7 +30,8 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     }
 
     function collectPayments() external {
-        payable(owner()).transfer(address(this).balance);
+        payable(owner()).transfer(accumulator - 1);
+        accumulator = 1;
     }
 
     function _getMessageIdentifier(
@@ -82,9 +85,11 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
                 message
             )
         );
-        // notice that this implemention makes delivering the message (and sending the ack) free. Since it is not deliveratly inforced
-        // only on sending the first message.
-        // If you want to also enforce it on delivery, then add either payable(owner()).transfer(costOfMessages); or if (msg.value < costOfMessages) revert CustomErrorNotEnough(...);
-        return costOfSendMessageInNativeToken = uint128(costOfMessages);
+        uint256 verificationCost = costOfMessages;
+        if (verificationCost > 0) {
+            if (msg.value < verificationCost) revert NotEnoughGasProvidedForVerification();
+            accumulator += verificationCost;
+        }
+        return costOfSendMessageInNativeToken = uint128(verificationCost);
     }
 }
