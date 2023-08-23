@@ -60,7 +60,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice Send the message to the messaging protocol.
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
-    function _sendMessage(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal;
+    function _sendMessage(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal returns(uint128 costOfSendMessageInNativeToken);
 
 
     /// @notice Generates a unique message identifier for a message
@@ -178,11 +178,18 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Bounty is emitted before event to standardized with the other event before sending message scheme.
 
         // Send message to messaging protocol
-        _sendMessage(
+        // This call will collect payments for sending the message. It can be in any token but if it is in 
+        // native gas, it should return the amount it took.
+        uint128 costOfSendMessageInNativeToken = _sendMessage(
             destinationIdentifier,
             destinationImplementation,
             messageWithContext
         );
+        // Add the cost of the send message.
+        sum += costOfSendMessageInNativeToken;
+
+        // Check that the provided gas is sufficient. The refund will be sent later.
+        if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
 
 
         // Return excess incentives to the user (found from incentive.refundGasTo).
@@ -212,7 +219,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
-    ) external {
+    ) external payable {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
@@ -304,6 +311,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Not optimal but okay-ish.
 
         // Send message to messaging protocol
+        // The cost management is made by _sendMessage so we don't have to check if enough gas has been provided.
         _sendMessage(sourceIdentifier, sourceImplementationIdentifier, ackMessageWithContext);
 
     }
@@ -465,6 +473,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
 
     /// @notice Sets a bounty for a message
+    /// @dev Doesn't check if enough incentives have been provided.
    function _setBounty(
         bytes32 messageIdentifier, 
         IncentiveDescription calldata incentive
@@ -474,8 +483,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 deliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
         uint128 ackGas = incentive.maxGasAck * incentive.priceOfAckGas;
         sum = deliveryGas + ackGas;
-        // Check that the provided gas is sufficient. The refund will be sent later. (reentry? concern).
-        if (msg.value < sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
         
         _bounty[messageIdentifier] = incentive;
     }

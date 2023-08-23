@@ -43,7 +43,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
-        escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER);
+        escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER, 0);
 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 
@@ -101,7 +101,8 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
     function setupEscrowMessage(address fromAddress, bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
-        (uint256 gasRefund, bytes32 messageIdentifier) = ICanEscrowMessage(fromAddress).escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (address asset, uint256 cost) = escrow.estimateAdditionalCost();
+        (uint256 gasRefund, bytes32 messageIdentifier) = ICanEscrowMessage(fromAddress).escrowMessage{value: _getTotalIncentive(_INCENTIVE) + cost}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -119,8 +120,9 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
         bytes memory mockContext = abi.encode(v, r, s);
 
+        (address asset, uint256 cost) = escrow.estimateAdditionalCost();
         vm.recordLogs();
-        escrow.processMessage(
+        escrow.processMessage{value: cost}(
             mockContext,
             message,
             destinationFeeRecipitent

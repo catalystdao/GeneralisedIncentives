@@ -7,7 +7,10 @@ import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
+    error NotEnoughGasProvidedForVerification();
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
+    uint256 public costOfMessages;
+    uint256 public accumulator = 1;
 
     event Message(
         bytes32 destinationIdentifier,
@@ -15,9 +18,20 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         bytes message
     );
 
-    constructor(bytes32 uniqueChainIndex, address signer) {
+    constructor(bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
         _transferOwnership(signer);
+        costOfMessages = costOfMessages_;
+    }
+
+    function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = costOfMessages;
+    }
+
+    function collectPayments() external {
+        payable(owner()).transfer(accumulator - 1);
+        accumulator = 1;
     }
 
     function _getMessageIdentifier(
@@ -61,7 +75,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         message_ = _message[96:];
     }
 
-    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override {
+    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
         emit Message(
             destinationChainIdentifier,
             destinationImplementation,
@@ -71,5 +85,11 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
                 message
             )
         );
+        uint256 verificationCost = costOfMessages;
+        if (verificationCost > 0) {
+            if (msg.value < verificationCost) revert NotEnoughGasProvidedForVerification();
+            accumulator += verificationCost;
+        }
+        return costOfSendMessageInNativeToken = uint128(verificationCost);
     }
 }
