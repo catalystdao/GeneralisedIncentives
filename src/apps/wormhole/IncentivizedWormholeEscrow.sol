@@ -9,12 +9,12 @@ import { IWormhole } from "./interfaces/IWormhole.sol";
 
 // This is a mock contract which should only be used for testing.
 contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifier {
+    error BadChainIdentifier();
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
 
-    event Message(
+    event WormholeMessage(
         bytes32 destinationIdentifier,
-        bytes recipitent,
-        bytes message
+        bytes recipitent
     );
 
     IWormhole public immutable WORMHOLE;
@@ -43,7 +43,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         );
     }
 
-    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes calldata implementationIdentifier, bytes calldata message_) {
+    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
 
         (
             SmallStructs.SmallVM memory vm,
@@ -55,26 +55,36 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         require(valid, reason);
 
         // Load the identifier for the calling contract.
-        implementationIdentifier = payload[0:32];
+        implementationIdentifier = abi.encodePacked(vm.emitterAddress);
 
         // Local "supposedly" this chain identifier.
-        bytes32 thisChainIdentifier = bytes32(payload[64:96]);
+        bytes32 thisChainIdentifier = bytes32(payload[0:32]);
 
         // Check that the message is intended for this chain.
-        require(thisChainIdentifier == UNIQUE_SOURCE_IDENTIFIER, "!Identifier");
+        if (thisChainIdentifier != UNIQUE_SOURCE_IDENTIFIER) revert BadChainIdentifier();
 
         // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(payload[32:64]);
+        sourceIdentifier = bytes32(bytes2(vm.emitterChainId));
 
         // Get the application message.
-        message_ = payload[96:];
+        message_ = payload[32:];
     }
 
     function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
-        WORMHOLE.publishMessage(
+        // Get the cost of sending wormhole messages.
+        costOfSendMessageInNativeToken = uint128(WORMHOLE.messageFee());
+
+        // Emit context for relayers so they know where to send the message
+        emit WormholeMessage(destinationChainIdentifier, destinationImplementation);
+
+        // Handoff the message to wormhole.
+        WORMHOLE.publishMessage{value: costOfSendMessageInNativeToken}(
             0,
-            message,
-            0   // Finality
+            abi.encodePacked(
+                destinationChainIdentifier,
+                message
+            ),
+            0   // Finality = complete.
         );
     }
 }
