@@ -76,18 +76,18 @@ contract TestMessagesCopy is Test {
       reason, reason2
     );
 
-    // assertEq(
-    //   parsedValidVm.payload, payload
-    // );
-    // assertEq(
-    //   parsedValidVm.emitterChainId, smallVM.emitterChainId
-    // );
-    // assertEq(
-    //   parsedValidVm.emitterAddress, smallVM.emitterAddress
-    // );
-    // assertEq(
-    //   parsedValidVm.guardianSetIndex, smallVM.guardianSetIndex
-    // );
+    assertEq(
+      parsedValidVm.payload, payload, "payload"
+    );
+    assertEq(
+      parsedValidVm.emitterChainId, smallVM.emitterChainId, "emitterChainId"
+    );
+    assertEq(
+      parsedValidVm.emitterAddress, smallVM.emitterAddress, "emitterAddress"
+    );
+    assertEq(
+      parsedValidVm.guardianSetIndex, smallVM.guardianSetIndex, "guardianSetIndex"
+    );
   }
 
   function test_error_invalid_vm() public {

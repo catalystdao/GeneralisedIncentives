@@ -199,8 +199,7 @@ contract WormholeVerifier is GettersGetter {
         // vm.consistencyLevel = uint8(bytes1(encodedVM[index:index+1]));
         index += 1;
 
-        // payload = encodedVM[index:];
-        payload = encodedVM[0:1];
+        payload = encodedVM[index:];
         }
     }
 
