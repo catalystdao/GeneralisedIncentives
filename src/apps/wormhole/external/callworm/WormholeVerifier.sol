@@ -20,7 +20,7 @@ contract WormholeVerifier is GettersGetter {
         bool valid,
         string memory reason
     ) {
-        Structs.Signature[] memory signatures;
+        bytes calldata signatures;
         bytes32 bodyHash;
         (vm, signatures, bodyHash, payload) = parseVM(encodedVM);
         /// setting checkHash to false as we can trust the hash field in this case given that parseVM computes and then sets the hash field above
@@ -35,7 +35,7 @@ contract WormholeVerifier is GettersGetter {
     */
     function verifyVMInternal(
         SmallStructs.SmallVM memory vm,
-        Structs.Signature[] memory signatures,
+        bytes calldata signatures,
         bytes32 bodyHash
     ) internal view returns (bool valid, string memory reason) {
         /// @dev Obtain the current guardianSet for the guardianSetIndex provided
@@ -84,19 +84,30 @@ contract WormholeVerifier is GettersGetter {
      *  - it intentioanlly does not solve for quorum (you should use verifyVM if you need these protections)
      *  - it intentionally returns true when signatures is an empty set (you should use verifyVM if you need these protections)
      */
-    function verifySignatures(bytes32 hash, Structs.Signature[] memory signatures, Structs.GuardianSet memory guardianSet) public pure returns (bool valid, string memory reason) {
+    function verifySignatures(bytes32 hash, bytes calldata signatures, Structs.GuardianSet memory guardianSet) public pure returns (bool valid, string memory reason) {
         uint8 lastIndex = 0;
         uint256 guardianCount = guardianSet.keys.length;
-        for (uint i = 0; i < signatures.length; i++) {
-            Structs.Signature memory sig = signatures[i];
-            address signatory = ecrecover(hash, sig.v, sig.r, sig.s);
+        uint256 signersLen = uint8(bytes1(signatures[0]));
+        uint256 index = 1;
+        unchecked {
+        for (uint i = 0; i < signersLen; ++i) {
+            uint8 guardianIndex = uint8(bytes1(signatures[index]));
+            index += 1;
+            bytes32 r = bytes32(signatures[index: index + 32]);
+            index += 32;
+            bytes32 s = bytes32(signatures[index: index + 32]);
+            index += 32;
+            uint8 v = uint8(bytes1(signatures[index: index + 1])) + 27;
+            index += 1;
+            address signatory = ecrecover(hash, v, r, s);
             // ecrecover returns 0 for invalid signatures. We explicitly require valid signatures to avoid unexpected
             // behaviour due to the default storage slot value also being 0.
             require(signatory != address(0), "ecrecover failed with signature");
 
+
             /// Ensure that provided signature indices are ascending only
-            require(i == 0 || sig.guardianIndex > lastIndex, "signature indices must be ascending");
-            lastIndex = sig.guardianIndex;
+            require(i == 0 || guardianIndex > lastIndex, "signature indices must be ascending");
+            lastIndex = guardianIndex;
 
             /// @dev Ensure that the provided signature index is within the
             /// bounds of the guardianSet. This is implicitly checked by the array
@@ -104,23 +115,24 @@ contract WormholeVerifier is GettersGetter {
             /// However, reverting explicitly here ensures that a bug is not
             /// introduced accidentally later due to the nontrivial storage
             /// semantics of solidity.
-            require(sig.guardianIndex < guardianCount, "guardian index out of bounds");
+            require(guardianIndex < guardianCount, "guardian index out of bounds");
 
             /// Check to see if the signer of the signature does not match a specific Guardian key at the provided index
-            if(signatory != guardianSet.keys[sig.guardianIndex]){
+            if(signatory != guardianSet.keys[guardianIndex]){
                 return (false, "VM signature invalid");
             }
         }
 
         /// If we are here, we've validated that the provided signatures are valid for the provided guardianSet
         return (true, "");
+        }
     }
 
     /**
      * @dev parseVM serves to parse an encodedVM into a vm struct
      *  - it intentionally performs no validation functions, it simply parses raw into a struct
      */
-    function parseVM(bytes calldata encodedVM) public view virtual returns (SmallStructs.SmallVM memory vm, Structs.Signature[] memory signatures, bytes32 bodyHash, bytes calldata payload) {
+    function parseVM(bytes calldata encodedVM) public view virtual returns (SmallStructs.SmallVM memory vm, bytes calldata signatures, bytes32 bodyHash, bytes calldata payload) {
         unchecked {
             
         
@@ -143,19 +155,20 @@ contract WormholeVerifier is GettersGetter {
 
         // Parse Signatures
         uint256 signersLen = uint8(bytes1(encodedVM[5:5+1]));
-        index += 1;
-        signatures = new Structs.Signature[](signersLen);
-        for (uint i = 0; i < signersLen; ++i) {
-            signatures[i].guardianIndex = uint8(bytes1(encodedVM[index:index+1]));
-            index += 1;
+        signatures = encodedVM[5:5 + 1 + signersLen*(1+32+32+1)];
+        index += 1 + signersLen*(1+32+32+1);
+        // signatures = new Structs.Signature[](signersLen);
+        // for (uint i = 0; i < signersLen; ++i) {
+        //     signatures[i].guardianIndex = uint8(bytes1(encodedVM[index:index+1]));
+        //     index += 1;
 
-            signatures[i].r = bytes32(encodedVM[index:index+32]);
-            index += 32;
-            signatures[i].s = bytes32(encodedVM[index:index+32]);
-            index += 32;
-            signatures[i].v = uint8(bytes1(encodedVM[index:index+1])) + 27;
-            index += 1;
-        }
+        //     signatures[i].r = bytes32(encodedVM[index:index+32]);
+        //     index += 32;
+        //     signatures[i].s = bytes32(encodedVM[index:index+32]);
+        //     index += 32;
+        //     signatures[i].v = uint8(bytes1(encodedVM[index:index+1])) + 27;
+        //     index += 1;
+        // }
         
         /*
         Hash the body
