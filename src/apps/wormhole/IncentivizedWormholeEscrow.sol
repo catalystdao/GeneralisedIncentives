@@ -10,7 +10,6 @@ import { IWormhole } from "./interfaces/IWormhole.sol";
 // This is a mock contract which should only be used for testing.
 contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifier {
     error BadChainIdentifier();
-    bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
 
     event WormholeMessage(
         bytes32 destinationIdentifier,
@@ -19,8 +18,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
 
     IWormhole public immutable WORMHOLE;
 
-    constructor(bytes32 uniqueChainIndex, address wormhole_) WormholeVerifier(wormhole_) {
-        UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
+    constructor(address wormhole_) WormholeVerifier(wormhole_) {
         WORMHOLE = IWormhole(wormhole_);
     }
 
@@ -36,7 +34,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         return keccak256(
             abi.encodePacked(
                 bytes32(block.number),
-                UNIQUE_SOURCE_IDENTIFIER, 
+                chainId(), 
                 destinationIdentifier,
                 message
             )
@@ -61,7 +59,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         bytes32 thisChainIdentifier = bytes32(payload[0:32]);
 
         // Check that the message is intended for this chain.
-        if (thisChainIdentifier != UNIQUE_SOURCE_IDENTIFIER) revert BadChainIdentifier();
+        if (thisChainIdentifier != bytes32(uint256(chainId()))) revert BadChainIdentifier();
 
         // Local the identifier for the source chain.
         sourceIdentifier = bytes32(bytes2(vm.emitterChainId));

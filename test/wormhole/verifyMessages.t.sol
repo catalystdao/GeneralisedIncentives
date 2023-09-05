@@ -16,7 +16,7 @@ contract ExportedMessages is Messages, Setters {
     }
 }
 
-contract TestMessagesCopy is Test {
+contract TestMessagesC is Test {
   address constant testGuardianPub = 0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe;
 
   // A valid VM with one signature from the testGuardianPublic key

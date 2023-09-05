@@ -16,7 +16,7 @@ contract ExportedMessages is Messages, Setters {
     }
 }
 
-contract TestMessagesCopy2Sigs is Test {
+contract TestMessagesC2Sigs is Test {
   address constant testGuardianPub1 = 0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe;
   address testGuardianPub2;
 
