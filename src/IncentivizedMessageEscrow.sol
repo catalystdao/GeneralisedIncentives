@@ -5,6 +5,7 @@ import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEsc
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
 import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
+import { Multicall } from "@openzeppelin/contracts/utils/Multicall.sol";
 import "./MessagePayload.sol";
 
 
@@ -27,7 +28,7 @@ import "./MessagePayload.sol";
  * - Seperate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
  */
-abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
+abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65, Multicall {
     
     //--- Constants ---//
 
