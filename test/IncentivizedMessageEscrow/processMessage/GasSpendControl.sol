@@ -73,13 +73,11 @@ contract GasSpendControlTest is TestCommon {
     }
 
     function test_process_ack_gas() public {
-        bytes memory message = _MESSAGE;
-
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasAck = 193010;  // This is not enough gas to execute the Ack. We should expect the sub-call to revert but the main call shouldn't.
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(1000))), destinationFeeRecipitent);
+        (, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(1000))), destinationFeeRecipitent);
 
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
@@ -93,8 +91,6 @@ contract GasSpendControlTest is TestCommon {
     }
 
     function test_fail_relayer_has_to_provide_enough_gas() public {
-        bytes memory message = _MESSAGE;
-
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasDelivery = 200000;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.

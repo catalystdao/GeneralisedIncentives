@@ -68,7 +68,7 @@ contract SendMessagePaymentTest is TestCommon {
 
     function test_send_message_with_additional_cost() external {
         IncentiveDescription storage incentive = _INCENTIVE;
-        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -95,7 +95,7 @@ contract SendMessagePaymentTest is TestCommon {
                 529440925002
             )
         );
-        (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST - 1}(
+        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST - 1}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -114,13 +114,13 @@ contract SendMessagePaymentTest is TestCommon {
     }
 
     function test_process_message_with_additional_payment(bytes calldata message) external {
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
+        (, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
+        abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
 
         escrow.processMessage{value: SEND_MESSAGE_PAYMENT_COST}(
             mockContext,
@@ -130,13 +130,13 @@ contract SendMessagePaymentTest is TestCommon {
     }
 
     function test_process_message_without_additional_payment(bytes calldata message) external {
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
+        (, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
+        abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
 
         vm.expectRevert(
             abi.encodeWithSignature(

@@ -9,7 +9,7 @@ contract MessageIdentifierTest is TestCommon {
     function test_unique_identifier_block_10() public {
         vm.roll(10);
         IncentiveDescription storage incentive = _INCENTIVE;
-        (uint256 unused, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -22,7 +22,7 @@ contract MessageIdentifierTest is TestCommon {
     function test_unique_identifier_block_11() public {
         vm.roll(11);
         IncentiveDescription storage incentive = _INCENTIVE;
-        (uint256 unused, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -59,7 +59,7 @@ contract MessageIdentifierTest is TestCommon {
 
         escrow.setRemoteEscrowImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)), abi.encode(address(escrow)));
 
-        (uint256 unused1, bytes32 messageIdentifier1) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier1) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -68,7 +68,7 @@ contract MessageIdentifierTest is TestCommon {
 
         escrow.setRemoteEscrowImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)), abi.encode(address(escrow)));
 
-        (uint256 unused2, bytes32 messageIdentifier2) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier2) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
