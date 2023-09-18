@@ -30,8 +30,6 @@ contract TargetDeltaZeroTest is TestCommon {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        bytes memory _acknowledgement = abi.encode(bytes32(0xd9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b));
-
         // Check that the bounty has not been deleted.
         assertNotEq(escrow.bounty(messageIdentifier).refundGasTo, address(0));
 

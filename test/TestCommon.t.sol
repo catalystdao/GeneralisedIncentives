@@ -94,15 +94,15 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     }
 
     function escrowMessage(bytes memory message) internal returns(bytes32) {
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
+        (bytes32 messageIdentifier, ) = setupEscrowMessage(address(application), message);
 
         return messageIdentifier;
     }
 
     function setupEscrowMessage(address fromAddress, bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
-        (address asset, uint256 cost) = escrow.estimateAdditionalCost();
-        (uint256 gasRefund, bytes32 messageIdentifier) = ICanEscrowMessage(fromAddress).escrowMessage{value: _getTotalIncentive(_INCENTIVE) + cost}(
+        (, uint256 cost) = escrow.estimateAdditionalCost();
+        (, bytes32 messageIdentifier) = ICanEscrowMessage(fromAddress).escrowMessage{value: _getTotalIncentive(_INCENTIVE) + cost}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -111,7 +111,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return (messageIdentifier, abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext));
     }
@@ -120,7 +120,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        (address asset, uint256 cost) = escrow.estimateAdditionalCost();
+        (, uint256 cost) = escrow.estimateAdditionalCost();
         vm.recordLogs();
         escrow.processMessage{value: cost}(
             mockContext,
@@ -130,7 +130,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
         return abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext);
     }

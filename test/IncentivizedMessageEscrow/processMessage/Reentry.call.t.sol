@@ -83,7 +83,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
     bool flag;
 
     // Receive the message and reentry.
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 /* sourceIdentifierbytes */, bytes32 /* messageIdentifier */, bytes calldata /* fromApplication */, bytes calldata message) external returns(bytes memory acknowledgement) {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadySpent()")
         ); 

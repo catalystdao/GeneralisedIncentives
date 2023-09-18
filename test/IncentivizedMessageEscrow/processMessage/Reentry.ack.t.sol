@@ -14,7 +14,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
     );
 
     // Placeholder
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 /* sourceIdentifierbytes */, bytes32 /* messageIdentifier */, bytes calldata /* fromApplication */, bytes calldata /* message */) external pure returns(bytes memory acknowledgement) {
         return abi.encodePacked(uint8(1));
     }
 
@@ -68,7 +68,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
 
     bool flag;
 
-    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external {
+    function ackMessage(bytes32 /* destinationIdentifier */, bytes32 /* messageIdentifier */, bytes calldata acknowledgement) external {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadyAcked()")
         ); 

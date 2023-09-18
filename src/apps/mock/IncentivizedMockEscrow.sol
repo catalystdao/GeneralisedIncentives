@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 
-import { Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import { Ownable2Step } from "openzeppelin/access/Ownable2Step.sol";
 
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {

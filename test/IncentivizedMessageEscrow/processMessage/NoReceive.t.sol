@@ -37,8 +37,6 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
-
         vm.expectEmit();
         // Check MessageDelivered emitted
         emit MessageDelivered(messageIdentifier);

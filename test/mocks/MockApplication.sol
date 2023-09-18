@@ -39,7 +39,7 @@ contract MockApplication is ICrossChainReceiver {
         // emit AckMessage(destinationIdentifier, acknowledgement);
     }
 
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) pure external returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 /* sourceIdentifierbytes */, bytes32 /* messageIdentifier */, bytes calldata fromApplication, bytes calldata message) pure external returns(bytes memory acknowledgement) {
         acknowledgement = abi.encodePacked(keccak256(bytes.concat(message, fromApplication)));
         // emit ReceiveMessage(
         //     sourceIdentifierbytes,

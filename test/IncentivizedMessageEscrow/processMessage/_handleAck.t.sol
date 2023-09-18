@@ -21,7 +21,7 @@ contract ProcessMessageAckTest is TestCommon {
 
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -99,8 +99,6 @@ contract ProcessMessageAckTest is TestCommon {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        bytes memory _acknowledgement = abi.encode(bytes32(0xd9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b));
-
         vm.expectEmit();
         emit MessageAcked(messageIdentifier);
 
@@ -147,7 +145,7 @@ contract ProcessMessageAckTest is TestCommon {
         uint256 gas_on_source = GAS_SPENT_ON_SOURCE;
         uint256 BOB_incentive = gas_on_destination * _INCENTIVE.priceOfDeliveryGas;
         _receive = gas_on_source * _INCENTIVE.priceOfAckGas;
-        uint256 totalIncentive = BOB_incentive + _receive;
+        // uint256 totalIncentive = BOB_incentive + _receive;
         // less time has passed, so more incentives are given to destination relayer.
         BOB_incentive += (_receive * (targetDelta - timePassed))/targetDelta;
         _receive -= (_receive * (targetDelta - timePassed))/targetDelta;
@@ -196,7 +194,7 @@ contract ProcessMessageAckTest is TestCommon {
         uint256 gas_on_source = GAS_SPENT_ON_SOURCE;
         uint256 BOB_incentive = gas_on_destination * _INCENTIVE.priceOfDeliveryGas;
         _receive = gas_on_source * _INCENTIVE.priceOfAckGas;
-        uint256 totalIncentive = BOB_incentive + _receive;
+        // uint256 totalIncentive = BOB_incentive + _receive;
         // less time has passed, so more incentives are given to destination relayer.
         _receive += (BOB_incentive * uint256(timePassed - targetDelta))/uint256(targetDelta);
         BOB_incentive -= (BOB_incentive * uint256(timePassed - targetDelta))/uint256(targetDelta);
