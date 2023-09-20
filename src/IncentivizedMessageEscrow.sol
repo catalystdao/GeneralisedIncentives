@@ -211,6 +211,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      *  Please ensure that feeRecipitent can receive gas token: Either it is an EOA or a implement fallback() / receive().
      *  Likewise for any non-evm chains. Otherwise the message fails (ack) or the relay payment is lost (call).
      *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call might fail.
+     * On Receive implementations make _verifyMessage revert. The result is
+     * that this endpoint is disabled.
      * @param messagingProtocolContext Additional context required to verify the message by the messaging protocol.
      * @param rawMessage The raw message as it was emitted.
      * @param feeRecipitent An identifier for the the fee recipitent. The identifier should identify the relayer on the source chain.
@@ -242,7 +244,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles call messages.
      */
-    function _handleCall(bytes32 sourceIdentifier, bytes memory sourceImplementationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
+    function _handleCall(bytes32 sourceIdentifier, bytes memory sourceImplementationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal returns(bytes memory ackMessageWithContext) {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
@@ -294,7 +296,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     
         // Encode a new message to send back. This lets the relayer claim their payment.
-        bytes memory ackMessageWithContext = abi.encodePacked(
+        ackMessageWithContext = abi.encodePacked(
             bytes1(DestinationtoSource),    // This is a sendMessage
             messageIdentifier,              // message identifier
             fromApplication,
@@ -314,7 +316,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send message to messaging protocol
         // The cost management is made by _sendMessage so we don't have to check if enough gas has been provided.
         _sendMessage(sourceIdentifier, sourceImplementationIdentifier, ackMessageWithContext);
-
     }
 
     /**
