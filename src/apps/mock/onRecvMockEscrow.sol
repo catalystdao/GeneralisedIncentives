@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { OnReceiveV1 } from "../../versions/OnReceiveV1.sol";
-import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
-import { EscrowAddress } from "../../utils/EscrowAddress.sol";
+import { IMETimeoutExtension } from "../../TimeoutExtension.sol";
 
 // This is an example contract which exposes an onReceive interface. This is for messaging protocols
 // where messages are delivered directly to the messaging protocol's contract rather than this contract.
 // Comments marked by * imply that an integration point should be changed by external contracts.
-contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddress, OnReceiveV1 {
-
+contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
+    error NotEnoughGasProvidedForVerification();
+    error NonVerifiableMessage();
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
     address immutable public MESSAGING_PROTOCOL_CALLER;
+
+    struct VerifiedMessageHashContext {
+        bytes32 chainIdentifier;
+        bytes implementationIdentifier;
+    }
+
+    mapping(bytes32 => VerifiedMessageHashContext) public isVerifiedMessageHash;
 
     event Message(
         bytes32 destinationIdentifier,
@@ -19,9 +25,19 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddres
         bytes message
     );
 
-    constructor(bytes32 uniqueChainIndex, address messaging_protocol) {
-        UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;  // * Get from messaging_protocol 
-        MESSAGING_PROTOCOL_CALLER = messaging_protocol;
+    constructor(address messagingProtocol) {
+        MESSAGING_PROTOCOL_CALLER = messagingProtocol;UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(111));
+    }
+
+    // Verify that the sender is correct.
+    modifier onlyMessagingProtocol() {
+        require(msg.sender == MESSAGING_PROTOCOL_CALLER);
+        _;
+    }
+
+    function estimateAdditionalCost() external pure returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = 0;
     }
 
     function _getMessageIdentifier(
@@ -38,56 +54,70 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow, EscrowAddres
         );
     }
 
-    // Verify that the sender is correct.
-    modifier onlyMessagingProtocol() {
-        require(msg.sender == MESSAGING_PROTOCOL_CALLER);
-        _;
+    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+        sourceIdentifier = isVerifiedMessageHash[keccak256(_message)].chainIdentifier;
+        implementationIdentifier = isVerifiedMessageHash[keccak256(_message)].implementationIdentifier;
+        
+        if (sourceIdentifier == bytes32(0)) revert NonVerifiableMessage();
+
+        message_ = _message;
     }
 
     function onReceive(
         bytes32 chainIdentifier,
+        bytes memory sourceImplementationIdentifier,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
         // _onReceive(chainIdentifier, rawMessage, feeRecipitent);
         uint256 gasLimit = gasleft();
-        bytes memory ackMessage = _handleCall(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+        bytes memory ackMessage = _handleCall(chainIdentifier, sourceImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
 
         // Send ack:
-        // * For an actual implementation, it might also be implemented as a return value for onReceive. 
-        _sendMessage(chainIdentifier, ackMessage);
+        _sendMessage(chainIdentifier, sourceImplementationIdentifier, ackMessage);
+        // * For an actual implementation, the _sendMessage might also be implemented as a return value for onReceive like:
+        // * return ReturnStruct?({chainIdentifier: chainIdentifier, message: ackMessage});
     }
 
     // The escrow manages acks, so any message can be directly provided to _onReceive.
     function onAck(
         bytes32 chainIdentifier,
+        bytes memory destinationImplementationIdentifier,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
-        _handleAck(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+        isVerifiedMessageHash[keccak256(abi.encodePacked(
+            chainIdentifier, rawMessage
+        ))] = VerifiedMessageHashContext({
+            chainIdentifier: chainIdentifier,
+            implementationIdentifier: destinationImplementationIdentifier
+        });
+        _handleAck(chainIdentifier, destinationImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
     }
 
     // For timeouts, we need to construct the message.
     function onTimeout(
         bytes32 chainIdentifier,
+        bytes memory /* destinationImplementationIdentifier */,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
-        // TODO: Figure out a solution where the message is still calldata. Alternativly, reimplement.
         uint256 gasLimit = gasleft();
-        _handleAck(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+        _handleTimeout(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
     }
 
     // * Send to messaging_protocol 
-    function _sendMessage(bytes32 destinationIdentifier, bytes memory message) internal override {
+    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
         emit Message(
-            destinationIdentifier,
-            _getEscrowAddress(destinationIdentifier),
+            destinationChainIdentifier,
+            destinationImplementation,
             abi.encodePacked(
                 UNIQUE_SOURCE_IDENTIFIER,
+                destinationChainIdentifier,
                 message
             )
         );
+        return 0;
     }
 }

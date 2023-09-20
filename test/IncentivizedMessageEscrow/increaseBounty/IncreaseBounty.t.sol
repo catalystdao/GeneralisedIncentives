@@ -2,19 +2,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "./TestCommon.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
 
-contract EscrowInformationTest is TestCommon {
-    function escrowMessage(bytes memory message) internal returns(bytes32) {
-        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
-            _DESTINATION_IDENTIFIER,
-            _DESTINATION_ADDRESS_APPLICATION,
-            message,
-            _INCENTIVE
-        );
-
-        return messageIdentifier;
-    }
+contract IncreaseBountyTest is TestCommon {
 
     function test_fail_bounty_does_not_exist() public {
         // Do not escrow the message

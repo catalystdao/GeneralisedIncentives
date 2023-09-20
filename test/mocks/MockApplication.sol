@@ -10,8 +10,8 @@ import { ICrossChainReceiver } from "../../src/interfaces/ICrossChainReceiver.so
 contract MockApplication is ICrossChainReceiver {
     
     event EscrowMessage(uint256 gasRefund, bytes32 messageIdentifier);
-    event AckMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes acknowledgement);
-    event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes fromApplication, bytes message, bytes acknowledgement);
+    event AckMessage(bytes32 destinationIdentifier, bytes acknowledgement);
+    event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes fromApplication, bytes message, bytes acknowledgement);
 
     IIncentivizedMessageEscrow immutable MESSAGE_ESCROW;
 
@@ -32,22 +32,21 @@ contract MockApplication is ICrossChainReceiver {
             incentive
         );
 
-        emit EscrowMessage(gasRefund, messageIdentifier);
+        // emit EscrowMessage(gasRefund, messageIdentifier);
     }
 
-    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external {
-        emit AckMessage(destinationIdentifier, messageIdentifier, acknowledgement);
+    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) pure external {
+        // emit AckMessage(destinationIdentifier, acknowledgement);
     }
 
-    function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement) {
+    function receiveMessage(bytes32 /* sourceIdentifierbytes */, bytes32 /* messageIdentifier */, bytes calldata fromApplication, bytes calldata message) pure external returns(bytes memory acknowledgement) {
         acknowledgement = abi.encodePacked(keccak256(bytes.concat(message, fromApplication)));
-        emit ReceiveMessage(
-            sourceIdentifierbytes,
-            messageIdentifier,
-            fromApplication,
-            message,
-            acknowledgement
-        );
+        // emit ReceiveMessage(
+        //     sourceIdentifierbytes,
+        //     fromApplication,
+        //     message,
+        //     acknowledgement
+        // );
         return acknowledgement;
     }
 

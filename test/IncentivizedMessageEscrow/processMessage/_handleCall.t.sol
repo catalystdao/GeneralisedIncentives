@@ -2,74 +2,45 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "./TestCommon.sol";
+import { TestCommon } from "../../TestCommon.t.sol";
 
 
-contract CallMessageTest is TestCommon {
-    event ReceiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes fromApplication, bytes message, bytes acknowledgement);
-
+contract ProcessMessageCallTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
         bytes recipitent,
         bytes message
     );
 
-    function setupEscrowMessage(bytes memory message) internal returns(bytes32, bytes memory) {
-        vm.recordLogs();
-        (uint256 gasRefund, bytes32 messageIdentifier) = application.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
-            _DESTINATION_IDENTIFIER,
-            _DESTINATION_ADDRESS_APPLICATION,
-            message,
-            _INCENTIVE
-        );
-
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-
-        (bytes32 destinationIdentifier, bytes memory recipitent, bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
-
-        return (messageIdentifier, messageWithContext);
-    }
-
     function test_call_process_message() public {
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
         bytes memory mockAck = abi.encode(keccak256(bytes.concat(message, _DESTINATION_ADDRESS_APPLICATION)));
-
-        vm.expectEmit();
-        // Check that the application was called
-        emit ReceiveMessage(
-            _DESTINATION_IDENTIFIER,
-            messageIdentifier,
-            _DESTINATION_ADDRESS_APPLICATION,
-            message,
-            mockAck
-        );
+        
         vm.expectEmit();
         // Check MessageDelivered emitted
         emit MessageDelivered(messageIdentifier);
-
         vm.expectEmit();
         // That a new message is sent back
         emit Message(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(
-                uint8(20),
-                bytes32(0),
-                bytes32(uint256(uint160(address(escrow))))
+            abi.encode(
+                escrow
             ),
             abi.encodePacked(
+                _DESTINATION_IDENTIFIER,
                 _DESTINATION_IDENTIFIER,
                 bytes1(0x01),
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x8379),  // Gas used
+                uint48(0x82a3),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -89,7 +60,6 @@ contract CallMessageTest is TestCommon {
         );
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -100,13 +70,12 @@ contract CallMessageTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(message);
+        (, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -116,9 +85,56 @@ contract CallMessageTest is TestCommon {
             abi.encodeWithSignature("MessageAlreadySpent()")
         ); 
         escrow.processMessage(
-            _DESTINATION_IDENTIFIER,
             mockContext,
             messageWithContext,
+            feeRecipitent
+        );
+    }
+
+    function test_expect_caller(address caller) public {
+        bytes memory message = _MESSAGE;
+        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+
+        vm.prank(caller);
+        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(escrow));
+
+        vm.recordLogs();
+        vm.deal(caller, _getTotalIncentive(_INCENTIVE));
+        vm.prank(caller);
+        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_APPLICATION,
+            message,
+            _INCENTIVE
+        );
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+
+        (bytes memory _metadata, bytes memory newMessage) = getVerifiedMessage(address(escrow), messageWithContext);
+        
+        vm.expectCall(
+            address(application),
+            abi.encodeCall(
+                application.receiveMessage,
+                (
+                    bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    messageIdentifier,
+                    abi.encodePacked(
+                        uint8(20),
+                        bytes32(0),
+                        bytes32(uint256(uint160(caller)))
+                    ),
+                    hex"b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
+                )
+            )
+        );
+
+        escrow.processMessage(
+            _metadata,
+            newMessage,
             feeRecipitent
         );
     }
