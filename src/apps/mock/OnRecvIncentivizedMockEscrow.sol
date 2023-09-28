@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { IMETimeoutExtension } from "../../TimeoutExtension.sol";
+import { MockOnRecvAMB } from "../../../test/mocks/MockOnRecvAMB.sol";
 
 // This is an example contract which exposes an onReceive interface. This is for messaging protocols
 // where messages are delivered directly to the messaging protocol's contract rather than this contract.
@@ -19,14 +20,10 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
 
     mapping(bytes32 => VerifiedMessageHashContext) public isVerifiedMessageHash;
 
-    event Message(
-        bytes32 destinationIdentifier,
-        bytes recipitent,
-        bytes message
-    );
 
     constructor(address messagingProtocol) {
-        MESSAGING_PROTOCOL_CALLER = messagingProtocol;UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(111));
+        MESSAGING_PROTOCOL_CALLER = messagingProtocol;
+        UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(111));  // Actual implementation should call to messagingProtocol
     }
 
     // Verify that the sender is correct.
@@ -54,7 +51,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
         );
     }
 
-    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyMessage(bytes calldata /* _metadata */, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         sourceIdentifier = isVerifiedMessageHash[keccak256(_message)].chainIdentifier;
         implementationIdentifier = isVerifiedMessageHash[keccak256(_message)].implementationIdentifier;
         
@@ -65,7 +62,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
 
     function onReceive(
         bytes32 chainIdentifier,
-        bytes memory sourceImplementationIdentifier,
+        bytes calldata sourceImplementationIdentifier,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
@@ -82,7 +79,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     // The escrow manages acks, so any message can be directly provided to _onReceive.
     function onAck(
         bytes32 chainIdentifier,
-        bytes memory destinationImplementationIdentifier,
+        bytes calldata destinationImplementationIdentifier,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
     ) onlyMessagingProtocol external {
@@ -109,7 +106,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
 
     // * Send to messaging_protocol 
     function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
-        emit Message(
+        MockOnRecvAMB(MESSAGING_PROTOCOL_CALLER).sendMessage(
             destinationChainIdentifier,
             destinationImplementation,
             abi.encodePacked(
