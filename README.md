@@ -149,10 +149,10 @@ The destination-to-source relayer will result in the message reverting. They sho
 Because of the centralization associated with adding new chains / deployments, applications has to opt-in to these new chains. To understand the issue better, examine the following flow:
 
 1. An escrow with honest logic with no flaws exist on chain Alpha. 
-2. An application on chain Alpha can be drained by sending the fradulent key `0xabcdef` to the source chain. Ordinarly this never happens. This application trusts Alpha.
+2. An application on chain Alpha can be drained by sending the fraudulent key `0xabcdef` to the source chain. Ordinarily this never happens. This application trusts Alpha.
 3. The administrator adds another deployment on chain Beta with same address as Alpha but with another bytecode deployed. Specifically, when the administrator calls this contract it sends `0xabcdef` to the application.
 4. The application adds chain Beta to the allow list since the address matches the Beta address (thinking the byte code deployed must be the same).
-5. The fradulent deployment on Beta sends `0xabcedf` to the application on chain Alpha
+5. The fraudulent deployment on Beta sends `0xabcedf` to the application on chain Alpha
 6. On Alpha the message is verified.
 
 As a result, each application needs to tell the escrow where the other escrow sits and which escrow is allowed to send it messages. These mappings are 1:1, each chain identifier is only allowed a single escrow deployment.
