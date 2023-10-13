@@ -122,7 +122,7 @@ The implementation is not perfect. Below the most notable implementation strange
 
 If a message reverts, ran out of gas, or otherwise failed to return an ack the implementation should do its best to not revert but instead send the original message back prepended with 0xff as the acknowledgment.
 
-For EVM this is currently limited by [Solidity #13869](https://github.com/ethereum/solidity/issues/13869). Calls to contracts which doesn't implement the proper endpoint will fail.
+For EVM this is currently limited by [Solidity #13869](https://github.com/ethereum/solidity/issues/13869), [Solidity #14467](https://github.com/ethereum/solidity/issues/14467). Calls to contracts which doesn't implement the proper endpoint will fail.
 - Relayers should emulate the call before calling the function to avoid wasting gas.
 - If contracts expect the call to execute (or rely on the ack), contracts need to make sure they are calling a contract that implements proper interfaces for receiving calls.
 
