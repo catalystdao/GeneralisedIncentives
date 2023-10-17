@@ -349,9 +349,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure that if the call reverts it doesn't boil up.
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
-        fromApplication.call{gas: maxGasAck}(
-            abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ])
-        );
+        bytes memory payload = abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
+        assembly ("memory-safe") {
+            // Because Solidity always create RETURNDATACOPY for external calls, even low-level calls where no variables are assigned,
+            // the contract can be attacked by a so called return bomb. This incur additional cost to the relayer they aren't paid for.
+            // To protect the relayer, the call is made in inline assembly.
+            let success := call(maxGasAck, fromApplication, 0, add(payload, 0x20), mload(payload), 0, 0)
+            // This is what the call would look like non-assembly.
+            // fromApplication.call{gas: maxGasAck}(
+            //     abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ])
+            // );
+        }
 
         // Get the gas used by the destination call.
         uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
