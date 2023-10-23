@@ -12,7 +12,7 @@ contract OnRecvAckTest is TestOnRecvCommon {
         vm.recordLogs();
         payable(address(application)).transfer(_getTotalIncentive(_INCENTIVE));
         vm.prank(address(application));
-        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             abi.encodePacked(
                 uint8(20),
@@ -47,7 +47,7 @@ contract OnRecvAckTest is TestOnRecvCommon {
         vm.expectCall(
             address(application),
             abi.encodeCall(
-                application.ackMessage,
+                application.receiveAck,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
                     messageIdentifier,

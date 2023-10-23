@@ -41,7 +41,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         );
     }
 
-    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
 
         (
             SmallStructs.SmallVM memory vm,
@@ -68,15 +68,15 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         message_ = payload[32:];
     }
 
-    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
         // Get the cost of sending wormhole messages.
-        costOfSendMessageInNativeToken = uint128(WORMHOLE.messageFee());
+        costOfsendPacketInNativeToken = uint128(WORMHOLE.messageFee());
 
         // Emit context for relayers so they know where to send the message
         emit WormholeMessage(destinationChainIdentifier, destinationImplementation);
 
         // Handoff the message to wormhole.
-        WORMHOLE.publishMessage{value: costOfSendMessageInNativeToken}(
+        WORMHOLE.publishMessage{value: costOfsendPacketInNativeToken}(
             0,
             abi.encodePacked(
                 destinationChainIdentifier,

@@ -18,16 +18,16 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
         uint96 priceOfAckGas
     ) external payable;
 
-    function escrowMessage(
+    function submitMessage(
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
         IncentiveDescription calldata incentive
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 
-    function processMessage(bytes calldata messagingProtocolContext, bytes calldata message, bytes32 feeRecipitent) payable external;
+    function processPacket(bytes calldata messagingProtocolContext, bytes calldata message, bytes32 feeRecipitent) payable external;
 
-    function setRemoteEscrowImplementation(bytes32 chainIdentifier, bytes calldata implementation) external;
+    function setRemoteImplementation(bytes32 chainIdentifier, bytes calldata implementation) external;
 
     /**
      * @notice Estimates the additional cost to the messaging router to validate the message

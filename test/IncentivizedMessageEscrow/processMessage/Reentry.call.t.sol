@@ -25,7 +25,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
             bytes32(uint256(uint160((address(this)))))
         );
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(escrow), message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(escrow), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -61,12 +61,12 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0xffd3),  // Gas used
+                uint48(0x10024),  // Gas used
                 uint64(1),
                 uint8(1)
             )
         );
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -87,7 +87,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadySpent()")
         ); 
-        escrow.processMessage(
+        escrow.processPacket(
             _mockContext,
             _messageWithContext,
             _feeRecipitent
@@ -99,7 +99,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
     }
 
     // Placeholder
-    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external {
+    function receiveAck(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external {
     }
     
 }

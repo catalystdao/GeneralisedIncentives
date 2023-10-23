@@ -12,7 +12,7 @@ contract MockOnRecvAMB {
         bytes message
     );
 
-    function sendMessage(
+    function sendPacket(
         bytes32 destinationIdentifier,
         bytes calldata recipitent,
         bytes calldata message

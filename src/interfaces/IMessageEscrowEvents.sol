@@ -29,5 +29,5 @@ interface IMessageEscrowEvents {
     );
 
 
-    event RemoteEscrowSet(address application, bytes32 chainIdentifier, bytes32 implementationAddressHash, bytes implementationAddress);
+    event RemoteImplementationSet(address application, bytes32 chainIdentifier, bytes32 implementationAddressHash, bytes implementationAddress);
 }

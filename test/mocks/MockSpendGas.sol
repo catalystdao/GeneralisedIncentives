@@ -14,13 +14,13 @@ contract MockSpendGas is ICrossChainReceiver {
         MESSAGE_ESCROW = IIncentivizedMessageEscrow(messageEscrow_);
     }
 
-    function escrowMessage(
+    function submitMessage(
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
         IIncentivizedMessageEscrow.IncentiveDescription calldata incentive
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
-        (gasRefund, messageIdentifier) = MESSAGE_ESCROW.escrowMessage{value: msg.value}(
+        (gasRefund, messageIdentifier) = MESSAGE_ESCROW.submitMessage{value: msg.value}(
             destinationIdentifier,
             destinationAddress,
             message,
@@ -28,7 +28,7 @@ contract MockSpendGas is ICrossChainReceiver {
         );
     }
 
-    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external view {
+    function receiveAck(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external view {
         this.receiveMessage(destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0x00)), acknowledgement);
     }
 

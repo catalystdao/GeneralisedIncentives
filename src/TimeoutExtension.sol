@@ -43,7 +43,7 @@ abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
         fromApplication.call{gas: maxGasAck}(
-            abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xff), message[CTX1_MESSAGE_START: ]))
+            abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xff), message[CTX1_MESSAGE_START: ]))
         );
 
         // Set the gas used on the destination to 15%

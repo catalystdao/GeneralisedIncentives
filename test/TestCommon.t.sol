@@ -9,8 +9,8 @@ import { IMessageEscrowStructs } from "../src/interfaces/IMessageEscrowStructs.s
 import "./mocks/MockApplication.sol";
 import { ICrossChainReceiver } from "../src/interfaces/ICrossChainReceiver.sol";
 
-interface ICanEscrowMessage is IMessageEscrowStructs{
-    function escrowMessage(
+interface ICansubmitMessage is IMessageEscrowStructs{
+    function submitMessage(
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
@@ -20,9 +20,9 @@ interface ICanEscrowMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 6354;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 33442;
-    uint256 constant GAS_RECEIVE_CONSTANT = 6164516424;
+    uint256 constant GAS_SPENT_ON_SOURCE = 6330;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 33441;
+    uint256 constant GAS_RECEIVE_CONSTANT = 6156686151;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -49,10 +49,10 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         // Set implementations to the escrow address.
         vm.prank(address(application));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         vm.prank(address(this));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         _MESSAGE = abi.encode(keccak256(abi.encode(1)));
         _DESTINATION_ADDRESS_THIS = abi.encodePacked(
@@ -93,16 +93,16 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         _metadata = abi.encode(v, r, s);
     }
 
-    function escrowMessage(bytes memory message) internal returns(bytes32) {
-        (bytes32 messageIdentifier, ) = setupEscrowMessage(address(application), message);
+    function submitMessage(bytes memory message) internal returns(bytes32) {
+        (bytes32 messageIdentifier, ) = setupsubmitMessage(address(application), message);
 
         return messageIdentifier;
     }
 
-    function setupEscrowMessage(address fromAddress, bytes memory message) internal returns(bytes32, bytes memory) {
+    function setupsubmitMessage(address fromAddress, bytes memory message) internal returns(bytes32, bytes memory) {
         vm.recordLogs();
         (, uint256 cost) = escrow.estimateAdditionalCost();
-        (, bytes32 messageIdentifier) = ICanEscrowMessage(fromAddress).escrowMessage{value: _getTotalIncentive(_INCENTIVE) + cost}(
+        (, bytes32 messageIdentifier) = ICansubmitMessage(fromAddress).submitMessage{value: _getTotalIncentive(_INCENTIVE) + cost}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -116,13 +116,13 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         return (messageIdentifier, abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext));
     }
 
-    function setupProcessMessage(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes memory) {
+    function setupprocessPacket(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
         bytes memory mockContext = abi.encode(v, r, s);
 
         (, uint256 cost) = escrow.estimateAdditionalCost();
         vm.recordLogs();
-        escrow.processMessage{value: cost}(
+        escrow.processPacket{value: cost}(
             mockContext,
             message,
             destinationFeeRecipitent
@@ -136,9 +136,9 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     }
 
     function setupForAck(address fromAddress, bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(fromAddress, message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(fromAddress, message);
 
-        return (messageIdentifier, setupProcessMessage(messageWithContext, destinationFeeRecipitent));
+        return (messageIdentifier, setupprocessPacket(messageWithContext, destinationFeeRecipitent));
     }
     
 }

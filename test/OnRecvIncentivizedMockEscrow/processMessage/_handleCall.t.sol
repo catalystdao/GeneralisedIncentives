@@ -14,7 +14,7 @@ contract OnRecvCallTest is TestOnRecvCommon {
         vm.recordLogs();
         payable(address(application)).transfer(_getTotalIncentive(_INCENTIVE));
         vm.prank(address(application));
-        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             abi.encodePacked(
                 uint8(20),

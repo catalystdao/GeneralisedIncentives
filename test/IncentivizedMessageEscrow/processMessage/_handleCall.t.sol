@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
 
 
-contract ProcessMessageCallTest is TestCommon {
+contract processPacketCallTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
         bytes recipitent,
@@ -16,7 +16,7 @@ contract ProcessMessageCallTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -40,7 +40,7 @@ contract ProcessMessageCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x82a2),  // Gas used
+                uint48(0x82a1),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -59,7 +59,7 @@ contract ProcessMessageCallTest is TestCommon {
             )
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -70,12 +70,12 @@ contract ProcessMessageCallTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        (, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
+        (, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -84,7 +84,7 @@ contract ProcessMessageCallTest is TestCommon {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadySpent()")
         ); 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -96,12 +96,12 @@ contract ProcessMessageCallTest is TestCommon {
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
         vm.prank(caller);
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(escrow));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(escrow));
 
         vm.recordLogs();
         vm.deal(caller, _getTotalIncentive(_INCENTIVE));
         vm.prank(caller);
-        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
@@ -132,7 +132,7 @@ contract ProcessMessageCallTest is TestCommon {
             )
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             _metadata,
             newMessage,
             feeRecipitent

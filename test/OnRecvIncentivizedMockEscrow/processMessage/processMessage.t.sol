@@ -5,11 +5,11 @@ import "forge-std/Test.sol";
 import { TestOnRecvCommon } from "../TestOnRecvCommon.t.sol";
 
 
-contract TestProcessMessageDisabled is TestOnRecvCommon {
+contract TestprocessPacketDisabled is TestOnRecvCommon {
 
     function test_process_message_disabled(bytes memory mockContext, bytes memory messageWithContext, address feeRecipitent) public {
         vm.expectRevert();
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             bytes32(uint256(uint160(feeRecipitent)))

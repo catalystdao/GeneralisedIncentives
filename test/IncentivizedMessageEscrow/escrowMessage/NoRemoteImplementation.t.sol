@@ -14,7 +14,7 @@ contract NoImplementationAddressSetTest is TestCommon {
         vm.expectRevert(
             abi.encodeWithSignature("NoImplementationAddressSet()")
         ); 
-        applicationWithNoImplementationAddress.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        applicationWithNoImplementationAddress.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

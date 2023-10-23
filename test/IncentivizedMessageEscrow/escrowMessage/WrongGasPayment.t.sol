@@ -15,7 +15,7 @@ contract EscrowWrongGasPaymentTest is TestCommon {
             priceOfAckGas: 321123,
             targetDelta: 30 minutes
         });
-        escrow.escrowMessage{value: _getTotalIncentive(incentive)}(
+        escrow.submitMessage{value: _getTotalIncentive(incentive)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -36,7 +36,7 @@ contract EscrowWrongGasPaymentTest is TestCommon {
     //     vm.expectRevert(
     //         abi.encodeWithSignature("ZeroIncentiveNotAllowed()")
     //     ); 
-    //     escrow.escrowMessage{value: _getTotalIncentive(incentive)}(
+    //     escrow.submitMessage{value: _getTotalIncentive(incentive)}(
     //         _DESTINATION_IDENTIFIER,
     //         _DESTINATION_ADDRESS_THIS,
     //         _MESSAGE,
@@ -57,7 +57,7 @@ contract EscrowWrongGasPaymentTest is TestCommon {
         vm.expectRevert(
             abi.encodeWithSignature("NotEnoughGasProvided(uint128,uint128)", _getTotalIncentive(incentive), _getTotalIncentive(incentive) - error)
         ); 
-        escrow.escrowMessage{value: _getTotalIncentive(incentive) - error}(
+        escrow.submitMessage{value: _getTotalIncentive(incentive) - error}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

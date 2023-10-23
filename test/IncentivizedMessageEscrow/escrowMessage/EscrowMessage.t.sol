@@ -9,7 +9,7 @@ contract EscrowInformationTest is TestCommon {
 
     function test_check_escrow_state() public {
         IncentiveDescription storage incentive = _INCENTIVE;
-        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -33,7 +33,7 @@ contract EscrowInformationTest is TestCommon {
         vm.expectEmit();
         emit BountyPlaced(bytes32(0x2dfdcf3ed929fb394f4f06ccf6d75629926d36dc4409186a42a5904a2f80d74d), incentive);
 
-        escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -48,7 +48,7 @@ contract EscrowInformationTest is TestCommon {
         _overpay = overpay;
 
         
-        (uint256 gasRefund, ) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE) + overpay}(
+        (uint256 gasRefund, ) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + overpay}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

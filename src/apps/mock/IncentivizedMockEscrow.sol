@@ -44,7 +44,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         );
     }
 
-    function _verifyMessage(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
 
         // Get signature from message payload
         (uint8 v, bytes32 r, bytes32 s) = abi.decode(_metadata, (uint8, bytes32, bytes32));
@@ -71,7 +71,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         message_ = _message[96:];
     }
 
-    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
         emit Message(
             destinationChainIdentifier,
             destinationImplementation,
@@ -86,6 +86,6 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
             if (msg.value < verificationCost) revert NotEnoughGasProvidedForVerification();
             accumulator += verificationCost;
         }
-        return costOfSendMessageInNativeToken = uint128(verificationCost);
+        return costOfsendPacketInNativeToken = uint128(verificationCost);
     }
 }
