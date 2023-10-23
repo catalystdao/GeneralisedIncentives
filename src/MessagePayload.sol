@@ -12,9 +12,9 @@ pragma solidity ^0.8.13;
 // 
 // Context-depending Payload
 //    CTX0 - 0x00 - Source to Destination
-//      + TO_VAULT_LENGTH               98  (1 byte)
-//      + TO_VAULT                      99  (64 bytes)
-//      + MIN_GAS                       163 (6 bytes)
+//      + TO_APPLICATION_LENGTH         98  (1 byte)
+//      + TO_APPLICATION                99  (64 bytes)
+//      + MAX_GAS                       163 (6 bytes)
 //     => MESSAGE_START                 169 (remainder)
 //
 //    CTX1 - 0x01 - Destination to Source
@@ -26,8 +26,8 @@ pragma solidity ^0.8.13;
 
 // Contexts *********************************************************************************************************************
 
-bytes1 constant SourcetoDestination     = 0x00;
-bytes1 constant DestinationtoSource     = 0x01;
+bytes1 constant CTX_SOURCE_TO_DESTINATION       = 0x00;
+bytes1 constant CTX_DESTINATION_TO_SOURCE       = 0x01;
 
 
 // Common Payload ***************************************************************************************************************
@@ -50,14 +50,14 @@ uint constant CTX0_TO_APPLICATION_START             = 99;
 uint constant CTX0_TO_APPLICATION_START_EVM         = 143;  // If the address is an EVM address, this is the start
 uint constant CTX0_TO_APPLICATION_END               = 163;
 
-uint constant CTX0_MIN_GAS_LIMIT_START              = 163;
-uint constant CTX0_MIN_GAS_LIMIT_END                = 169;
+uint constant CTX0_MAX_GAS_LIMIT_START              = 163;
+uint constant CTX0_MAX_GAS_LIMIT_END                = 169;
 
 uint constant CTX0_MESSAGE_START                    = 169;
 
 // CTX1 Destination to Source **************************************************************************************************
 
-uint constant CTX1_RELAYER_RECIPITENT_START         = 98;
+uint constant CTX1_RELAYER_RECIPIENT_START         = 98;
 uint constant CTX1_RELAYER_RECIPITENT_END           = 130;
 
 uint constant CTX1_GAS_SPENT_START                  = 130;

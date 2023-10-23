@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEscrow.sol";
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
-import { SourcetoDestination, DestinationtoSource } from "./MessagePayload.sol";
+import { CTX_SOURCE_TO_DESTINATION, CTX_DESTINATION_TO_SOURCE } from "./MessagePayload.sol";
 import { Multicall } from "openzeppelin/utils/Multicall.sol";
 import "./MessagePayload.sol";
 
@@ -41,8 +41,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
     /// the gas is sent here instead.
     address constant public SEND_LOST_GAS_TO = address(0);
-
-    bytes32 constant KECCACK_OF_NOTHING = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
@@ -85,6 +83,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
    }
 
 
+    // TODO: Not change when set.
     /// @notice Sets the escrow implementation for a specific chain
     function setRemoteEscrowImplementation(bytes32 chainIdentifier, bytes calldata implementation) external {
         implementationAddress[msg.sender][chainIdentifier] = implementation;
@@ -113,7 +112,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 ackGas = incentive.maxGasAck * ackGasPriceIncrease;
         uint128 sum = deliveryGas + ackGas;
         // Check that the provided gas is exact
-        if (msg.value != sum) revert NotEnoughGasProvided(sum, uint128(msg.value));
+        if (msg.value != sum) revert IncorrectValueProvided(sum, uint128(msg.value));
 
         // Update storage.
         incentive.priceOfDeliveryGas += deliveryGasPriceIncrease;
@@ -149,8 +148,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         // Check that the application has set a destination implementation
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
-        // It is assumed that it is enough to check the first 32 bytes.
-        if (keccak256(destinationImplementation) == KECCACK_OF_NOTHING) revert NoImplementationAddressSet();
+        // todo: It is assumed that it is enough to check the first 32 bytes. // Check that the length is not 0.
+        if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
 
         // Prepare to store incentive
         messageIdentifier = _getMessageIdentifier(
@@ -162,7 +161,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Add escrow context to the message.
         bytes memory messageWithContext = abi.encodePacked(
-            bytes1(SourcetoDestination),    // This is a sendMessage,
+            bytes1(CTX_SOURCE_TO_DESTINATION),    // This is a sendMessage,
             messageIdentifier,              // An unique identifier to recover identifier to recover 
             convertEVMTo65(msg.sender),     // Original sender
             destinationAddress,             // The address to deliver the (original) message to.
@@ -230,12 +229,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
-        if (context == SourcetoDestination) {
+        if (context == CTX_SOURCE_TO_DESTINATION) {
             bytes memory ackMessageWithContext = _handleCall(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
 
             // The cost management is made by _sendMessage so we don't have to check if enough gas has been provided.
             _sendMessage(chainIdentifier, implementationIdentifier, ackMessageWithContext);
-        } else if (context == DestinationtoSource) {
+        } else if (context == CTX_DESTINATION_TO_SOURCE) {
             _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
         } else {
             revert NotImplementedError();
@@ -259,7 +258,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Deliver message to application.
         // Decode gas limit, application address and sending application.
-        uint48 maxGas = uint48(bytes6(message[CTX0_MIN_GAS_LIMIT_START:CTX0_MIN_GAS_LIMIT_END]));
+        uint48 maxGas = uint48(bytes6(message[CTX0_MAX_GAS_LIMIT_START:CTX0_MAX_GAS_LIMIT_END]));
         address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
 
@@ -272,7 +271,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (expectedSourceImplementationHash != keccak256(sourceImplementationIdentifier)) {
             // If they are different, return send a failed message back with `0xfe`.
             acknowledgement = abi.encodePacked(
-                MESSAGE_REVERTED,
+                NO_AUTHENTICATION,
                 message[CTX0_MESSAGE_START: ]
             );
         } else {
@@ -300,7 +299,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     
         // Encode a new message to send back. This lets the relayer claim their payment.
         ackMessageWithContext = abi.encodePacked(
-            bytes1(DestinationtoSource),    // This is a sendMessage
+            bytes1(CTX_DESTINATION_TO_SOURCE),    // This is a sendMessage
             messageIdentifier,              // message identifier
             fromApplication,
             feeRecipitent,
@@ -352,7 +351,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Deliver the ack to the application.
         // Ensure that if the call reverts it doesn't boil up.
         // We don't need any return values and don't care if the call reverts.
-        // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
+        // This call implies we need reentry protection.
         bytes memory payload = abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
         assembly ("memory-safe") {
             // Because Solidity always create RETURNDATACOPY for external calls, even low-level calls where no variables are assigned,
@@ -392,7 +391,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if(!payable(refundGasTo).send(refund)) {
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
-        address destinationFeeRecipitent = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPITENT_START:CTX1_RELAYER_RECIPITENT_END]))));
+        address destinationFeeRecipitent = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPIENT_START:CTX1_RELAYER_RECIPITENT_END]))));
         address sourceFeeRecipitent = address(uint160(uint256(feeRecipitent)));
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
@@ -514,7 +513,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes1 context = bytes1(message[0]);
         
         // Only allow acks to do this. Normal messages are invalid after first execution.
-        if (context == DestinationtoSource) {
+        if (context == CTX_DESTINATION_TO_SOURCE) {
             bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
             if(_bounty[messageIdentifier].refundGasTo != address(0)) revert AckHasNotBeenExecuted(); 
 

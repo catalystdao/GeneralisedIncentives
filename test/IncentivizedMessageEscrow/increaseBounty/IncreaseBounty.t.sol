@@ -36,7 +36,7 @@ contract IncreaseBountyTest is TestCommon {
         bytes32 messageIdentifier = escrowMessage(_MESSAGE);
 
         vm.expectRevert(
-            abi.encodeWithSignature("NotEnoughGasProvided(uint128,uint128)", 0, overPay)
+            abi.encodeWithSignature("IncorrectValueProvided(uint128,uint128)", 0, overPay)
         );
         escrow.increaseBounty{value: overPay}(
             messageIdentifier,
@@ -61,7 +61,7 @@ contract IncreaseBountyTest is TestCommon {
         uint128 newPay = uint128(uint256(int256(uint256(difference)) + diffPay));
 
         vm.expectRevert(
-            abi.encodeWithSignature("NotEnoughGasProvided(uint128,uint128)", difference, newPay)
+            abi.encodeWithSignature("IncorrectValueProvided(uint128,uint128)", difference, newPay)
             
         );
         escrow.increaseBounty{value: newPay}(
