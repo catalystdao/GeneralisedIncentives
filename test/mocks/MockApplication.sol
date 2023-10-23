@@ -50,4 +50,5 @@ contract MockApplication is ICrossChainReceiver {
         return acknowledgement;
     }
 
+    receive() external payable {}
 }
