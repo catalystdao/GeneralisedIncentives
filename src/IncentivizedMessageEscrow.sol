@@ -222,7 +222,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
         bytes32 feeRecipitent
-    ) external payable {
+    ) external virtual payable {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
@@ -231,7 +231,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
         if (context == SourcetoDestination) {
-            _handleCall(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
+            bytes memory ackMessageWithContext = _handleCall(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
+
+            // The cost management is made by _sendMessage so we don't have to check if enough gas has been provided.
+            _sendMessage(chainIdentifier, implementationIdentifier, ackMessageWithContext);
         } else if (context == DestinationtoSource) {
             _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
         } else {
@@ -314,8 +317,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Not optimal but okay-ish.
 
         // Send message to messaging protocol
-        // The cost management is made by _sendMessage so we don't have to check if enough gas has been provided.
-        _sendMessage(sourceIdentifier, sourceImplementationIdentifier, ackMessageWithContext);
+        // This is done on processMessage.
+        // This is done by returning ackMessageWithContext while source identifier and sourceImplementationIdentifier are known.
     }
 
     /**
