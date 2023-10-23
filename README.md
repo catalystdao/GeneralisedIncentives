@@ -1,6 +1,6 @@
 Contracts within this repo have not been audited and should not be used in production.
 
-# Generalized Incentive Escrow
+# Generalised Incentive Escrow
 
 This repository contains an implementation of a generalized Incentive Scheme. 
 
@@ -122,7 +122,7 @@ The implementation is not perfect. Below the most notable implementation strange
 
 If a message reverts, ran out of gas, or otherwise failed to return an ack the implementation should do its best to not revert but instead send the original message back prepended with 0xff as the acknowledgment.
 
-For EVM this is currently limited by [Solidity #13869](https://github.com/ethereum/solidity/issues/13869). Calls to contracts which doesn't implement the proper endpoint will fail.
+For EVM this is currently limited by [Solidity #13869](https://github.com/ethereum/solidity/issues/13869), [Solidity #14467](https://github.com/ethereum/solidity/issues/14467). Calls to contracts which doesn't implement the proper endpoint will fail.
 - Relayers should emulate the call before calling the function to avoid wasting gas.
 - If contracts expect the call to execute (or rely on the ack), contracts need to make sure they are calling a contract that implements proper interfaces for receiving calls.
 
@@ -149,10 +149,10 @@ The destination-to-source relayer will result in the message reverting. They sho
 Because of the centralization associated with adding new chains / deployments, applications has to opt-in to these new chains. To understand the issue better, examine the following flow:
 
 1. An escrow with honest logic with no flaws exist on chain Alpha. 
-2. An application on chain Alpha can be drained by sending the fradulent key `0xabcdef` to the source chain. Ordinarly this never happens. This application trusts Alpha.
+2. An application on chain Alpha can be drained by sending the fraudulent key `0xabcdef` to the source chain. Ordinarily this never happens. This application trusts Alpha.
 3. The administrator adds another deployment on chain Beta with same address as Alpha but with another bytecode deployed. Specifically, when the administrator calls this contract it sends `0xabcdef` to the application.
 4. The application adds chain Beta to the allow list since the address matches the Beta address (thinking the byte code deployed must be the same).
-5. The fradulent deployment on Beta sends `0xabcedf` to the application on chain Alpha
+5. The fraudulent deployment on Beta sends `0xabcedf` to the application on chain Alpha
 6. On Alpha the message is verified.
 
 As a result, each application needs to tell the escrow where the other escrow sits and which escrow is allowed to send it messages. These mappings are 1:1, each chain identifier is only allowed a single escrow deployment.
