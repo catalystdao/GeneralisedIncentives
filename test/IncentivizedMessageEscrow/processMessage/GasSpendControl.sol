@@ -104,7 +104,7 @@ contract GasSpendControlTest is TestCommon {
 
         // The strange gas limit of '<gas> + 5000 - 2' here is because <gas> is how much is actually spent (read from trace) and + 5000 - 2 is some kind of refund that
         // the relayer needs to add as extra. (reentry refund)
-        escrow.processPacket{gas: 239936}(
+        escrow.processPacket{gas: 239958}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -126,7 +126,7 @@ contract GasSpendControlTest is TestCommon {
                 )
             )
         );
-        escrow.processPacket{gas: 239936 - 1}(
+        escrow.processPacket{gas: 239958 - 1}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent

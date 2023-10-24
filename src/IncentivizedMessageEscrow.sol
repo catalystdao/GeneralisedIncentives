@@ -45,7 +45,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
 
-    mapping(bytes32 => bool) _spentMessageIdentifier;
+    mapping(bytes32 => bool) _messageDelivered;
 
     // Maps applications to their escrow implementations.
     mapping(address => mapping(bytes32 => bytes)) public implementationAddress;
@@ -78,8 +78,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return _bounty[messageIdentifier];
     }
 
-   function spentMessageIdentifier(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted) {
-        return _spentMessageIdentifier[messageIdentifier];
+   function messageDelivered(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted) {
+        return _messageDelivered[messageIdentifier];
    }
 
 
@@ -251,9 +251,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
         // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
-        bool messageState = _spentMessageIdentifier[messageIdentifier];
+        bool messageState = _messageDelivered[messageIdentifier];
         if (messageState) revert MessageAlreadySpent();
-        _spentMessageIdentifier[messageIdentifier] = true;
+        _messageDelivered[messageIdentifier] = true;
 
 
         // Deliver message to application.

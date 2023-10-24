@@ -10,7 +10,7 @@ import { IMessageEscrowEvents } from "./IMessageEscrowEvents.sol";
 interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErrors, IMessageEscrowEvents {
    function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive);
 
-   function spentMessageIdentifier(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted);
+   function messageDelivered(bytes32 messageIdentifier) external view returns(bool hasMessageBeenExecuted);
 
     function increaseBounty(
         bytes32 messageIdentifier,
