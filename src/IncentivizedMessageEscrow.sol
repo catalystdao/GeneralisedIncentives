@@ -83,9 +83,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
    }
 
 
-    // TODO: Not change when set.
     /// @notice Sets the escrow implementation for a specific chain
+    /// @dev This can only be set once. When set, is cannot be changed.
+    /// This is to protect relayers as this could be used to fail acks.
     function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
+        if (implementationAddressHash[msg.sender][destinationIdentifier] != bytes32(0)) revert ImplementationAddressAlreadySet(
+            implementationAddress[msg.sender][destinationIdentifier]
+        );
+
         implementationAddress[msg.sender][destinationIdentifier] = implementation;
         implementationAddressHash[msg.sender][destinationIdentifier] = keccak256(implementation);
 
@@ -148,7 +153,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         // Check that the application has set a destination implementation
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
-        // todo: It is assumed that it is enough to check the first 32 bytes. // Check that the length is not 0.
+        // Check that the length is not 0.
         if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
 
         // Prepare to store incentive
