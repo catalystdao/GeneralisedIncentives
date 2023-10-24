@@ -108,9 +108,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         IncentiveDescription storage incentive = _bounty[messageIdentifier];
 
         // Compute incentive metrics.
-        uint128 deliveryGas = incentive.maxGasDelivery * deliveryGasPriceIncrease;
-        uint128 ackGas = incentive.maxGasAck * ackGasPriceIncrease;
-        uint128 sum = deliveryGas + ackGas;
+        uint128 maxDeliveryFee = incentive.maxGasDelivery * deliveryGasPriceIncrease;
+        uint128 maxAckFee = incentive.maxGasAck * ackGasPriceIncrease;
+        uint128 sum = maxDeliveryFee + maxAckFee;
         // Check that the provided gas is exact
         if (msg.value != sum) revert IncorrectValueProvided(sum, uint128(msg.value));
 
@@ -368,7 +368,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
 
         // Find the respective rewards for delivery and ack.
-        uint256 deliveryFee; uint256 ackFee; uint256 sumFee; uint256 refund; uint256 gasSpentOnSource;
+        uint256 deliveryFee; uint256 ackFee; uint256 actualFee; uint256 refund; uint256 gasSpentOnSource;
         unchecked {
             // gasSpentOnDestination * priceOfDeliveryGas < 2**48 * 2**96 = 2**144
             if (maxGasDelivery <= gasSpentOnDestination) gasSpentOnDestination = maxGasDelivery;  // If more gas was spent then allocated, then only use the allocation.
@@ -380,12 +380,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // gasSpentOnSource * priceOfAckGas < 2**48 * 2**96 = 2**144
             ackFee = gasSpentOnSource * priceOfAckGas;  
             // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
-            sumFee = deliveryFee + ackFee;
+            actualFee = deliveryFee + ackFee;
             // (priceOfDeliveryGas * maxGasDelivery + priceOfDeliveryGas * maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
-            uint256 maxDeliveryGas = maxGasDelivery * priceOfDeliveryGas;
-            uint256 maxAckGas = maxGasAck * priceOfAckGas;
-            uint256 maxSum = maxDeliveryGas + maxAckGas;
-            refund = maxSum - sumFee;
+            uint256 maxDeliveryFee = maxGasDelivery * priceOfDeliveryGas;
+            uint256 maxAckFee = maxGasAck * priceOfAckGas;
+            uint256 maxFee = maxDeliveryFee + maxAckFee;
+            refund = maxFee - actualFee;
         }
         // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
         if(!payable(refundGasTo).send(refund)) {
@@ -395,13 +395,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         address sourceFeeRecipitent = address(uint160(uint256(feeRecipitent)));
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipitent == sourceFeeRecipitent) {
-            payable(sourceFeeRecipitent).transfer(sumFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+            payable(sourceFeeRecipitent).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             emit MessageAcked(messageIdentifier);
             emit BountyClaimed(
                 messageIdentifier,
                 uint64(gasSpentOnDestination),
                 uint64(gasSpentOnSource),
-                uint128(sumFee),
+                uint128(actualFee),
                 0
             );
             return;
@@ -443,7 +443,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (timeBetweenTargetAndExecution <= 0) {
                 // Less time than target passed and the destination relayer should get a larger chunk.
                 // targetDelta != 0, we checked for that. 
-                // max abs timeBetweenTargetAndExecution = | - targetDelta| = targetDelta => ackFee * targetDelta < sumFee * targetDelta
+                // max abs timeBetweenTargetAndExecution = | - targetDelta| = targetDelta => ackFee * targetDelta < actualFee * targetDelta
                 //  2**127 * 2**64 = 2**191
                 forDestinationRelayer += ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
             } else {
@@ -452,7 +452,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 if (uint256(timeBetweenTargetAndExecution) < targetDelta) {
                     // targetDelta != 0, we checked for that. 
                     // max abs timeBetweenTargetAndExecution = targetDelta since we have the above check
-                    // => deliveryFee * targetDelta < sumFee * targetDelta < 2**127 * 2**64 = 2**191
+                    // => deliveryFee * targetDelta < actualFee * targetDelta < 2**127 * 2**64 = 2**191
                     forDestinationRelayer -= deliveryFee * uint256(timeBetweenTargetAndExecution) / targetDelta;
                 } else {
                     // This doesn't discourage relaying, since executionTime first begins counting once the destinaion call has been executed.
@@ -467,9 +467,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         }
         uint256 forSourceRelayer;
         unchecked {
-            // max forDestinationRelayer is deliveryFee + ackFee = sumFee => sumFee - forDestinationRelayer == 0
-            // min forDestinationRelayer = 0 => sumFee - 0 = sumFee
-            forSourceRelayer = sumFee - forDestinationRelayer;
+            // max forDestinationRelayer is deliveryFee + ackFee = actualFee => actualFee - forDestinationRelayer == 0
+            // min forDestinationRelayer = 0 => actualFee - 0 = actualFee
+            forSourceRelayer = actualFee - forDestinationRelayer;
         }
         payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
@@ -492,9 +492,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     ) internal returns(uint128 sum){
         if (_bounty[messageIdentifier].refundGasTo != address(0)) revert MessageAlreadyBountied();
         // Compute incentive metrics.
-        uint128 deliveryGas = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
-        uint128 ackGas = incentive.maxGasAck * incentive.priceOfAckGas;
-        sum = deliveryGas + ackGas;
+        uint128 maxDeliveryFee = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
+        uint128 maxAckFee = incentive.maxGasAck * incentive.priceOfAckGas;
+        sum = maxDeliveryFee + maxAckFee;
         
         _bounty[messageIdentifier] = incentive;
     }
