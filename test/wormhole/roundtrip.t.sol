@@ -61,6 +61,8 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
   address testGuardianPub;
   uint256 testGuardian;
 
+  address sendLostGasTo;
+
   ExportedMessages messages;
 
   IIncentivizedMessageEscrow public escrow;
@@ -69,10 +71,11 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
 
   function setUp() public {
     (testGuardianPub, testGuardian) = makeAddrAndKey("signer");
+    sendLostGasTo = makeAddr("sendLostGasTo");
 
     messages = new ExportedMessages();
 
-    escrow = new IncentivizedWormholeEscrow(address(messages));
+    escrow = new IncentivizedWormholeEscrow(sendLostGasTo, address(messages));
 
     _DESTINATION_IDENTIFIER = bytes32(uint256(messages.chainId()));
 

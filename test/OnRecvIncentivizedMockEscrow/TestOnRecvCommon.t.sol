@@ -21,10 +21,12 @@ contract TestOnRecvCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs, 
     bytes _MESSAGE;
     bytes _DESTINATION_ADDRESS_THIS;
     bytes _DESTINATION_ADDRESS_APPLICATION;
+    address sendLostGasTo;
 
     function setUp() virtual public {
         _REFUND_GAS_TO = makeAddr("Alice");
-        escrow = new OnRecvIncentivizedMockEscrow(address(this));
+        sendLostGasTo = makeAddr("sendLostGasTo");
+        escrow = new OnRecvIncentivizedMockEscrow(sendLostGasTo, address(this));
 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 

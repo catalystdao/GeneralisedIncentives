@@ -40,7 +40,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
     /// the gas is sent here instead.
-    address constant public SEND_LOST_GAS_TO = address(0);
+    address immutable public SEND_LOST_GAS_TO;
 
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
@@ -61,6 +61,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
     function _sendPacket(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal returns(uint128 costOfsendPacketInNativeToken);
 
+    constructor(address sendLostGasTo) {
+        SEND_LOST_GAS_TO = sendLostGasTo;
+    }
 
     /// @notice Generates a unique message identifier for a message
     /// @dev Should be overwritten. The identifier should:

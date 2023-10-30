@@ -14,6 +14,9 @@ import "./MessagePayload.sol";
  * _handleAck. Instead a seperate handler is created to handle these "anomalies".
  */
 abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
+
+    constructor(address sendLostGasTo) IncentivizedMessageEscrow(sendLostGasTo) {}
+
     /**
      * @notice Handles timeout messages.
      * @dev Is very similar to _handleAck

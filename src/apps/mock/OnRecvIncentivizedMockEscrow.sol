@@ -22,7 +22,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     mapping(bytes32 => VerifiedMessageHashContext) public isVerifiedMessageHash;
 
 
-    constructor(address messagingProtocol) {
+    constructor(address sendLostGasTo, address messagingProtocol) IMETimeoutExtension(sendLostGasTo) {
         MESSAGING_PROTOCOL_CALLER = messagingProtocol;
         UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(111));  // Actual implementation should call to messagingProtocol
     }

@@ -36,6 +36,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     bytes _DESTINATION_ADDRESS_APPLICATION;
 
     address SIGNER;
+    address sendLostGasTo;
     address BOB;
     uint256 PRIVATEKEY;
 
@@ -43,7 +44,8 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
-        escrow = new IncentivizedMockEscrow(_DESTINATION_IDENTIFIER, SIGNER, 0);
+        sendLostGasTo = makeAddr("sendLostGasTo");
+        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, 0);
 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 

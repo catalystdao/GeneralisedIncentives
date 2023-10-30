@@ -18,7 +18,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
 
     IWormhole public immutable WORMHOLE;
 
-    constructor(address wormhole_) WormholeVerifier(wormhole_) {
+    constructor(address sendLostGasTo, address wormhole_) IncentivizedMessageEscrow(sendLostGasTo) WormholeVerifier(wormhole_) {
         WORMHOLE = IWormhole(wormhole_);
     }
 
