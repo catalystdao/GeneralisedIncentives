@@ -5,5 +5,7 @@ libs = ["lib"]
 via_ir = true
 optimizer = true
 optimizer_runs = 100_000
+solc_version = "0.8.21"
+evm_version = "paris"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

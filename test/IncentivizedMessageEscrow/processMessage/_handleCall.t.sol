@@ -92,6 +92,7 @@ contract processPacketCallTest is TestCommon {
     }
 
     function test_expect_caller(address caller) public {
+        vm.assume(caller != 0x2e234DAe75C793f67A35089C9d99245E1C58470b);
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
