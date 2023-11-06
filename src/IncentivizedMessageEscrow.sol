@@ -529,7 +529,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
             
             // check if the application trusts the implementation on the destination chain.
-            bytes32 expectedDestinationImplementationHash = implementationAddressHash[msg.sender][chainIdentifier];
+            bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][chainIdentifier];
             if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
 
             ICrossChainReceiver(fromApplication).receiveAck(chainIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
