@@ -164,6 +164,7 @@ If on the destination chain, the application which is being called hasn't set th
 If a message fails, a failure code is prepended to the original message and sent back. Below a list of failure codes can be found:
 - `0xff`: Generic application logic failure. Destination application couldn't be called, reverted or out of gas.
 - `0xfe`: Sending escrow implementation is not authenticated to call the application.
+- `0xfd`: The message has timeouted and hasn't been executed on the destination chain.
 
 ## Repository Structure
 
