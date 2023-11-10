@@ -23,7 +23,7 @@ contract ReturnBombTest is TestCommon {
 
         // Set implementations to the escrow address.
         vm.prank(address(application));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),
@@ -45,7 +45,7 @@ contract ReturnBombTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         uint256 beforeReturnBomb = gasleft();
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent

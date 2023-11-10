@@ -22,7 +22,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     mapping(bytes32 => VerifiedMessageHashContext) public isVerifiedMessageHash;
 
 
-    constructor(address messagingProtocol) {
+    constructor(address sendLostGasTo, address messagingProtocol) IMETimeoutExtension(sendLostGasTo) {
         MESSAGING_PROTOCOL_CALLER = messagingProtocol;
         UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(111));  // Actual implementation should call to messagingProtocol
     }
@@ -52,7 +52,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
         );
     }
 
-    function _verifyMessage(bytes calldata /* _metadata */, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyPacket(bytes calldata /* _metadata */, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         sourceIdentifier = isVerifiedMessageHash[keccak256(_message)].chainIdentifier;
         implementationIdentifier = isVerifiedMessageHash[keccak256(_message)].implementationIdentifier;
         
@@ -65,7 +65,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     /// @dev This is an example of how this function can be disabled.
     /// This doesn't have to be how it is done. This implementation works
     /// fine with and without (There is even a test for that).
-    function processMessage(
+    function processPacket(
         bytes calldata /* messagingProtocolContext */,
         bytes calldata /* rawMessage */,
         bytes32 /* feeRecipitent */
@@ -81,12 +81,12 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     ) onlyMessagingProtocol external {
         // _onReceive(chainIdentifier, rawMessage, feeRecipitent);
         uint256 gasLimit = gasleft();
-        bytes memory ackMessage = _handleCall(chainIdentifier, sourceImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
+        bytes memory receiveAck = _handleMessage(chainIdentifier, sourceImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
 
         // Send ack:
-        _sendMessage(chainIdentifier, sourceImplementationIdentifier, ackMessage);
-        // * For an actual implementation, the _sendMessage might also be implemented as a return value for onReceive like:
-        // * return ReturnStruct?({chainIdentifier: chainIdentifier, message: ackMessage});
+        _sendPacket(chainIdentifier, sourceImplementationIdentifier, receiveAck);
+        // * For an actual implementation, the _sendPacket might also be implemented as a return value for onReceive like:
+        // * return ReturnStruct?({chainIdentifier: chainIdentifier, message: receiveAck});
     }
 
     // The escrow manages acks, so any message can be directly provided to _onReceive.
@@ -115,8 +115,8 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     }
 
     // * Send to messaging_protocol 
-    function _sendMessage(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfSendMessageInNativeToken) {
-        MockOnRecvAMB(MESSAGING_PROTOCOL_CALLER).sendMessage(
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
+        MockOnRecvAMB(MESSAGING_PROTOCOL_CALLER).sendPacket(
             destinationChainIdentifier,
             destinationImplementation,
             abi.encodePacked(

@@ -16,4 +16,6 @@ interface IMessageEscrowErrors {
     error AckHasNotBeenExecuted();  // 3d1553f8
     error NoImplementationAddressSet();  // 9f994b4b
     error InvalidImplementationAddress();  // c970156c
+    error IncorrectValueProvided(uint128 expected, uint128 actual); // 0b52a60b
+    error ImplementationAddressAlreadySet(bytes currentImplementation); // dba47850
 }

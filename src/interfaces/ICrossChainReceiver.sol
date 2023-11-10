@@ -12,12 +12,12 @@ interface ICrossChainReceiver {
      * This identifier can be mismanaged by the messaging protocol.
      * @param acknowledgement The acknowledgement sent back by receiveMessage. Is 0xff if receiveMessage reverted.
      */
-    function ackMessage(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external;
+    function receiveAck(bytes32 destinationIdentifier, bytes32 messageIdentifier, bytes calldata acknowledgement) external;
 
     /**
      * @notice receiveMessage from a cross-chain call.
      * @dev The application needs to check the fromApplication combined with sourceIdentifierbytes to figure out if the call is authenticated.
-     * @return acknowledgement Information which is passed to ackMessage. 
+     * @return acknowledgement Information which is passed to receiveAck. 
      *  If you return 0xff, you cannot know the difference between Executed but "failed" and outright failed.
      */
     function receiveMessage(bytes32 sourceIdentifierbytes, bytes32 messageIdentifier, bytes calldata fromApplication, bytes calldata message) external returns(bytes memory acknowledgement);

@@ -61,6 +61,8 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
   address testGuardianPub;
   uint256 testGuardian;
 
+  address sendLostGasTo;
+
   ExportedMessages messages;
 
   IIncentivizedMessageEscrow public escrow;
@@ -69,14 +71,15 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
 
   function setUp() public {
     (testGuardianPub, testGuardian) = makeAddrAndKey("signer");
+    sendLostGasTo = makeAddr("sendLostGasTo");
 
     messages = new ExportedMessages();
 
-    escrow = new IncentivizedWormholeEscrow(address(messages));
+    escrow = new IncentivizedWormholeEscrow(sendLostGasTo, address(messages));
 
     _DESTINATION_IDENTIFIER = bytes32(uint256(messages.chainId()));
 
-    escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+    escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
     // initialize guardian set with one guardian
     address[] memory keys = new address[](1);
@@ -129,7 +132,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
     IncentiveDescription storage incentive = _INCENTIVE;
 
     vm.recordLogs();
-    (uint256 gasRefund, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+    (uint256 gasRefund, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
         _DESTINATION_IDENTIFIER,
         convertEVMTo65(address(this)),
         message,
@@ -145,7 +148,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
     bytes memory validVM = makeValidVM(payload, uint16(uint256(_DESTINATION_IDENTIFIER)), bytes32(uint256(uint160(address(escrow)))));
 
     vm.recordLogs();
-    escrow.processMessage(hex"", validVM, bytes32(uint256(0xdead)));
+    escrow.processPacket(hex"", validVM, bytes32(uint256(0xdead)));
     entries = vm.getRecordedLogs();
 
     (sequence, nonce, payload, consistencyLevel) = abi.decode(
@@ -155,6 +158,6 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
 
     validVM = makeValidVM(payload, uint16(uint256(_DESTINATION_IDENTIFIER)), bytes32(uint256(uint160(address(escrow)))));
 
-    escrow.processMessage(hex"", validVM, bytes32(uint256(0xdead)));
+    escrow.processPacket(hex"", validVM, bytes32(uint256(0xdead)));
   }
 }

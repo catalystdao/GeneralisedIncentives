@@ -9,7 +9,7 @@ contract MessageIdentifierTest is TestCommon {
     function test_unique_identifier_block_10() public {
         vm.roll(10);
         IncentiveDescription storage incentive = _INCENTIVE;
-        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -22,7 +22,7 @@ contract MessageIdentifierTest is TestCommon {
     function test_unique_identifier_block_11() public {
         vm.roll(11);
         IncentiveDescription storage incentive = _INCENTIVE;
-        (, bytes32 messageIdentifier) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -35,7 +35,7 @@ contract MessageIdentifierTest is TestCommon {
     // Even with the same message, the identifier should be different between blocks.
     function test_non_unique_bounty(bytes calldata message) public {
         IncentiveDescription storage incentive = _INCENTIVE;
-        escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             message,
@@ -45,7 +45,7 @@ contract MessageIdentifierTest is TestCommon {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadyBountied()")
         ); 
-        escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             message,
@@ -57,18 +57,18 @@ contract MessageIdentifierTest is TestCommon {
     function test_destination_identifier_impacts_message_identifier() public {
         IncentiveDescription storage incentive = _INCENTIVE;
 
-        escrow.setRemoteEscrowImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)), abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)), abi.encode(address(escrow)));
 
-        (, bytes32 messageIdentifier1) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier1) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
             incentive
         );
 
-        escrow.setRemoteEscrowImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)), abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)), abi.encode(address(escrow)));
 
-        (, bytes32 messageIdentifier2) = escrow.escrowMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        (, bytes32 messageIdentifier2) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

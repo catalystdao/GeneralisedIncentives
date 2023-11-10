@@ -39,7 +39,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
         vm.expectCall(
             address(this),
             abi.encodeCall(
-                application.ackMessage,
+                application.receiveAck,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
                     messageIdentifier,
@@ -52,7 +52,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
         _messageWithContext = messageWithContext;
         _feeRecipitent = feeRecipitent;
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -68,11 +68,11 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
 
     bool flag;
 
-    function ackMessage(bytes32 /* destinationIdentifier */, bytes32 /* messageIdentifier */, bytes calldata acknowledgement) external {
+    function receiveAck(bytes32 /* destinationIdentifier */, bytes32 /* messageIdentifier */, bytes calldata acknowledgement) external {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadyAcked()")
         ); 
-        escrow.processMessage(
+        escrow.processPacket(
             _mockContext,
             _messageWithContext,
             _feeRecipitent

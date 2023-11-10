@@ -21,19 +21,21 @@ contract TestOnRecvCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs, 
     bytes _MESSAGE;
     bytes _DESTINATION_ADDRESS_THIS;
     bytes _DESTINATION_ADDRESS_APPLICATION;
+    address sendLostGasTo;
 
     function setUp() virtual public {
         _REFUND_GAS_TO = makeAddr("Alice");
-        escrow = new OnRecvIncentivizedMockEscrow(address(this));
+        sendLostGasTo = makeAddr("sendLostGasTo");
+        escrow = new OnRecvIncentivizedMockEscrow(sendLostGasTo, address(this));
 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 
         // Set implementations to the escrow address.
         vm.prank(address(application));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         vm.prank(address(this));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         _MESSAGE = abi.encode(keccak256(abi.encode(1)));
         _DESTINATION_ADDRESS_THIS = abi.encodePacked(

@@ -23,7 +23,7 @@ contract GasSpendControlTest is TestCommon {
 
         // Set implementations to the escrow address.
         vm.prank(address(application));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),
@@ -39,7 +39,7 @@ contract GasSpendControlTest is TestCommon {
 
         _INCENTIVE.maxGasDelivery = 193010;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -58,14 +58,14 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 destinationFeeRecipitent,
-                uint48(0x36eb2),  // Gas used
+                uint48(0x36e8d),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
             )
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -83,7 +83,7 @@ contract GasSpendControlTest is TestCommon {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -95,7 +95,7 @@ contract GasSpendControlTest is TestCommon {
 
         _INCENTIVE.maxGasDelivery = 200000;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(application), abi.encodePacked(bytes2(uint16(1000))));
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(application), abi.encodePacked(bytes2(uint16(1000))));
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -104,7 +104,7 @@ contract GasSpendControlTest is TestCommon {
 
         // The strange gas limit of '<gas> + 5000 - 2' here is because <gas> is how much is actually spent (read from trace) and + 5000 - 2 is some kind of refund that
         // the relayer needs to add as extra. (reentry refund)
-        escrow.processMessage{gas: 239891}(
+        escrow.processPacket{gas: 239958}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -126,7 +126,7 @@ contract GasSpendControlTest is TestCommon {
                 )
             )
         );
-        escrow.processMessage{gas: 239891 - 1}(
+        escrow.processPacket{gas: 239958 - 1}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent

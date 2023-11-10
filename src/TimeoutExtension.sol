@@ -14,6 +14,9 @@ import "./MessagePayload.sol";
  * _handleAck. Instead a seperate handler is created to handle these "anomalies".
  */
 abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
+
+    constructor(address sendLostGasTo) IncentivizedMessageEscrow(sendLostGasTo) {}
+
     /**
      * @notice Handles timeout messages.
      * @dev Is very similar to _handleAck
@@ -43,7 +46,7 @@ abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
         fromApplication.call{gas: maxGasAck}(
-            abi.encodeWithSignature("ackMessage(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xff), message[CTX1_MESSAGE_START: ]))
+            abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xfd), message[CTX1_MESSAGE_START: ]))
         );
 
         // Set the gas used on the destination to 15%

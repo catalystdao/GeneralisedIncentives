@@ -7,7 +7,7 @@ import { BadContract } from "../../mocks/BadContract.sol";
 import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver.sol";
 
 
-contract ProcessMessageNoReceiveTest is TestCommon {
+contract processPacketNoReceiveTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
         bytes recipitent,
@@ -19,7 +19,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         application = ICrossChainReceiver(address(new BadContract()));
 
         vm.prank(address(application));
-        escrow.setRemoteEscrowImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
+        escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)));
 
         _DESTINATION_ADDRESS_APPLICATION = abi.encodePacked(
             uint8(20),
@@ -32,7 +32,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
         bytes memory message = _MESSAGE;
         bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupEscrowMessage(address(escrow), message);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(escrow), message);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -54,7 +54,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipitent,
-                uint48(0x8885),  // Gas used
+                uint48(0x8860),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message
@@ -74,7 +74,7 @@ contract ProcessMessageNoReceiveTest is TestCommon {
             )
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent

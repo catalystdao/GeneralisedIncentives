@@ -50,7 +50,7 @@ contract TargetDeltaZeroTest is TestCommon {
             uint128(_receive)
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent

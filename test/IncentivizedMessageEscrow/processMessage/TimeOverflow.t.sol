@@ -46,7 +46,7 @@ contract TimeOverflowTest is TestCommon {
             uint128(_receive)
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -94,7 +94,7 @@ contract TimeOverflowTest is TestCommon {
             uint128(_receive)
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent

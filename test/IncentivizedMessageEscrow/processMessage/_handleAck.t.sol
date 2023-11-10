@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
 
 
-contract ProcessMessageAckTest is TestCommon {
+contract processPacketAckTest is TestCommon {
 
     uint256 _receive;
 
@@ -28,7 +28,7 @@ contract ProcessMessageAckTest is TestCommon {
 
         _receive = GAS_RECEIVE_CONSTANT;
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -65,7 +65,7 @@ contract ProcessMessageAckTest is TestCommon {
         vm.expectCall(
             address(application),
             abi.encodeCall(
-                application.ackMessage,
+                application.receiveAck,
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
                     messageIdentifier,
@@ -74,7 +74,7 @@ contract ProcessMessageAckTest is TestCommon {
             )
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -116,7 +116,7 @@ contract ProcessMessageAckTest is TestCommon {
             uint128(_receive)
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -159,7 +159,7 @@ contract ProcessMessageAckTest is TestCommon {
             uint128(_receive)
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
@@ -208,7 +208,7 @@ contract ProcessMessageAckTest is TestCommon {
             uint128(_receive)
         );
 
-        escrow.processMessage(
+        escrow.processPacket(
             mockContext,
             messageWithContext,
             feeRecipitent
