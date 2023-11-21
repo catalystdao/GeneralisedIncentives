@@ -40,7 +40,7 @@ contract OnRecvTimeoutTest is TestOnRecvCommon {
                 (
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
                     messageIdentifier,
-                    hex"fd234dae75c793f67a35089c9d99245e1c58470b000000124c5fb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
+                    hex"fdb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6"
                 )
             )
         );
