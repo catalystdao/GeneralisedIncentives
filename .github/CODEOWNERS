@@ -1,0 +1,10 @@
+# The default codeowner for the core implementation is
+/src/* @reednaa
+
+# Others teams are welcome to take ownership of their AMB integration.
+# Lets use Mock as a template for how to take ownership.
+
+### Mock ###
+# is base implementation of how Generalised Incentives can be built.
+# As it is implemented, it is a simple multisig scheme where the message is signed.
+/src/apps/mock @reednaa
