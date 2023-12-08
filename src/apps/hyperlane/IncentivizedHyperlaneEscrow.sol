@@ -2,9 +2,10 @@
 pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
-
+import { ReplacementHook } from "./ReplacementHook.sol";
 
 import {IInterchainSecurityModule, ISpecifiesInterchainSecurityModule} from "./interfaces/IInterchainSecurityModule.sol";
+import { IPostDispatchHook } from "./interfaces/hooks/IPostDispatchHook.sol";
 import { Message } from "./libs/Message.sol";
 import { IMailbox } from "./interfaces/IMailbox.sol";
 
@@ -13,15 +14,19 @@ interface IVersioned {
 }
 
 /// @notice Hyperlane implementation of Generalised incentives.
-contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow {
+contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow, ReplacementHook {
     // ============ Libraries ============
 
     using Message for bytes;
 
 
     error BadChainIdentifier();
+    error BadMailboxVersion(uint8 VERSION, uint8 messageVersion);
+    error BadDomain(uint32 localDomain, uint32 messageDestination);
+    error ISMVerificationFailed();
 
-    address CUSTOM_HOOK = address(this); 
+
+    IPostDispatchHook CUSTOM_HOOK = IPostDispatchHook(address(this)); 
     bytes NOTHING = hex"";
 
     uint32 public immutable localDomain;
@@ -37,13 +42,17 @@ contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow {
         VERSION = IVersioned(mailbox_).VERSION();
     }
 
-    function _quoteDispatch() internal view returns(uint256 amount) {
-        amount = MAILBOX.quoteDispatch(uint32(0), address(0), NOTHING, NOTHING, CUSTOM_HOOK);
+    function _requiredHookQuote() internal view returns(uint256 amount) {
+        IPostDispatchHook requiredHook = MAILBOX.requiredHook();
+
+        bytes memory message = NOTHING;
+
+        return amount = requiredHook.quoteDispatch(NOTHING, message);
     }
 
     function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
         asset =  address(0);
-        amount = _quoteDispatch();
+        amount = _requiredHookQuote();
     }
 
     function _getMessageIdentifier(
@@ -60,15 +69,12 @@ contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow {
         );
     }
 
-    function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         /// CHECKS ///
 
         // Check that the message was intended for this mailbox.
-        require(_message.version() == VERSION, "Mailbox: bad version");
-        require(
-            _message.destination() == localDomain,
-            "Mailbox: unexpected destination"
-        );
+        if(VERSION != _message.version()) revert BadMailboxVersion(VERSION, _message.version());
+        if (localDomain != _message.destination()) revert BadDomain(localDomain, _message.destination());
 
         // Get the recipient's ISM.
         address recipient = _message.recipientAddress();
@@ -76,37 +82,22 @@ contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow {
 
         /// EFFECTS ///
 
-        sourceIdentifier = bytes32(_message.origin());
+        sourceIdentifier = bytes32(uint256(_message.origin()));
         implementationIdentifier = abi.encodePacked(_message.sender());
 
         /// INTERACTIONS ///
 
         // Verify the message via the interchain security module.
-        require(
-            ism.verify(_metadata, _message),
-            "Mailbox: ISM verification failed"
-        );
-
-        // Load the identifier for the calling contract.
-        implementationIdentifier = abi.encodePacked(vm.emitterAddress);
-
-        // Local "supposedly" this chain identifier.
-        bytes32 thisChainIdentifier = bytes32(payload[0:32]);
-
-        // Check that the message is intended for this chain.
-        if (thisChainIdentifier != bytes32(uint256(chainId()))) revert BadChainIdentifier();
-
-        // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(bytes2(vm.emitterChainId));
+        if (!ism.verify(_metadata, _message)) revert ISMVerificationFailed();
 
         // Get the application message.
-        message_ = payload[32:];
+        message_ = _message.body();
     }
 
     function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
         // Get the cost of sending wormhole messages.
-        costOfsendPacketInNativeToken = uint128(_quoteDispatch());
-        uint32 destinationDomain = uint32(destinationChainIdentifier);
+        costOfsendPacketInNativeToken = uint128(_requiredHookQuote());
+        uint32 destinationDomain = uint32(uint256(destinationChainIdentifier));
 
         // Handoff the message to hyperlane
         MAILBOX.dispatch{value: costOfsendPacketInNativeToken}(
