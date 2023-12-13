@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 
 // mocks
-import { MockIsm } from "./mocks/mockIsm.sol";
+import { MockIsm } from "./mocks/MockIsm.sol";
 import { MockMailbox } from "./mocks/MockMailbox.sol";
 import { MockApplication } from "../mocks/MockApplication.sol";
 import { ReplacementHook } from "../../src/apps/hyperlane/ReplacementHook.sol";
