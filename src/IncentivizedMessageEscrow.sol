@@ -141,7 +141,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      *     1. That incentive.maxGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
      *     2. That incentive.maxGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
      *     3. The relay incentive is enough to get the message relayed within the expected time. If that is never, this check is not needed.
-     * @param destinationIdentifier 32 bytes which identifies the destination chain. The first 2 bytes are used for gas-saving context. 
+     * @param destinationIdentifier 32 bytes which identifies the destination chain.
      * @param destinationAddress The destination address encoded in 65 bytes: First byte is the length and last 64 is the destination address.
      * @param message The message to be sent to the destination. Please ensure the message is block-unique.
      *     This means that you don't send the same message twice in a single block.
