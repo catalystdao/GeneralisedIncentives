@@ -122,15 +122,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that the provided gas is exact
         if (msg.value != sum) revert IncorrectValueProvided(sum, uint128(msg.value));
 
+        uint96 newPriceOfDeliveryGas = incentive.priceOfDeliveryGas + deliveryGasPriceIncrease;
+        uint96 newPriceOfAckGas = incentive.priceOfAckGas + ackGasPriceIncrease;
         // Update storage.
-        incentive.priceOfDeliveryGas += deliveryGasPriceIncrease;
-        incentive.priceOfAckGas += ackGasPriceIncrease;
+        incentive.priceOfDeliveryGas = newPriceOfDeliveryGas;
+        incentive.priceOfAckGas = newPriceOfAckGas;
 
         // Emit the event with the increased values.
         emit BountyIncreased(
             messageIdentifier,
-            deliveryGasPriceIncrease,
-            ackGasPriceIncrease
+            newPriceOfDeliveryGas,
+            newPriceOfAckGas
         );
     }
 
