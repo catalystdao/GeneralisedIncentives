@@ -62,7 +62,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         if (thisChainIdentifier != bytes32(uint256(chainId()))) revert BadChainIdentifier();
 
         // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(bytes2(vm.emitterChainId));
+        sourceIdentifier = bytes32(uint256(vm.emitterChainId));
 
         // Get the application message.
         message_ = payload[32:];
