@@ -6,9 +6,12 @@ pragma solidity ^0.8.0;
 import "../wormhole/Getters.sol";
 
 contract GettersGetter {
+    error WormholeStateAddressZero();
+    
     Getters immutable public WORMHOLE_STATE;
 
     constructor(address wormholeState) {
+        if (wormholeState == address(0)) revert WormholeStateAddressZero();
         WORMHOLE_STATE = Getters(wormholeState);
     }
 
