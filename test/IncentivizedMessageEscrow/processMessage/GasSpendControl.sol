@@ -90,7 +90,41 @@ contract GasSpendControlTest is TestCommon {
         );
     }
 
-    function test_fail_relayer_has_to_provide_enough_gas() public {
+     function test_relayer_has_to_provide_enough_gas_ack() public {
+        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+
+        _INCENTIVE.maxGasAck = 20000000;  // This is plenty of gas.
+
+        (, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(3000))), destinationFeeRecipitent);
+
+
+        (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
+        bytes memory mockContext = abi.encode(v, r, s);
+
+        // If we don't provide enough gas for the sub call execution (which uses ~730812 gas) then
+        // the transaction will revert. There is more logic associated with the overhead which is why the relayer
+        // needs to provide more than that. 
+        // BUT! This call is intended to fail because the relayer didn't provide enough gas. That is,
+        // if you go trace searching, then the call fails. It actually fails in such a way that the entire transaction
+        // fails early.
+        vm.expectRevert();
+        escrow.processPacket{gas: 742532 + 40000 - 200 - 1}(
+            mockContext,
+            messageWithContext,
+            destinationFeeRecipitent
+        );
+
+        // Notice that we can provide less gas than maxGasAck and still get the transaction to execute.
+        // The strange gas limit of '<gas> + 40000 - 200' is because <gas> is how much is actually spent (read from trace)
+        // and + 40000 - 200 is some kind of refund that the relayer needs to add as extra.
+        escrow.processPacket{gas: 742532 + 40000 - 200}(
+            mockContext,
+            messageWithContext,
+            destinationFeeRecipitent
+        );
+    }
+
+    function test_fail_relayer_has_to_provide_enough_gas_call() public {
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasDelivery = 200000;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
@@ -102,8 +136,6 @@ contract GasSpendControlTest is TestCommon {
 
         uint256 snapshot_num = vm.snapshot();
 
-        // The strange gas limit of '<gas> + 5000 - 2' here is because <gas> is how much is actually spent (read from trace) and + 5000 - 2 is some kind of refund that
-        // the relayer needs to add as extra. (reentry refund)
         escrow.processPacket{gas: 239958}(
             mockContext,
             messageWithContext,
