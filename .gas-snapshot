@@ -41,7 +41,7 @@ TestprocessPacketDisabled:test_process_message_disabled(bytes,bytes,address) (ru
 TimeOverflowTest:test_larger_than_uint_time_is_fine() (gas: 253819)
 TimeOverflowTest:test_overflow_in_unchecked_is_fine() (gas: 255989)
 processPacketAckTest:test_ack_called_event() (gas: 219449)
-processPacketAckTest:test_ack_different_recipitents() (gas: 254122)
+processPacketAckTest:test_ack_different_recipients() (gas: 254122)
 processPacketAckTest:test_ack_less_time_than_expected(uint64,uint64) (runs: 256, μ: 256800, ~: 258981)
 processPacketAckTest:test_ack_more_time_than_expected(uint64,uint64) (runs: 256, μ: 259777, ~: 259777)
 processPacketAckTest:test_ack_process_message() (gas: 214659)

@@ -21,7 +21,7 @@ abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
      * @notice Handles timeout messages.
      * @dev Is very similar to _handleAck
      */
-    function _handleTimeout(bytes32 destinationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
+    function _handleTimeout(bytes32 destinationIdentifier, bytes calldata message, bytes32 feeRecipient, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
@@ -70,14 +70,14 @@ abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
             uint256 maxSum = maxDeliveryGas + maxAckGas;
             refund = maxSum - sumFee;
         }
-        address sourceFeeRecipitent = address(uint160(uint256(feeRecipitent)));
+        address sourceFeeRecipient = address(uint160(uint256(feeRecipient)));
 
         // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
         if(!payable(refundGasTo).send(refund)) {  // If this returns false, it implies that the transfer failed.
             // The result is that this contract still has deliveryFee. As a result, send it somewhere else.
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
-        payable(sourceFeeRecipitent).transfer(ackFee + deliveryFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+        payable(sourceFeeRecipient).transfer(ackFee + deliveryFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
         emit MessageTimedout(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,

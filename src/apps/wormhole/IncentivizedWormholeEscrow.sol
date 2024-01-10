@@ -13,7 +13,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
 
     event WormholeMessage(
         bytes32 destinationIdentifier,
-        bytes recipitent
+        bytes recipient
     );
 
     IWormhole public immutable WORMHOLE;

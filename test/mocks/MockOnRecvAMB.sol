@@ -8,18 +8,18 @@ contract MockOnRecvAMB {
 
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
     function sendPacket(
         bytes32 destinationIdentifier,
-        bytes calldata recipitent,
+        bytes calldata recipient,
         bytes calldata message
     ) external {
         emit Message(
             destinationIdentifier,
-            recipitent,
+            recipient,
             message
         );
     }

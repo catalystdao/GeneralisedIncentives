@@ -54,7 +54,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
       return incentive.maxGasDelivery * incentive.priceOfDeliveryGas + incentive.maxGasAck * incentive.priceOfAckGas;
   }
   
-  event WormholeMessage(bytes32 destinationIdentifier, bytes32 recipitent);
+  event WormholeMessage(bytes32 destinationIdentifier, bytes32 recipient);
 
   bytes32 _DESTINATION_IDENTIFIER;
 

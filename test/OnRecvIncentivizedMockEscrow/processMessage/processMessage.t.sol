@@ -7,12 +7,12 @@ import { TestOnRecvCommon } from "../TestOnRecvCommon.t.sol";
 
 contract TestprocessPacketDisabled is TestOnRecvCommon {
 
-    function test_process_message_disabled(bytes memory mockContext, bytes memory messageWithContext, address feeRecipitent) public {
+    function test_process_message_disabled(bytes memory mockContext, bytes memory messageWithContext, address feeRecipient) public {
         vm.expectRevert();
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            bytes32(uint256(uint160(feeRecipitent)))
+            bytes32(uint256(uint160(feeRecipient)))
         );
     }
 }

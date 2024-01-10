@@ -18,7 +18,7 @@ contract sendPacketPaymentTest is TestCommon {
 
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
@@ -115,7 +115,7 @@ contract sendPacketPaymentTest is TestCommon {
 
     function test_process_message_with_additional_payment(bytes calldata message) external {
         (, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -125,13 +125,13 @@ contract sendPacketPaymentTest is TestCommon {
         escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST}(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
     }
 
     function test_process_message_without_additional_payment(bytes calldata message) external {
         (, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -146,7 +146,7 @@ contract sendPacketPaymentTest is TestCommon {
         escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST - 1}(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
     }
 }
