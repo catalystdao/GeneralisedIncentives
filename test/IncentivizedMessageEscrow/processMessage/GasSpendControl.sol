@@ -58,7 +58,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 destinationFeeRecipitent,
-                uint48(0x36e8d),  // Gas used
+                uint48(0x36eaa),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
@@ -93,9 +93,9 @@ contract GasSpendControlTest is TestCommon {
     function test_fail_relayer_has_to_provide_enough_gas() public {
         bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
 
-        _INCENTIVE.maxGasDelivery = 200000;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
+        _INCENTIVE.maxGasDelivery = 2000000;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(application), abi.encodePacked(bytes2(uint16(1000))));
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(application), abi.encodePacked(bytes2(uint16(10000))));
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -104,7 +104,7 @@ contract GasSpendControlTest is TestCommon {
 
         // The strange gas limit of '<gas> + 5000 - 2' here is because <gas> is how much is actually spent (read from trace) and + 5000 - 2 is some kind of refund that
         // the relayer needs to add as extra. (reentry refund)
-        escrow.processPacket{gas: 239958}(
+        escrow.processPacket{gas: 2039993 + 40000}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent
@@ -113,7 +113,7 @@ contract GasSpendControlTest is TestCommon {
         vm.revertTo(snapshot_num);
 
         // While not perfect, it is a decent way to ensure that the gas delivery is kept true.
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSignature("NotEnoughGasExeuction()"));
         vm.expectCall(
             address(application),
             abi.encodeCall(
@@ -122,11 +122,11 @@ contract GasSpendControlTest is TestCommon {
                     bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
                     messageIdentifier,
                     hex"140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f62849f9a0b5bf2913b396098f7c7019b51a820a",
-                    hex"03e8"
+                    hex"2710"
                 )
             )
         );
-        escrow.processPacket{gas: 239958 - 1}(
+        escrow.processPacket{gas: 2039993}(
             mockContext,
             messageWithContext,
             destinationFeeRecipitent

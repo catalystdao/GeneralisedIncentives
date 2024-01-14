@@ -40,7 +40,7 @@ contract processPacketCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipitent,
-                uint48(0x82a3),  // Gas used
+                uint48(0x829f),  // Gas used
                 uint64(1),
                 mockAck
             )
