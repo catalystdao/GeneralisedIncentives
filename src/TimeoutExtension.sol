@@ -45,9 +45,18 @@ abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
         // Ensure that if the call reverts it doesn't boil up.
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection.
-        (bool success, ) = fromApplication.call{gas: maxGasAck}(
-            abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xfd), message[CTX0_MESSAGE_START: ]))
-        );
+        bytes memory payload = abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xfd), message[CTX0_MESSAGE_START: ]));
+        bool success;
+        assembly ("memory-safe") {
+            // Because Solidity always create RETURNDATACOPY for external calls, even low-level calls where no variables are assigned,
+            // the contract can be attacked by a so called return bomb. This incur additional cost to the relayer they aren't paid for.
+            // To protect the relayer, the call is made in inline assembly.
+            success := call(maxGasAck, fromApplication, 0, add(payload, 0x20), mload(payload), 0, 0)
+            // This is what the call would look like non-assembly.
+            // fromApplication.call{gas: maxGasAck}(
+            //     abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xfd), message[CTX0_MESSAGE_START: ]))
+            // );
+        }
         // Check that enough gas was provided to the application. For further documentation of this statement, check
         // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
         // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
