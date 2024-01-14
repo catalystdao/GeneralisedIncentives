@@ -44,10 +44,16 @@ abstract contract IMETimeoutExtension is IncentivizedMessageEscrow {
         // Deliver the ack to the application.
         // Ensure that if the call reverts it doesn't boil up.
         // We don't need any return values and don't care if the call reverts.
-        // This call implies we need reentry protection, since we need to call it before we delete the incentive map.
-        fromApplication.call{gas: maxGasAck}(
+        // This call implies we need reentry protection.
+        (bool success, ) = fromApplication.call{gas: maxGasAck}(
             abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, abi.encodePacked(bytes1(0xfd), message[CTX0_MESSAGE_START: ]))
         );
+        // Check that enough gas was provided to the application. For further documentation of this statement, check
+        // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
+        // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
+        unchecked {
+            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
+        }
 
         // Set the gas used on the destination to 15%
         uint256 gasSpentOnDestination = maxGasDelivery * 15 / 100;

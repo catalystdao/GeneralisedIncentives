@@ -296,6 +296,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             returns (bytes memory ack) {
                 acknowledgement = ack;
             } catch (bytes memory /* err */) {
+                // Check that enough gas was provided to the application. For further documentation of this statement, check
+                // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
+                // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
+                if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExeuction();
+
                 // Send the message back if the execution failed.
                 // This lets you store information in the message that you can trust 
                 // gets returned. (You just have to understand that the status is appended as the first byte.)
@@ -363,16 +368,39 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // We don't need any return values and don't care if the call reverts.
         // This call implies we need reentry protection.
         bytes memory payload = abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
+        bool success;
         assembly ("memory-safe") {
             // Because Solidity always create RETURNDATACOPY for external calls, even low-level calls where no variables are assigned,
             // the contract can be attacked by a so called return bomb. This incur additional cost to the relayer they aren't paid for.
             // To protect the relayer, the call is made in inline assembly.
-            let success := call(maxGasAck, fromApplication, 0, add(payload, 0x20), mload(payload), 0, 0)
+            success := call(maxGasAck, fromApplication, 0, add(payload, 0x20), mload(payload), 0, 0)
             // This is what the call would look like non-assembly.
             // fromApplication.call{gas: maxGasAck}(
             //     abi.encodeWithSignature("receiveAck(bytes32,bytes32,bytes)", destinationIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ])
             // );
+
         }
+        // External calls are allocated gas according roughly the following: min( gasleft * 63/64, gasArg ).
+        // If there is no check against gasleft, then a relayer could potentially cheat by providing less gas.
+        // Without a check, they only have to provide enough gas such that any further logic executees on 1/64 of gasleft
+        // To ensure maximum compatibility with external tx simulation and gas estimation tools we will check a more complex
+        // but more forgiving expression.
+        // Before the call, there needs to be at least maxGasAck * 64/63 gas available. With that available, then
+        // the call is allocated exactly min((maxGasAck * 64/63) * 63/64 >= , maxGasAck) = maxGasAck.
+        // If the call uses up all of the gas, then there must be maxGasAck * 64/63 - maxGasAck = maxGasAck * 1/63
+        // gas left. It is sufficient to check that smaller limit rather than the larger limit.
+        // Furthermore, if we only check when the call failed we don't have to read gasleft if it is not needed.
+        unchecked {
+            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
+        }
+        // Why is this better (than checking before)?
+        // 1. We only have to check when the call failed. The vast majority of acks should not revert so it won't be checked.
+        // 2. For the majority of applications it is going to be hold that: gasleft > rest of logic > maxGasAck * 1 / 63
+        // and as such won't impact and execution/gas simuatlion/estimation libs.
+        
+        // Why is this worse?
+        // 1. What if the application expected us to check that it got maxGasAck? It might assume that it gets
+        // maxGasAck, when it turns out it got less it silently reverts (say by a low level call ala ours).
 
         // Get the gas used by the destination call.
         uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));

@@ -18,4 +18,5 @@ interface IMessageEscrowErrors {
     error InvalidImplementationAddress();  // c970156c
     error IncorrectValueProvided(uint128 expected, uint128 actual); // 0b52a60b
     error ImplementationAddressAlreadySet(bytes currentImplementation); // dba47850
+    error NotEnoughGasExeuction(); // 6fa3d3bb
 }
