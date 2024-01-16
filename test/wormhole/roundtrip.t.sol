@@ -141,7 +141,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
     Vm.Log[] memory entries = vm.getRecordedLogs();
 
     (uint64 sequence, uint32 nonce, bytes memory payload, uint8 consistencyLevel) = abi.decode(
-      entries[2].data,
+      entries[1].data,
       (uint64, uint32, bytes, uint8)
     );
 
@@ -152,7 +152,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
     entries = vm.getRecordedLogs();
 
     (sequence, nonce, payload, consistencyLevel) = abi.decode(
-      entries[2].data,
+      entries[1].data,
       (uint64, uint32, bytes, uint8)
     );
 
