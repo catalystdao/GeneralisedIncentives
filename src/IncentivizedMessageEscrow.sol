@@ -35,7 +35,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte.
     bytes1 constant public MESSAGE_REVERTED = 0xff;
 
-    /// @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte.
+    /// @notice  If the original sender is not authorised on the application on the destination chain, 1 bytes is sent back instead. This is the byte.
     bytes1 constant public NO_AUTHENTICATION = 0xfe;
 
     /// @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
@@ -59,8 +59,15 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice Send the message to the messaging protocol.
     /// @dev Should be overwritten to send a message using the specific messaging protocol.
+    /// If there is an additional cost to emitting messages, this cost should be caled on the function and returned
+    /// as costOfsendPacketInNativeToken. The function is allowed to take ERC20 tokens (transferFrom(msg.sender,...)) in which case 
+    /// costOfsendPacketInNativeToken should be set to 0.
     function _sendPacket(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal returns(uint128 costOfsendPacketInNativeToken);
 
+    /// @param sendLostGasTo Who should receive Ether which would otherwise block
+    /// execution? It should never be set to a contract which does not implement
+    /// either a fallback or receive function which never revert.
+    /// It can be set to address 0 or a similar burn address if no-one wants to take ownership of the ether.
     constructor(address sendLostGasTo) {
         SEND_LOST_GAS_TO = sendLostGasTo;
     }
@@ -156,6 +163,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata message,
         IncentiveDescription calldata incentive
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
+        if (incentive.refundGasTo == address(0)) revert RefundGasToIsZero();
         // Check that the application has set a destination implementation
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
         // Check that the length is not 0.
@@ -172,7 +180,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Add escrow context to the message.
         bytes memory messageWithContext = abi.encodePacked(
             bytes1(CTX_SOURCE_TO_DESTINATION),    // This is a sendPacket,
-            messageIdentifier,              // An unique identifier to recover identifier to recover 
+            messageIdentifier,              // A unique message identifier
             convertEVMTo65(msg.sender),     // Original sender
             destinationAddress,             // The address to deliver the (original) message to.
             incentive.maxGasDelivery,       // Send the gas limit to the other chain so we can enforce it
@@ -217,20 +225,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Deliver a message which has been *signed* by a messaging protocol.
      * @dev This function is intended to be called by off-chain agents.
-     *  Please ensure that feeRecipitent can receive gas token: Either it is an EOA or a implement fallback() / receive().
+     *  Please ensure that feeRecipient can receive gas token: Either it is an EOA or a implement fallback() / receive().
      *  Likewise for any non-evm chains. Otherwise the message fails (ack) or the relay payment is lost (call).
      *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call might fail.
      * On Receive implementations make _verifyPacket revert. The result is
      * that this endpoint is disabled.
      * @param messagingProtocolContext Additional context required to verify the message by the messaging protocol.
      * @param rawMessage The raw message as it was emitted.
-     * @param feeRecipitent An identifier for the the fee recipitent. The identifier should identify the relayer on the source chain.
+     * @param feeRecipient An identifier for the the fee recipient. The identifier should identify the relayer on the source chain.
      *  For EVM (and this contract as a source), use the bytes32 encoded address. For other VMs you might have to register your address.
      */
     function processPacket(
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage,
-        bytes32 feeRecipitent
+        bytes32 feeRecipient
     ) external virtual payable {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
 
@@ -240,12 +248,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Figure out if this is a call or an ack.
         bytes1 context = bytes1(message[0]);
         if (context == CTX_SOURCE_TO_DESTINATION) {
-            bytes memory receiveAckWithContext = _handleMessage(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
+            bytes memory receiveAckWithContext = _handleMessage(chainIdentifier, implementationIdentifier, message, feeRecipient, gasLimit);
 
             // The cost management is made by _sendPacket so we don't have to check if enough gas has been provided.
             _sendPacket(chainIdentifier, implementationIdentifier, receiveAckWithContext);
         } else if (context == CTX_DESTINATION_TO_SOURCE) {
-            _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipitent, gasLimit);
+            _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipient, gasLimit);
         } else {
             revert NotImplementedError();
         }
@@ -256,7 +264,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles call messages.
      */
-    function _handleMessage(bytes32 sourceIdentifier, bytes memory sourceImplementationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal returns(bytes memory receiveAckWithContext) {
+    function _handleMessage(bytes32 sourceIdentifier, bytes memory sourceImplementationIdentifier, bytes calldata message, bytes32 feeRecipient, uint256 gasLimit) internal returns(bytes memory receiveAckWithContext) {
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
@@ -317,7 +325,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             bytes1(CTX_DESTINATION_TO_SOURCE),    // This is a sendPacket
             messageIdentifier,              // message identifier
             fromApplication,
-            feeRecipitent,
+            feeRecipient,
             uint48(gasLimit - gasleft()),   // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
             uint64(block.timestamp),        // If this overflows, it is fine. It is used in conjunction with a delta.
             acknowledgement
@@ -338,7 +346,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Handles ack messages.
      */
-    function _handleAck(bytes32 destinationIdentifier, bytes memory destinationImplementationIdentifier, bytes calldata message, bytes32 feeRecipitent, uint256 gasLimit) internal {
+    function _handleAck(bytes32 destinationIdentifier, bytes memory destinationImplementationIdentifier, bytes calldata message, bytes32 feeRecipient, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
@@ -429,11 +437,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if(!payable(refundGasTo).send(refund)) {
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
-        address destinationFeeRecipitent = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPIENT_START:CTX1_RELAYER_RECIPITENT_END]))));
-        address sourceFeeRecipitent = address(uint160(uint256(feeRecipitent)));
+        address destinationFeeRecipient = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPIENT_START:CTX1_RELAYER_RECIPIENT_END]))));
+        address sourceFeeRecipient = address(uint160(uint256(feeRecipient)));
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
-        if (destinationFeeRecipitent == sourceFeeRecipitent) {
-            payable(sourceFeeRecipitent).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+        if (destinationFeeRecipient == sourceFeeRecipient) {
+            payable(sourceFeeRecipient).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             emit MessageAcked(messageIdentifier);
             emit BountyClaimed(
                 messageIdentifier,
@@ -448,11 +456,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
             // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
-            if(!payable(destinationFeeRecipitent).send(deliveryFee)) {  // If this returns false, it implies that the transfer failed.
+            if(!payable(destinationFeeRecipient).send(deliveryFee)) {  // If this returns false, it implies that the transfer failed.
                 // The result is that this contract still has deliveryFee. As a result, send it somewhere else.
                 payable(SEND_LOST_GAS_TO).transfer(deliveryFee);  // If we don't send the gas somewhere, the gas is lost forever.
             }
-            payable(sourceFeeRecipitent).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+            payable(sourceFeeRecipient).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             emit MessageAcked(messageIdentifier);
             emit BountyClaimed(
                 messageIdentifier,
@@ -486,21 +494,21 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 forDestinationRelayer += ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
             } else {
                 // More time than target passed and the ack relayer should get a larger chunk.
-                // If more time than the target passed, the ack relayer should get everything.
+                // If more time than double the target passed, the ack relayer should get everything
                 if (uint256(timeBetweenTargetAndExecution) < targetDelta) {
                     // targetDelta != 0, we checked for that. 
                     // max abs timeBetweenTargetAndExecution = targetDelta since we have the above check
                     // => deliveryFee * targetDelta < actualFee * targetDelta < 2**127 * 2**64 = 2**191
                     forDestinationRelayer -= deliveryFee * uint256(timeBetweenTargetAndExecution) / targetDelta;
                 } else {
-                    // This doesn't discourage relaying, since executionTime first begins counting once the destinaion call has been executed.
-                    // As a result, this only encorages delivery of the ack.
+                    // This doesn't discourage relaying, since executionTime first begins counting once the destination call has been executed.
+                    // As a result, this only encourages delivery of the ack.
                     forDestinationRelayer = 0;
                 }
             }
         }
         // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-        if(!payable(destinationFeeRecipitent).send(forDestinationRelayer)) {
+        if(!payable(destinationFeeRecipient).send(forDestinationRelayer)) {
             payable(SEND_LOST_GAS_TO).transfer(forDestinationRelayer);  // If we don't send the gas somewhere, the gas is lost forever.
         }
         uint256 forSourceRelayer;
@@ -509,7 +517,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // min forDestinationRelayer = 0 => actualFee - 0 = actualFee
             forSourceRelayer = actualFee - forDestinationRelayer;
         }
-        payable(sourceFeeRecipitent).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+        payable(sourceFeeRecipient).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(

@@ -11,18 +11,18 @@ contract TimeOverflowTest is TestCommon {
 
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
     function test_larger_than_uint_time_is_fine() public {
         vm.warp(2**64 + 1 days);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(BOB)));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         vm.warp(2**64 + 1 days + _INCENTIVE.targetDelta);
 
@@ -49,7 +49,7 @@ contract TimeOverflowTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
@@ -66,11 +66,11 @@ contract TimeOverflowTest is TestCommon {
         require(uint64(initialTime) > uint64(postTime));  // This is what we want to ensure works properly.
         vm.warp(initialTime);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(BOB)));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         vm.warp(postTime);
 
@@ -97,7 +97,7 @@ contract TimeOverflowTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");

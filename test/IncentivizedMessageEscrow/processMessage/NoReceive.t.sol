@@ -10,7 +10,7 @@ import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver
 contract processPacketNoReceiveTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
@@ -30,7 +30,7 @@ contract processPacketNoReceiveTest is TestCommon {
     
     function test_application_does_not_implement_interface() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(escrow), message);
 
@@ -77,7 +77,7 @@ contract processPacketNoReceiveTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
     }
 }

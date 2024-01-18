@@ -118,7 +118,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         return (messageIdentifier, abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext));
     }
 
-    function setupprocessPacket(bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes memory) {
+    function setupprocessPacket(bytes memory message, bytes32 destinationFeeRecipient) internal returns(bytes memory) {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(message);
         bytes memory mockContext = abi.encode(v, r, s);
 
@@ -127,7 +127,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         escrow.processPacket{value: cost}(
             mockContext,
             message,
-            destinationFeeRecipitent
+            destinationFeeRecipient
         );
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
@@ -137,10 +137,10 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         return abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext);
     }
 
-    function setupForAck(address fromAddress, bytes memory message, bytes32 destinationFeeRecipitent) internal returns(bytes32, bytes memory) {
+    function setupForAck(address fromAddress, bytes memory message, bytes32 destinationFeeRecipient) internal returns(bytes32, bytes memory) {
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(fromAddress, message);
 
-        return (messageIdentifier, setupprocessPacket(messageWithContext, destinationFeeRecipitent));
+        return (messageIdentifier, setupprocessPacket(messageWithContext, destinationFeeRecipient));
     }
     
 }

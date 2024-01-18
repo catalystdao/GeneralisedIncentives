@@ -18,7 +18,7 @@ pragma solidity ^0.8.13;
 //     => MESSAGE_START                 169 (remainder)
 //
 //    CTX1 - 0x01 - Destination to Source
-//      + RELAYER_RECIPITENT            98  (32 bytes)
+//      + RELAYER_RECIPIENT            98  (32 bytes)
 //      + GAS_SPENT                     130 (6 bytes)
 //      + EXECUTION_TIME                136 (8 bytes)
 //     => MESSAGE_START                 144 (remainder)
@@ -58,7 +58,7 @@ uint constant CTX0_MESSAGE_START                    = 169;
 // CTX1 Destination to Source **************************************************************************************************
 
 uint constant CTX1_RELAYER_RECIPIENT_START         = 98;
-uint constant CTX1_RELAYER_RECIPITENT_END           = 130;
+uint constant CTX1_RELAYER_RECIPIENT_END           = 130;
 
 uint constant CTX1_GAS_SPENT_START                  = 130;
 uint constant CTX1_GAS_SPENT_END                    = 136;

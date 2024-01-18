@@ -9,7 +9,7 @@ contract OnRecvCallTest is TestOnRecvCommon {
 
     function test_on_call() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         vm.recordLogs();
         payable(address(application)).transfer(_getTotalIncentive(_INCENTIVE));

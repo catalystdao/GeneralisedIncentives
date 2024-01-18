@@ -68,7 +68,7 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
     function processPacket(
         bytes calldata /* messagingProtocolContext */,
         bytes calldata /* rawMessage */,
-        bytes32 /* feeRecipitent */
+        bytes32 /* feeRecipient */
     ) external override payable {
         revert NotImplemented();
     }
@@ -77,11 +77,11 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
         bytes32 chainIdentifier,
         bytes calldata sourceImplementationIdentifier,
         bytes calldata rawMessage,
-        bytes32 feeRecipitent
+        bytes32 feeRecipient
     ) onlyMessagingProtocol external {
-        // _onReceive(chainIdentifier, rawMessage, feeRecipitent);
+        // _onReceive(chainIdentifier, rawMessage, feeRecipient);
         uint256 gasLimit = gasleft();
-        bytes memory receiveAck = _handleMessage(chainIdentifier, sourceImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
+        bytes memory receiveAck = _handleMessage(chainIdentifier, sourceImplementationIdentifier, rawMessage, feeRecipient, gasLimit);
 
         // Send ack:
         _sendPacket(chainIdentifier, sourceImplementationIdentifier, receiveAck);
@@ -94,24 +94,24 @@ contract OnRecvIncentivizedMockEscrow is IMETimeoutExtension {
         bytes32 chainIdentifier,
         bytes calldata destinationImplementationIdentifier,
         bytes calldata rawMessage,
-        bytes32 feeRecipitent
+        bytes32 feeRecipient
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
         isVerifiedMessageHash[keccak256(rawMessage)] = VerifiedMessageHashContext({
             chainIdentifier: chainIdentifier,
             implementationIdentifier: destinationImplementationIdentifier
         });
-        _handleAck(chainIdentifier, destinationImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
+        _handleAck(chainIdentifier, destinationImplementationIdentifier, rawMessage, feeRecipient, gasLimit);
     }
 
     // For timeouts, we need to construct the message.
     function onTimeout(
         bytes32 chainIdentifier,
         bytes calldata rawMessage,
-        bytes32 feeRecipitent
+        bytes32 feeRecipient
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
-        _handleTimeout(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+        _handleTimeout(chainIdentifier, rawMessage, feeRecipient, gasLimit);
     }
 
     // * Send to messaging_protocol 

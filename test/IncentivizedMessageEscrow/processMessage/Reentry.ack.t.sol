@@ -9,7 +9,7 @@ import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver
 contract AckReentryTest is TestCommon, ICrossChainReceiver {
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
@@ -20,7 +20,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
 
     function test_reentry_on_ack_message() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         application = ICrossChainReceiver(address(this));
 
@@ -30,7 +30,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
             bytes32(uint256(uint160((address(this)))))
         );
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(escrow), message, feeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(escrow), message, feeRecipient);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -50,12 +50,12 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
 
         _mockContext = mockContext;
         _messageWithContext = messageWithContext;
-        _feeRecipitent = feeRecipitent;
+        _feeRecipient = feeRecipient;
 
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(flag, true, "Reentry protection not working as expected on ack.");
@@ -64,7 +64,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
     // reentry variables
     bytes _mockContext;
     bytes _messageWithContext;
-    bytes32 _feeRecipitent;
+    bytes32 _feeRecipient;
 
     bool flag;
 
@@ -75,7 +75,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
         escrow.processPacket(
             _mockContext,
             _messageWithContext,
-            _feeRecipitent
+            _feeRecipient
         );
 
         // if this reverts (because vm.expectRevert didn't handle the revert), then the next line is not hit.

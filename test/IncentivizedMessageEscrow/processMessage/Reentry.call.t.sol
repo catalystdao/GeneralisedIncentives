@@ -9,13 +9,13 @@ import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver
 contract CallReentryTest is TestCommon, ICrossChainReceiver {
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
     function test_reentry_on_call_message() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         application = ICrossChainReceiver(address(this));
 
@@ -46,7 +46,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
 
         _mockContext = mockContext;
         _messageWithContext = messageWithContext;
-        _feeRecipitent = feeRecipitent;
+        _feeRecipient = feeRecipient;
 
         vm.expectEmit();
         emit Message(
@@ -69,7 +69,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(flag, true, "Reentry protection not working as expected on call.");
@@ -78,7 +78,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
     // reentry variables
     bytes _mockContext;
     bytes _messageWithContext;
-    bytes32 _feeRecipitent;
+    bytes32 _feeRecipient;
 
     bool flag;
 
@@ -90,7 +90,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
         escrow.processPacket(
             _mockContext,
             _messageWithContext,
-            _feeRecipitent
+            _feeRecipient
         );
 
         flag = true;

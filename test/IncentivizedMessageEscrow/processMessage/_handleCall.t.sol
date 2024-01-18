@@ -8,13 +8,13 @@ import { TestCommon } from "../../TestCommon.t.sol";
 contract processPacketCallTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
     function test_call_process_message() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
 
@@ -62,13 +62,13 @@ contract processPacketCallTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
     }
 
     function test_call_process_message_twice() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         (, bytes memory messageWithContext) = setupsubmitMessage(address(application), message);
 
@@ -78,7 +78,7 @@ contract processPacketCallTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         vm.expectRevert(
@@ -87,14 +87,14 @@ contract processPacketCallTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
     }
 
     function test_expect_caller(address caller) public {
         vm.assume(caller != 0x2e234DAe75C793f67A35089C9d99245E1C58470b);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         vm.prank(caller);
         escrow.setRemoteImplementation(_DESTINATION_IDENTIFIER, abi.encode(escrow));
@@ -136,7 +136,7 @@ contract processPacketCallTest is TestCommon {
         escrow.processPacket(
             _metadata,
             newMessage,
-            feeRecipitent
+            feeRecipient
         );
     }
 }

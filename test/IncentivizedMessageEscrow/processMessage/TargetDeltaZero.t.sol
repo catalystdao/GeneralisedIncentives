@@ -19,11 +19,11 @@ contract TargetDeltaZeroTest is TestCommon {
     function test_target_delta_zero(uint16 timePassed) public {
         vm.warp(1000);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(BOB)));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         vm.warp(uint256(1000) + uint256(timePassed));
 
@@ -53,7 +53,7 @@ contract TargetDeltaZeroTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");

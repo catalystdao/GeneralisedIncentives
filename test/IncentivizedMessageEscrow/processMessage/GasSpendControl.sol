@@ -10,7 +10,7 @@ import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver
 contract GasSpendControlTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
@@ -35,7 +35,7 @@ contract GasSpendControlTest is TestCommon {
     function test_process_delivery_gas() public {
         bytes memory message = abi.encodePacked(bytes2(uint16(1000)));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasDelivery = 193010;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
@@ -68,16 +68,16 @@ contract GasSpendControlTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            destinationFeeRecipitent
+            destinationFeeRecipient
         );
     }
 
     function test_process_ack_gas() public {
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasAck = 193010;  // This is not enough gas to execute the Ack. We should expect the sub-call to revert but the main call shouldn't.
 
-        (, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(1000))), destinationFeeRecipitent);
+        (, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(1000))), destinationFeeRecipient);
 
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
@@ -86,12 +86,12 @@ contract GasSpendControlTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            destinationFeeRecipitent
+            destinationFeeRecipient
         );
     }
 
     function test_fail_relayer_has_to_provide_enough_gas() public {
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasDelivery = 2000000;  // This is not enough gas to execute the receiveCall. We should expect the sub-call to revert but the main call shouldn't.
 
@@ -107,7 +107,7 @@ contract GasSpendControlTest is TestCommon {
         escrow.processPacket{gas: 2039993 + 40000}(
             mockContext,
             messageWithContext,
-            destinationFeeRecipitent
+            destinationFeeRecipient
         );
 
         vm.revertTo(snapshot_num);
@@ -129,7 +129,7 @@ contract GasSpendControlTest is TestCommon {
         escrow.processPacket{gas: 2039993}(
             mockContext,
             messageWithContext,
-            destinationFeeRecipitent
+            destinationFeeRecipient
         );
     }
     

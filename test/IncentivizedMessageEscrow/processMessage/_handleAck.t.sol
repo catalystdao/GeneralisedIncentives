@@ -11,17 +11,17 @@ contract processPacketAckTest is TestCommon {
 
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
     function test_ack_process_message() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
-        (, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -31,7 +31,7 @@ contract processPacketAckTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(_REFUND_GAS_TO.balance, _getTotalIncentive(_INCENTIVE) - _receive, "Refund");
@@ -39,11 +39,11 @@ contract processPacketAckTest is TestCommon {
 
     function test_ack_called_event() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -77,7 +77,7 @@ contract processPacketAckTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         // Check that the bounty has been deleted.
@@ -85,14 +85,14 @@ contract processPacketAckTest is TestCommon {
         assertEq(incentive.refundGasTo, address(0));
     }
 
-    function test_ack_different_recipitents() public {
+    function test_ack_different_recipients() public {
         vm.warp(1);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(BOB)));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         vm.warp(_INCENTIVE.targetDelta + 1);
 
@@ -119,7 +119,7 @@ contract processPacketAckTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
@@ -130,11 +130,11 @@ contract processPacketAckTest is TestCommon {
         _INCENTIVE.targetDelta = targetDelta;
         vm.warp(1);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(BOB)));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         vm.warp(timePassed + 1);
 
@@ -162,7 +162,7 @@ contract processPacketAckTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
@@ -179,11 +179,11 @@ contract processPacketAckTest is TestCommon {
         _INCENTIVE.targetDelta = targetDelta;
         vm.warp(1);
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(BOB)));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(BOB)));
 
-        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipitent);
+        (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
         vm.warp(timePassed + 1);
 
@@ -211,7 +211,7 @@ contract processPacketAckTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            feeRecipitent
+            feeRecipient
         );
 
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
