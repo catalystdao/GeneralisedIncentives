@@ -11,11 +11,6 @@ import { IWormhole } from "./interfaces/IWormhole.sol";
 contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifier {
     error BadChainIdentifier();
 
-    event WormholeMessage(
-        bytes32 destinationIdentifier,
-        bytes recipient
-    );
-
     IWormhole public immutable WORMHOLE;
 
     constructor(address sendLostGasTo, address wormhole_) IncentivizedMessageEscrow(sendLostGasTo) WormholeVerifier(wormhole_) {
@@ -62,18 +57,17 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         if (thisChainIdentifier != bytes32(uint256(chainId()))) revert BadChainIdentifier();
 
         // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(bytes2(vm.emitterChainId));
+        sourceIdentifier = bytes32(uint256(vm.emitterChainId));
 
         // Get the application message.
         message_ = payload[32:];
     }
 
-    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory /* destinationImplementation */, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
         // Get the cost of sending wormhole messages.
         costOfsendPacketInNativeToken = uint128(WORMHOLE.messageFee());
 
-        // Emit context for relayers so they know where to send the message
-        emit WormholeMessage(destinationChainIdentifier, destinationImplementation);
+        // Relayers can collect the destination chain from the payload and destination address from storage.
 
         // Handoff the message to wormhole.
         WORMHOLE.publishMessage{value: costOfsendPacketInNativeToken}(

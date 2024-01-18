@@ -159,6 +159,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata message,
         IncentiveDescription calldata incentive
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
+        if (incentive.refundGasTo == address(0)) revert RefundGasToIsZero();
         // Check that the application has set a destination implementation
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
         // Check that the length is not 0.
