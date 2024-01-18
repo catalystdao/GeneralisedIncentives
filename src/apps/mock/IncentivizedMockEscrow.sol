@@ -12,7 +12,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     uint256 public costOfMessages;
     uint256 public accumulator = 1;
 
-    event Message(bytes32 destinationIdentifier, bytes recipitent, bytes message);
+    event Message(bytes32 destinationIdentifier, bytes recipient, bytes message);
 
     constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_) IncentivizedMessageEscrow(sendLostGasTo) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;

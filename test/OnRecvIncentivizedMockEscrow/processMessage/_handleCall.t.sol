@@ -9,7 +9,7 @@ contract OnRecvCallTest is TestOnRecvCommon {
 
     function test_on_call() public {
         bytes memory message = _MESSAGE;
-        bytes32 feeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         vm.recordLogs();
         payable(address(application)).transfer(_getTotalIncentive(_INCENTIVE));
@@ -43,7 +43,7 @@ contract OnRecvCallTest is TestOnRecvCommon {
                 bytes1(0x01),
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
-                feeRecipitent,
+                feeRecipient,
                 uint48(0x6b0a),  // Gas used
                 uint64(1),
                 hex"d9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b"

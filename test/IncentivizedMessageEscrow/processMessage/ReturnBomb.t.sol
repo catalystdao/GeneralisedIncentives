@@ -10,7 +10,7 @@ import { ICrossChainReceiver } from "../../../src/interfaces/ICrossChainReceiver
 contract ReturnBombTest is TestCommon {
     event Message(
         bytes32 destinationIdentifier,
-        bytes recipitent,
+        bytes recipient,
         bytes message
     );
 
@@ -34,11 +34,11 @@ contract ReturnBombTest is TestCommon {
 
 
     function test_process_ack_gas() public {
-        bytes32 destinationFeeRecipitent = bytes32(uint256(uint160(address(this))));
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
         _INCENTIVE.maxGasAck = 10000000;  // This is not enough gas to execute the Ack. We should expect the sub-call to revert but the main call shouldn't.
 
-        (, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(1))), destinationFeeRecipitent);
+        (, bytes memory messageWithContext) = setupForAck(address(application), abi.encodePacked(bytes2(uint16(1))), destinationFeeRecipient);
 
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
@@ -48,7 +48,7 @@ contract ReturnBombTest is TestCommon {
         escrow.processPacket(
             mockContext,
             messageWithContext,
-            destinationFeeRecipitent
+            destinationFeeRecipient
         );
         uint256 afterReturnBomb = gasleft();
 
