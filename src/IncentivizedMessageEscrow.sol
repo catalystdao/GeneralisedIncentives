@@ -64,6 +64,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// costOfsendPacketInNativeToken should be set to 0.
     function _sendPacket(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal returns(uint128 costOfsendPacketInNativeToken);
 
+    /// @param sendLostGasTo Who should receive Ether which would otherwise block
+    /// execution? It should never be set to a contract which does not implement
+    /// either a fallback or receive function which never revert.
+    /// It can be set to address 0 or a similar burn address if no-one wants to take ownership of the ether.
     constructor(address sendLostGasTo) {
         SEND_LOST_GAS_TO = sendLostGasTo;
     }
