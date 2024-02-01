@@ -47,7 +47,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
 
         // Check if the owner called renounceOwnership().
-        require(owner() != address(0), "Contract Disabled");
+        require(address(0) != owner(), "Contract Disabled");
 
         // Get signature from message payload
         (uint8 v, bytes32 r, bytes32 s) = abi.decode(_metadata, (uint8, bytes32, bytes32));
@@ -77,7 +77,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
 
     function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
         // Check if the owner called renounceOwnership().
-        require(owner() != address(0), "Contract Disabled");
+        require(address(0) != owner(), "Contract Disabled");
         
         emit Message(
             destinationChainIdentifier,
