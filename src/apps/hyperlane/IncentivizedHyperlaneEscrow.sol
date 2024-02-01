@@ -82,6 +82,7 @@ contract IncentivizedHyperlaneEscrow is IncentivizedMessageEscrow, ReplacementHo
     ) internal override view returns(bytes32) {
         return keccak256(
             abi.encodePacked(
+                msg.sender,
                 bytes32(block.number),
                 localDomain, 
                 destinationIdentifier,
