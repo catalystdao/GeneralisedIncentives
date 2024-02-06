@@ -451,121 +451,29 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // maxGasAck, when it turns out it got less it silently reverts (say by a low level call ala ours).
 
         // Get the gas used by the destination call.
-        uint256 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
+        uint48 gasSpentOnDestination = uint48(bytes6(message[CTX1_GAS_SPENT_START:CTX1_GAS_SPENT_END]));
 
-        // Find the respective rewards for delivery and ack.
-        uint256 deliveryFee; uint256 ackFee; uint256 actualFee; uint256 refund; uint256 gasSpentOnSource;
-        unchecked {
-            // gasSpentOnDestination * priceOfDeliveryGas < 2**48 * 2**96 = 2**144
-            if (maxGasDelivery <= gasSpentOnDestination) gasSpentOnDestination = maxGasDelivery;  // If more gas was spent then allocated, then only use the allocation.
-            deliveryFee = gasSpentOnDestination * priceOfDeliveryGas;  
-            // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
-            // gasLimit = gasleft() when less gas was spent, thus it is always larger than gasleft().
-            gasSpentOnSource = gasLimit - gasleft();
-            if (maxGasAck <= gasSpentOnSource) gasSpentOnSource = maxGasAck;  // If more gas was spent then allocated, then only use the allocation.
-            // gasSpentOnSource * priceOfAckGas < 2**48 * 2**96 = 2**144
-            ackFee = gasSpentOnSource * priceOfAckGas;  
-            // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
-            actualFee = deliveryFee + ackFee;
-            // (priceOfDeliveryGas * maxGasDelivery + priceOfDeliveryGas * maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
-            uint256 maxDeliveryFee = maxGasDelivery * priceOfDeliveryGas;
-            uint256 maxAckFee = maxGasAck * priceOfAckGas;
-            uint256 maxFee = maxDeliveryFee + maxAckFee;
-            refund = maxFee - actualFee;
-        }
-        // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-        if(!payable(refundGasTo).send(refund)) {
-            payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
-        }
-        address destinationFeeRecipient = address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPIENT_START:CTX1_RELAYER_RECIPIENT_END]))));
-        address sourceFeeRecipient = address(uint160(uint256(feeRecipient)));
-        // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
-        if (destinationFeeRecipient == sourceFeeRecipient) {
-            payable(sourceFeeRecipient).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
-            emit MessageAcked(messageIdentifier);
-            emit BountyClaimed(
-                messageIdentifier,
-                uint64(gasSpentOnDestination),
-                uint64(gasSpentOnSource),
-                uint128(actualFee),
-                0
-            );
-            return;
-        }
-
-        // If targetDelta is 0, then distribute exactly the rewards.
-        if (targetDelta == 0) {
-            // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
-            if(!payable(destinationFeeRecipient).send(deliveryFee)) {  // If this returns false, it implies that the transfer failed.
-                // The result is that this contract still has deliveryFee. As a result, send it somewhere else.
-                payable(SEND_LOST_GAS_TO).transfer(deliveryFee);  // If we don't send the gas somewhere, the gas is lost forever.
-            }
-            payable(sourceFeeRecipient).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
-            emit MessageAcked(messageIdentifier);
-            emit BountyClaimed(
-                messageIdentifier,
-                uint64(gasSpentOnDestination),
-                uint64(gasSpentOnSource),
-                uint128(deliveryFee),
-                uint128(ackFee)
-            );
-            return;
-        }
-        // Compute the reward distribution. We need the time it took to deliver the ack back.
-        uint64 executionTime;
-        unchecked {
-            // Underflow is desired in this code chuck. It ensures that the code piece continues working
-            // past the time when uint64 stops working. *As long as any timedelta is less than uint64.
-            executionTime = uint64(block.timestamp) - uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]));
-        }
-        // The incentive scheme is as follows: When executionTime = targetDelta then 
-        // The rewards are distributed as per the incentive spec. If the time is less, then
-        // more incentives are given to the destination relayer while if the time is more, 
-        // then more incentives are given to the sourceRelayer.
-        uint256 forDestinationRelayer = deliveryFee;
-        unchecked {
-            // |targetDelta - executionTime| < |2**64 + 2**64| = 2**65
-            int256 timeBetweenTargetAndExecution = int256(uint256(executionTime))-int256(uint256(targetDelta));
-            if (timeBetweenTargetAndExecution <= 0) {
-                // Less time than target passed and the destination relayer should get a larger chunk.
-                // targetDelta != 0, we checked for that. 
-                // max abs timeBetweenTargetAndExecution = | - targetDelta| = targetDelta => ackFee * targetDelta < actualFee * targetDelta
-                //  2**127 * 2**64 = 2**191
-                forDestinationRelayer += ackFee * uint256(- timeBetweenTargetAndExecution) / targetDelta;
-            } else {
-                // More time than target passed and the ack relayer should get a larger chunk.
-                // If more time than double the target passed, the ack relayer should get everything
-                if (uint256(timeBetweenTargetAndExecution) < targetDelta) {
-                    // targetDelta != 0, we checked for that. 
-                    // max abs timeBetweenTargetAndExecution = targetDelta since we have the above check
-                    // => deliveryFee * targetDelta < actualFee * targetDelta < 2**127 * 2**64 = 2**191
-                    forDestinationRelayer -= deliveryFee * uint256(timeBetweenTargetAndExecution) / targetDelta;
-                } else {
-                    // This doesn't discourage relaying, since executionTime first begins counting once the destination call has been executed.
-                    // As a result, this only encourages delivery of the ack.
-                    forDestinationRelayer = 0;
-                }
-            }
-        }
-        // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
-        if(!payable(destinationFeeRecipient).send(forDestinationRelayer)) {
-            payable(SEND_LOST_GAS_TO).transfer(forDestinationRelayer);  // If we don't send the gas somewhere, the gas is lost forever.
-        }
-        uint256 forSourceRelayer;
-        unchecked {
-            // max forDestinationRelayer is deliveryFee + ackFee = actualFee => actualFee - forDestinationRelayer == 0
-            // min forDestinationRelayer = 0 => actualFee - 0 = actualFee
-            forSourceRelayer = actualFee - forDestinationRelayer;
-        }
-        payable(sourceFeeRecipient).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
+        (uint256 gasSpentOnSource, uint256 deliveryFee, uint256 ackFee) = _payoutIncentive(
+            gasLimit,
+            gasSpentOnDestination,
+            maxGasDelivery,
+            priceOfDeliveryGas,
+            maxGasAck,
+            priceOfAckGas,
+            refundGasTo,
+            address(uint160(uint256(bytes32(message[CTX1_RELAYER_RECIPIENT_START:CTX1_RELAYER_RECIPIENT_END])))),
+            address(uint160(uint256(feeRecipient))),
+            targetDelta,
+            uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]))
+        );
 
         emit MessageAcked(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,
             uint64(gasSpentOnDestination),
             uint64(gasSpentOnSource),
-            uint128(forDestinationRelayer),
-            uint128(forSourceRelayer)
+            uint128(deliveryFee),
+            uint128(ackFee)
         );
     }
 
@@ -617,57 +525,46 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
         }
 
-        // Set the gas used on the destination to 15%
-        uint256 gasSpentOnDestination = maxGasDelivery * 15 / 100;
+        (uint256 gasSpentOnSource, uint256 deliveryFee, uint256 ackFee) = _payoutIncentive(
+            gasLimit,
+            maxGasDelivery, // We set gas spent on destination as the entire allowance.
+            maxGasDelivery,
+            priceOfDeliveryGas,
+            maxGasAck,
+            priceOfAckGas,
+            refundGasTo,
+            address(uint160(uint256(feeRecipient))),
+            address(uint160(uint256(feeRecipient))),
+            0, // Disable target delta, since there is only 1 relayer.
+            0
+        );
 
-        // Find the respective rewards for delivery and ack.
-        uint256 deliveryFee; uint256 ackFee; uint256 sumFee; uint256 refund; uint256 gasSpentOnSource;
-        unchecked {
-            deliveryFee = gasSpentOnDestination * priceOfDeliveryGas;  
-            // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
-            // gasLimit = gasleft() when less gas was spent, thus it is always larger than gasleft().
-            gasSpentOnSource = gasLimit - gasleft();
-            if (maxGasAck <= gasSpentOnSource) gasSpentOnSource = maxGasAck;  // If more gas was spent then allocated, then only use the allocation.
-            // gasSpentOnSource * priceOfAckGas < 2**48 * 2**96 = 2**144
-            ackFee = gasSpentOnSource * priceOfAckGas;  
-            // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
-            sumFee = deliveryFee + ackFee;
-            // (priceOfDeliveryGas * maxGasDelivery + priceOfDeliveryGas * maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
-            uint256 maxDeliveryGas = maxGasDelivery * priceOfDeliveryGas;
-            uint256 maxAckGas = maxGasAck * priceOfAckGas;
-            uint256 maxSum = maxDeliveryGas + maxAckGas;
-            refund = maxSum - sumFee;
-        }
-        address sourceFeeRecipient = address(uint160(uint256(feeRecipient)));
-
-        // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
-        if(!payable(refundGasTo).send(refund)) {  // If this returns false, it implies that the transfer failed.
-            // The result is that this contract still has deliveryFee. As a result, send it somewhere else.
-            payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
-        }
-        payable(sourceFeeRecipient).transfer(ackFee + deliveryFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
         emit MessageTimedout(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,
-            uint64(gasSpentOnDestination),
+            0,  // No Gas spent on destiantion chain.
             uint64(gasSpentOnSource),
-            uint128(0),
-            uint128(ackFee + deliveryFee)
+            uint128(deliveryFee),
+            uint128(ackFee)
         );
     }
 
-    // TODO: types
+    /** 
+     * @notice Payout incentives to the relayers.
+     * @dev Timeouts needs to set targetDelta == 0 to cut off logic.
+     */
     function _payoutIncentive(
         uint256 gasLimit,
         uint48 gasSpentOnDestination,
         uint48 maxGasDelivery,
-        uint48 priceOfDeliveryGas,
+        uint96 priceOfDeliveryGas,
         uint48 maxGasAck,
-        uint48 priceOfAckGas,
+        uint96 priceOfAckGas,
         address refundGasTo,
         address destinationFeeRecipient,
         address sourceFeeRecipient,
-        uint64 targetDelta
+        uint64 targetDelta,
+        uint64 messageExecutionTimestamp
     ) internal returns(uint256 gasSpentOnSource, uint256 deliveryFee, uint256 ackFee) {
 
         // Find the respective rewards for delivery and ack.
@@ -697,16 +594,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipient == sourceFeeRecipient) {
             payable(sourceFeeRecipient).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
-            // TODO: IMPLEMENT LOWER
-            // emit MessageAcked(messageIdentifier);
-            // emit BountyClaimed(
-            //     messageIdentifier,
-            //     uint64(gasSpentOnDestination),
-            //     uint64(gasSpentOnSource),
-            //     uint128(actualFee),
-            //     0
-            // );
-            return;
+            return (gasSpentOnSource, deliveryFee, ackFee);
         }
 
         // If targetDelta is 0, then distribute exactly the rewards.
@@ -717,23 +605,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 payable(SEND_LOST_GAS_TO).transfer(deliveryFee);  // If we don't send the gas somewhere, the gas is lost forever.
             }
             payable(sourceFeeRecipient).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
-            // TODO: IMPLEMENT LOWER
-            // emit MessageAcked(messageIdentifier);
-            // emit BountyClaimed(
-            //     messageIdentifier,
-            //     uint64(gasSpentOnDestination),
-            //     uint64(gasSpentOnSource),
-            //     uint128(deliveryFee),
-            //     uint128(ackFee)
-            // );
-            return;
+            return (gasSpentOnSource, deliveryFee, ackFee);
         }
         // Compute the reward distribution. We need the time it took to deliver the ack back.
         uint64 executionTime;
         unchecked {
             // Underflow is desired in this code chuck. It ensures that the code piece continues working
             // past the time when uint64 stops working. *As long as any timedelta is less than uint64.
-            executionTime = uint64(block.timestamp) - uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]));
+            executionTime = uint64(block.timestamp) - messageExecutionTimestamp;
         }
         // The incentive scheme is as follows: When executionTime = targetDelta then 
         // The rewards are distributed as per the incentive spec. If the time is less, then
@@ -776,15 +655,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         }
         payable(sourceFeeRecipient).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
-        // TODO: IMPLEMENT LOWER
-        // emit MessageAcked(messageIdentifier);
-        // emit BountyClaimed(
-        //     messageIdentifier,
-        //     uint64(gasSpentOnDestination),
-        //     uint64(gasSpentOnSource),
-        //     uint128(forDestinationRelayer),
-        //     uint128(forSourceRelayer)
-        // );
+        return (gasSpentOnSource, deliveryFee, ackFee);
     }
 
 
@@ -852,9 +723,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * timed out.
      * 
      * TODO: Determine the differences between timeout and retries on processing.
-     * TODO: Disable for AMBs with perpetual light clients?
      * TODO: What about the ack on retry?
-     * TODO: Share as much logic between ack and timeout as possible.
      * TODO: Expose a way for us to verify that a message identifier is correct. (maybe be more strict with the way messageIDentifier is computed)
      */ 
     function retryOrTimeoutMessage(
