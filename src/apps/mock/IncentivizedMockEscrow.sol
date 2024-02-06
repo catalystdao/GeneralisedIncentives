@@ -30,19 +30,8 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         accumulator = 1;
     }
 
-    function _getMessageIdentifier(
-        bytes32 destinationIdentifier,
-        bytes calldata message
-    ) internal override view returns(bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                msg.sender,
-                bytes32(block.number),
-                UNIQUE_SOURCE_IDENTIFIER, 
-                destinationIdentifier,
-                message
-            )
-        );
+    function _uniqueSourceIdentifier() override internal view returns(bytes32 sourceIdentifier) {
+        return sourceIdentifier = UNIQUE_SOURCE_IDENTIFIER;
     }
 
     function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {

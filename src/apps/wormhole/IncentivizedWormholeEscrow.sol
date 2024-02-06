@@ -13,8 +13,15 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
 
     IWormhole public immutable WORMHOLE;
 
+    // Wormhole's chain identifier can be changed. However, we generally expect to redeploy
+    // in cases where they would change it.
+    bytes32 public immutable UNIQUE_SOURCE_IDENTIFIER;
+
     constructor(address sendLostGasTo, address wormhole_) IncentivizedMessageEscrow(sendLostGasTo) WormholeVerifier(wormhole_) {
         WORMHOLE = IWormhole(wormhole_);
+
+        // Collect chainId from Wormhole.
+        UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(WORMHOLE.chainId()));
     }
 
     function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
@@ -22,22 +29,11 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         amount = WORMHOLE.messageFee();
     }
 
-    function _getMessageIdentifier(
-        bytes32 destinationIdentifier,
-        bytes calldata message
-    ) internal override view returns(bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                msg.sender,
-                bytes32(block.number),
-                chainId(), 
-                destinationIdentifier,
-                message
-            )
-        );
+    function _uniqueSourceIdentifier() override internal view returns(bytes32 sourceIdentifier) {
+        return sourceIdentifier = UNIQUE_SOURCE_IDENTIFIER;
     }
 
-    function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyPacket(bytes calldata /* _metadata */, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
 
         (
             SmallStructs.SmallVM memory vm,
@@ -55,7 +51,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         bytes32 thisChainIdentifier = bytes32(payload[0:32]);
 
         // Check that the message is intended for this chain.
-        if (thisChainIdentifier != bytes32(uint256(chainId()))) revert BadChainIdentifier();
+        if (thisChainIdentifier != UNIQUE_SOURCE_IDENTIFIER) revert BadChainIdentifier();
 
         // Local the identifier for the source chain.
         sourceIdentifier = bytes32(uint256(vm.emitterChainId));
