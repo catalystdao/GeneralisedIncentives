@@ -22,7 +22,8 @@ contract OnRecvCallTest is TestOnRecvCommon {
                 abi.encode(address(application))
             ),
             message,
-            _INCENTIVE
+            _INCENTIVE,
+            0
         );
 
         Vm.Log[] memory entries = vm.getRecordedLogs();

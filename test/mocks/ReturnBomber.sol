@@ -26,7 +26,8 @@ contract ReturnBomber is ICrossChainReceiver {
             destinationIdentifier,
             destinationAddress,
             message,
-            incentive
+            incentive,
+            0
         );
 
         // emit submitMessage(gasRefund, messageIdentifier);

@@ -194,6 +194,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param destinationAddress The destination address encoded in 65 bytes: First byte is the length and last 64 is the destination address.
      * @param message The message to be sent to the destination. Please ensure the message is block-unique.
      *     This means that you don't send the same message twice in a single block.
+     * @param deadline After this date, do not allow relayers to execute the message on the destination chain
+     * Note that it may still take a significant amount of time to bring back the timeout.
      * @return gasRefund The amount of excess gas which was paid to this call. The app should handle the excess.
      * @return messageIdentifier An unique identifier for a message.
      */
@@ -201,7 +203,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
-        IncentiveDescription calldata incentive
+        IncentiveDescription calldata incentive,
+        uint64 deadline
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         if (incentive.refundGasTo == address(0)) revert RefundGasToIsZero();
         // Check that the application has set a destination implementation
@@ -223,6 +226,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             messageIdentifier,              // A unique message identifier
             convertEVMTo65(msg.sender),     // Original sender
             destinationAddress,             // The address to deliver the (original) message to.
+            uint64(deadline),
             incentive.maxGasDelivery,       // Send the gas limit to the other chain so we can enforce it
             message                         // The message to deliver to the destination.
         );

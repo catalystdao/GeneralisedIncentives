@@ -14,7 +14,8 @@ interface ICansubmitMessage is IMessageEscrowStructs{
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
-        IncentiveDescription calldata incentive
+        IncentiveDescription calldata incentive,
+        uint64 deadline
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 }
 
@@ -108,7 +109,8 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
-            _INCENTIVE
+            _INCENTIVE,
+            0
         );
 
         Vm.Log[] memory entries = vm.getRecordedLogs();

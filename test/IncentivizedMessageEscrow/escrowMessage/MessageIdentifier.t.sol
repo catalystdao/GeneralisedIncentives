@@ -13,7 +13,8 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         assertEq(messageIdentifier, bytes32(0x63d67e3fce2ed64674223d39595772649b279109e9bffd287446258b536459ac));
@@ -26,7 +27,8 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         assertEq(messageIdentifier, bytes32(0xff33b82153b4b666a3b395852e06879d8be2aab78d77e93307ba3879e1cf7042));
@@ -39,7 +41,8 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             message,
-            incentive
+            incentive,
+            0
         );
         // No blocks pass between the 2 calls:
         vm.expectRevert(
@@ -49,7 +52,8 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             message,
-            incentive
+            incentive,
+            0
         );
     }
 
@@ -63,7 +67,8 @@ contract MessageIdentifierTest is TestCommon {
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         escrow.setRemoteImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)), abi.encode(address(escrow)));
@@ -72,7 +77,8 @@ contract MessageIdentifierTest is TestCommon {
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         assertEq(messageIdentifier1, bytes32(0x0336e79dacdcf5c72d112c6a1dcc16484993043f84feb08300a9c78ee317ff09));

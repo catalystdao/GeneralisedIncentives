@@ -72,7 +72,8 @@ contract sendPacketPaymentTest is TestCommon {
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         // Check that the message identifier points exposes the bounty.
@@ -99,7 +100,8 @@ contract sendPacketPaymentTest is TestCommon {
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         // Check that the message identifier points exposes the bounty.

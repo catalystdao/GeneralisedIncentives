@@ -24,7 +24,8 @@ contract MockSpendGas is ICrossChainReceiver {
             destinationIdentifier,
             destinationAddress,
             message,
-            incentive
+            incentive,
+            0
         );
     }
 
