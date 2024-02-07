@@ -29,6 +29,7 @@ pragma solidity ^0.8.13;
 
 bytes1 constant CTX_SOURCE_TO_DESTINATION       = 0x00;
 bytes1 constant CTX_DESTINATION_TO_SOURCE       = 0x01;
+bytes1 constant CTX_RETRIED_AFTER_DEADLINE      = 0x02;
 
 
 // Common Payload ***************************************************************************************************************
@@ -71,3 +72,5 @@ uint constant CTX1_EXECUTION_TIME_START             = 136;
 uint constant CTX1_EXECUTION_TIME_END               = 144;
 
 uint constant CTX1_MESSAGE_START                    = 144;
+
+// CTX2 Message Timed out **************************************************************************************************

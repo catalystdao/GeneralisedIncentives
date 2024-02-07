@@ -16,4 +16,5 @@ interface IMessageEscrowErrors {
     error NotEnoughGasExeuction(); // 6fa3d3bb
     error RefundGasToIsZero(); // 6a1a6afe
     error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 54090af9
+    error CannotRetryWrongMessage(bytes32 expected, bytes32 actual); // TODO: id
 }
