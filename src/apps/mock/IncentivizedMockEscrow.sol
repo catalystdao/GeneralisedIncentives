@@ -29,6 +29,10 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         payable(owner()).transfer(accumulator - 1);
         accumulator = 1;
     }
+    
+    function _maxDeadline(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
+        return 0;
+    }
 
     function _uniqueSourceIdentifier() override internal view returns(bytes32 sourceIdentifier) {
         return sourceIdentifier = UNIQUE_SOURCE_IDENTIFIER;

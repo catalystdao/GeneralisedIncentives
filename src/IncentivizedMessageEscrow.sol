@@ -71,6 +71,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @dev Should generally be the same as the one set by the AMB such that we can verify messages with this identifier
     function _uniqueSourceIdentifier() virtual internal view returns(bytes32 sourceIdentifier);
 
+    /// @notice Returns the max deadline for this AMB.
+    /// It may vary by destination.
+    function _maxDeadline(bytes32 destinationIdentifier) virtual internal view returns(uint64);
+
+    function maxDeadline(bytes32 destinationIdentifier) external view returns(uint64) {
+        return _maxDeadline(destinationIdentifier);
+    }
+
     /// @param sendLostGasTo Who should receive Ether which would otherwise block
     /// execution? It should never be set to a contract which does not implement
     /// either a fallback or receive function which never revert.
@@ -190,11 +198,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      *     1. That incentive.maxGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
      *     2. That incentive.maxGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
      *     3. The relay incentive is enough to get the message relayed within the expected time. If that is never, this check is not needed.
+     * Furthermore, if the package timesout there is no gas refund.
      * @param destinationIdentifier 32 bytes which identifies the destination chain.
      * @param destinationAddress The destination address encoded in 65 bytes: First byte is the length and last 64 is the destination address.
      * @param message The message to be sent to the destination. Please ensure the message is block-unique.
      *     This means that you don't send the same message twice in a single block.
-     * @param deadline After this date, do not allow relayers to execute the message on the destination chain
+     * @param deadline After this date, do not allow relayers to execute the message on the destination chain. If set to 0, "disable". Not all AMBs may support disabling the timeout.
      * Note that it may still take a significant amount of time to bring back the timeout.
      * @return gasRefund The amount of excess gas which was paid to this call. The app should handle the excess.
      * @return messageIdentifier An unique identifier for a message.
@@ -206,11 +215,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         IncentiveDescription calldata incentive,
         uint64 deadline
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
+        // Valid refund to.
         if (incentive.refundGasTo == address(0)) revert RefundGasToIsZero();
-        // Check that the application has set a destination implementation
+
+        // Check that the application has set a destination implementation by checking if the is not 0.
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
-        // Check that the length is not 0.
         if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
+
+        // Check that the deadline is lower than the AMB specification.
+        uint64 ambMaxDeadline = _maxDeadline(destinationIdentifier);
+        if (ambMaxDeadline != 0 && deadline < ambMaxDeadline) revert DeadlineTooLong(ambMaxDeadline, deadline);
 
         // Prepare to store incentive
         messageIdentifier = _getMessageIdentifier(
@@ -320,9 +334,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Deliver message to application.
         // Decode gas limit, application address and sending application.
-        uint48 maxGas = uint48(bytes6(message[CTX0_MAX_GAS_LIMIT_START:CTX0_MAX_GAS_LIMIT_END]));
         address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
+
+        // Check if the message is valid. This includes:
+        // - Checking if the sender is valid.
+        // - Checking if the message has expired.
 
         bytes memory acknowledgement;
 
@@ -336,47 +353,87 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 NO_AUTHENTICATION,
                 message[CTX0_MESSAGE_START: ]
             );
-        } else {
-            // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
 
-            // This call might fail because the abi.decode of the return value can fail. It is too gas costly to check all correctness 
-            // of the returned value and then error if decoding is not possible.
-            // As a result, relayers needs to simulate the tx. If the call fails, then they should blacklist the message.
-            // The call will only fall if the application doesn't expose receiveMessage or captures the message via a fallback. 
-            // As a result, if message delivery once executed, then it will always execute.
-            try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, messageIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
-            returns (bytes memory ack) {
-                acknowledgement = ack;
-            } catch (bytes memory /* err */) {
-                // Check that enough gas was provided to the application. For further documentation of this statement, check
-                // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
-                // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
-                if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExeuction();
+            // Encode a new message to send back. This lets the relayer claim their payment.
+            receiveAckWithContext = abi.encodePacked(
+                bytes1(CTX_DESTINATION_TO_SOURCE),  // Context
+                messageIdentifier,  // message identifier
+                fromApplication,
+                feeRecipient,
+                uint48(gasLimit - gasleft()),  // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
+                uint64(block.timestamp),  // If this overflows, it is fine. It is used in conjunction with a delta.
+                acknowledgement
+            );
 
-                // Send the message back if the execution failed.
-                // This lets you store information in the message that you can trust 
-                // gets returned. (You just have to understand that the status is appended as the first byte.)
-                acknowledgement = abi.encodePacked(
-                    MESSAGE_REVERTED,
-                    message[CTX0_MESSAGE_START: ]
-                );
-            }
+            // Message has been delivered and shouldn't be executed again.
+            emit MessageDelivered(messageIdentifier);
+            return receiveAckWithContext;
+        // Check that the package is still valid.
         }
 
-    
+        // Check that if the deadline has been set (deadline != 0). If the deadline has been set,
+        // check if the current timestamp is beyond the deadline and return TIMED_OUT if it is.
+        uint64 deadline = uint64(bytes8(message[CTX0_DEADLINE_START:CTX0_DEADLINE_END]));
+        if ((deadline != 0) && block.timestamp > deadline) {
+            acknowledgement = abi.encodePacked(
+                MESSAGE_TIMED_OUT,
+                message[CTX0_MESSAGE_START: ]
+            );
+
+            // Encode a new message to send back. This lets the relayer claim their payment.
+            receiveAckWithContext = abi.encodePacked(
+                bytes1(CTX_DESTINATION_TO_SOURCE),  // Context
+                messageIdentifier,  // message identifier
+                fromApplication,
+                feeRecipient,
+                uint48(2**47),  // We set the gas spent as max. Note that 2**47 is likely to be larger than maxGas but it is fine since we are doing max on source.
+                uint64(block.timestamp),  // If this overflows, it is fine. It is used in conjunction with a delta.
+                acknowledgement
+            );
+
+            // Message has been delivered and shouldn't be executed again.
+            emit MessageDelivered(messageIdentifier);
+            return receiveAckWithContext;
+        }
+
+        // Load the max gas.
+        uint48 maxGas = uint48(bytes6(message[CTX0_MAX_GAS_LIMIT_START:CTX0_MAX_GAS_LIMIT_END]));
+
+        // Execute call to application. Gas limit is set explicitly to ensure enough gas has been sent.
+
+        // This call might fail because the abi.decode of the return value can fail. It is too gas costly to check all correctness 
+        // of the returned value and then error if decoding is not possible.
+        // As a result, relayers needs to simulate the tx. If the call fails, then they should blacklist the message.
+        // The call will only fall if the application doesn't expose receiveMessage or captures the message via a fallback. 
+        // As a result, if message delivery once executed, then it will always execute.
+        try ICrossChainReceiver(toApplication).receiveMessage{gas: maxGas}(sourceIdentifier, messageIdentifier, fromApplication, message[CTX0_MESSAGE_START: ])
+        returns (bytes memory ack) {
+            acknowledgement = ack;
+        } catch (bytes memory /* err */) {
+            // Check that enough gas was provided to the application. For further documentation of this statement, check
+            // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
+            // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
+            if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExeuction();
+
+            // Send the message back if the execution failed.
+            // This lets you store information in the message that you can trust 
+            // gets returned. (You just have to understand that the status is appended as the first byte.)
+            acknowledgement = abi.encodePacked(
+                MESSAGE_REVERTED,
+                message[CTX0_MESSAGE_START: ]
+            );
+        }
+        
         // Encode a new message to send back. This lets the relayer claim their payment.
         receiveAckWithContext = abi.encodePacked(
-            bytes1(CTX_DESTINATION_TO_SOURCE),    // This is a sendPacket
-            messageIdentifier,              // message identifier
+            bytes1(CTX_DESTINATION_TO_SOURCE), // Context
+            messageIdentifier,  // message identifier
             fromApplication,
             feeRecipient,
-            uint48(gasLimit - gasleft()),   // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
-            uint64(block.timestamp),        // If this overflows, it is fine. It is used in conjunction with a delta.
+            uint48(gasLimit - gasleft()),  // Delay the gas limit computation until as late as possible. This should include the majority of gas spent.
+            uint64(block.timestamp),  // If this overflows, it is fine. It is used in conjunction with a delta.
             acknowledgement
         );
-
-        // Message has been delivered and shouldn't be executed again.
-        emit MessageDelivered(messageIdentifier);
 
         // Why is the messageDelivered event emitted before _sendPacket?
         // Because it lets us pop messageIdentifier from the stack. This avoid a stack limit reached error. 
@@ -385,6 +442,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send message to messaging protocol
         // This is done on processPacket.
         // This is done by returning receiveAckWithContext while source identifier and sourceImplementationIdentifier are known.
+        emit MessageDelivered(messageIdentifier);
+        return receiveAckWithContext;
     }
 
     /**

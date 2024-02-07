@@ -38,6 +38,10 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         amount = 0;
     }
 
+    function _maxDeadline(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
+        return 0;
+    }
+
     function _verifyPacket(bytes calldata /* _metadata */, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         sourceIdentifier = isVerifiedMessageHash[keccak256(_message)].chainIdentifier;
         implementationIdentifier = isVerifiedMessageHash[keccak256(_message)].implementationIdentifier;

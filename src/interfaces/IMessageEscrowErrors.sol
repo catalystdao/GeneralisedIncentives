@@ -15,4 +15,5 @@ interface IMessageEscrowErrors {
     error ImplementationAddressAlreadySet(bytes currentImplementation); // dba47850
     error NotEnoughGasExeuction(); // 6fa3d3bb
     error RefundGasToIsZero(); // 6a1a6afe
+    error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 54090af9
 }
