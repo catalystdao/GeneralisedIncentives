@@ -19,17 +19,24 @@ pragma solidity ^0.8.13;
 //     => MESSAGE_START                 177 (remainder)
 //
 //    CTX1 - 0x01 - Destination to Source
-//      + RELAYER_RECIPIENT            98  (32 bytes)
+//      + RELAYER_RECIPIENT             98  (32 bytes)
 //      + GAS_SPENT                     130 (6 bytes)
 //      + EXECUTION_TIME                136 (8 bytes)
 //     => MESSAGE_START                 144 (remainder)
+//
+//    CTX2 - 0x02 - Timed Out on Destination
+//      + RELAYER_RECIPIENT             90 (32 bytes)
+//      + DEADLINE                      130 (32 bytes)
+//      + ORIGIN_BLOCKNUMER             162 (32 bytes)
+//      + SOURCE_IDENTIFIER             194 (32 bytes)
+//     => MESSAGE_START                 226 (remainder)
 
 
 // Contexts *********************************************************************************************************************
 
 bytes1 constant CTX_SOURCE_TO_DESTINATION       = 0x00;
 bytes1 constant CTX_DESTINATION_TO_SOURCE       = 0x01;
-bytes1 constant CTX_RETRIED_AFTER_DEADLINE      = 0x02;
+bytes1 constant CTX_TIMEDOUT_ON_DESTINATION     = 0x02;
 
 
 // Common Payload ***************************************************************************************************************
@@ -74,3 +81,17 @@ uint constant CTX1_EXECUTION_TIME_END               = 144;
 uint constant CTX1_MESSAGE_START                    = 144;
 
 // CTX2 Message Timed out **************************************************************************************************
+
+uint constant CTX2_RELAYER_RECIPIENT_START          = 98;
+uint constant CTX2_RELAYER_RECIPIENT_END            = 130;
+
+uint constant CTX2_DEADLINE_START                   = 130;
+uint constant CTX2_DEADLINE_END                     = 162;
+
+uint constant CTX2_ORIGIN_BLOCK_NUMBER_START        = 162;
+uint constant CTX2_ORIGIN_BLOCK_NUMBER_END          = 194;
+
+uint constant CTX2_SOURCE_IDENTIFIER_START          = 194;
+uint constant CTX2_SOURCE_IDENTIFIER_END            = 226;
+
+uint constant CTX2_MESSAGE_START                    = 226;

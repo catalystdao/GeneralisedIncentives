@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { MockOnRecvAMB } from "../../../test/mocks/MockOnRecvAMB.sol";
+import "../../MessagePayload.sol";
 
 // This is an example contract which exposes an onReceive interface. This is for messaging protocols
 // where messages are delivered directly to the messaging protocol's contract rather than this contract.
@@ -104,7 +105,9 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         bytes32 feeRecipient
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
-        _handleTimeout(chainIdentifier, rawMessage, feeRecipient, gasLimit);
+        bytes32 messageIdentifier = bytes32(rawMessage[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
+        address fromApplication = address(uint160(bytes20(rawMessage[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
+        _handleTimeout(chainIdentifier, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START: ], feeRecipient, gasLimit);
     }
 
     // * Send to messaging_protocol 
