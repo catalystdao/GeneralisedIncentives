@@ -73,10 +73,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice Returns the max deadline for this AMB.
     /// It may vary by destination.
-    function _maxDeadline(bytes32 destinationIdentifier) virtual internal view returns(uint64);
+    /// @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
+    /// @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
+    function _maxDeadline(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
 
-    function maxDeadline(bytes32 destinationIdentifier) external view returns(uint64) {
-        return _maxDeadline(destinationIdentifier);
+    function maxDeadline(bytes32 destinationIdentifier) external view returns(uint64 timestamp) {
+        return timestamp = _maxDeadline(destinationIdentifier);
     }
 
     /// @param sendLostGasTo Who should receive Ether which would otherwise block
@@ -228,8 +230,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
 
         // Check that the deadline is lower than the AMB specification.
-        uint64 ambMaxDeadline = _maxDeadline(destinationIdentifier);
-        if (ambMaxDeadline != 0 && deadline < ambMaxDeadline) revert DeadlineTooLong(ambMaxDeadline, deadline);
+        unchecked {
+            // Timestamps do not overflow in uint64 within reason.
+            uint64 ambMaxDeadline = block.timestamp + _maxDeadline(destinationIdentifier);
+            if (ambMaxDeadline != 0 && deadline < ambMaxDeadline) revert DeadlineTooLong(ambMaxDeadline, deadline);
+        }
 
         // Prepare to store incentive
         messageIdentifier = _getMessageIdentifier(
@@ -321,8 +326,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // However, these are much different from "timeouts".
             _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipient, gasLimit);
         } else if (context == CTX_TIMEDOUT_ON_DESTINATION) {
-            // TODO: Verify implementationIdentifier, how do we trust the sender?
-            // verify that the timeout is valid.
+            // Verify that the timeout is valid.
             // Anyone is able to control the inputs to this function: They are not protected by us
             // controlling the logic for the roundtrip. Instead, we need to authenticate the whole message.
             (bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage) = _verifyTimeout(chainIdentifier, implementationIdentifier, message);
@@ -393,7 +397,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that if the deadline has been set (deadline != 0). If the deadline has been set,
         // check if the current timestamp is beyond the deadline and return TIMED_OUT if it is.
         uint64 deadline = uint64(bytes8(message[CTX0_DEADLINE_START:CTX0_DEADLINE_END]));
-        if ((deadline != 0) && block.timestamp > deadline) {
+        if ((deadline != 0) && deadline < block.timestamp) {
             acknowledgement = bytes.concat(
                 MESSAGE_TIMED_OUT,
                 message[CTX0_MESSAGE_START: ]
@@ -624,7 +628,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             maxGasAck,
             priceOfAckGas,
             refundGasTo,
-            address(uint160(uint256(feeRecipient))),
+            address(uint160(uint256(feeRecipient))), // TODO: corretly set,
             address(uint160(uint256(feeRecipient))),
             0, // Disable target delta, since there is only 1 relayer.
             0
@@ -641,16 +645,26 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     function _verifyTimeout(bytes32 destinationIdentifier, bytes memory implementationIdentifier, bytes calldata message) internal view returns(bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage) {
-
-        // First check if the application trusts the implementation on the destination chain.
+        // First check if the application trusts the implementation on the destination chain. This is very important
+        // since the remote implementation NEEDS to check that the message hasn't been executed before the deadline
+        // and if the message get relayed post deadline, then it should never arrive at the application.
+        // Without those checks the whole concept of timeouts doesn't matter
         fromApplication = address(uint160(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
         bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][destinationIdentifier];
         // Check that the application approves of the remote implementation.
-        // For timeouts, it is 50/50/50 if it is a fradulent sender, badly entered data, or it will pass.
+        // For timeouts, this could fail because of fradulent sender or badly data.
         if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
 
-        // We need to verify every single snippet of information within the message.
-        // We need to verify the following:
+        // Do we need to check deadline again?
+        // Considering the cost: cheap, we will do it. In most instances it is not needed.
+        // This is because we must expect the remote implementation to also do the check to save gas
+        // since it is an obvious and valid remote check
+        uint64 deadline = uint64(bytes8(message[CTX2_DEADLINE_START:CTX2_DEADLINE_END]));
+        if (deadline <= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+
+        // The entirty of the incoming message is untrusted. So far we havn't done any verification of
+        // the message but rather of the origin of the message.
+        // As a result, we need to verify the rest of the message, specifically:
         // - MESSAGE_IDENTIFIER
         // - FROM_APPLICATION      \
         // - DEADLINE               \
@@ -658,16 +672,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // - SOURCE_IDENTIFIER      /
         // - MESSAGE               /
 
-        // The above information is contained within the message identfier.
-        // As a result, we just need to verify that we get the message identifier again.
-
+        // We need to verify that the message identifier sent is correct because the messageIdentifier
+        // should have been used to check if the message would have been executed before.
+        // We can check if the message identifier is correct by checking the bounty. (See _handleTimeout)
+        // However, we still need to check the rest of the information. The message identifier has been crafted
+        // such that it is excatly dependent on the rest of the information we use.
+        
         applicationMessage = message[CTX2_MESSAGE_START: ];
 
+        // Lets compute the messageIdentifier based on the message.
         bytes32 computedMessageIdentifier = _getMessageIdentifier(
             fromApplication,
-            uint64(bytes8(message[CTX2_DEADLINE_START:CTX2_DEADLINE_END])),
+            deadline,
             uint256(bytes32(message[CTX2_ORIGIN_BLOCK_NUMBER_START:CTX2_ORIGIN_BLOCK_NUMBER_END])),
-            bytes32(message[CTX2_SOURCE_IDENTIFIER_START:CTX2_SOURCE_IDENTIFIER_END]), // TODO Is this needed? _uniqueSourceIdentifier()?
+            _uniqueSourceIdentifier(),
             destinationIdentifier,
             applicationMessage
         );
@@ -715,17 +733,19 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             uint256 maxFee = maxDeliveryFee + maxAckFee;
             refund = maxFee - actualFee;
         }
+
         // send is used to ensure this doesn't revert. Transfer could revert and block the ack from ever being delivered.
         if(!payable(refundGasTo).send(refund)) {
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
+
         // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
         if (destinationFeeRecipient == sourceFeeRecipient) {
             payable(sourceFeeRecipient).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             return (gasSpentOnSource, deliveryFee, ackFee);
         }
 
-        // If targetDelta is 0, then distribute exactly the rewards.
+        // If targetDelta is 0, then distribute exactly the rewards. For timeouts, logic should end here.
         if (targetDelta == 0) {
             // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
             if(!payable(destinationFeeRecipient).send(deliveryFee)) {  // If this returns false, it implies that the transfer failed.
@@ -735,6 +755,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             payable(sourceFeeRecipient).transfer(ackFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             return (gasSpentOnSource, deliveryFee, ackFee);
         }
+
         // Compute the reward distribution. We need the time it took to deliver the ack back.
         uint64 executionTime;
         unchecked {
@@ -834,12 +855,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /** 
-     * @notice Retry a message where the ack is lost.
+     * @notice Emit a new ack message incase the proof for the old got lost.
      * This function is intended for manual usage in case the ack was critical to the application
-     * and the ack proof expired. Note that messages that failed with timed out can be retried here OR through timeoutMessage.
+     * and the ack proof expired.
      * @dev If an AMB controls the entire flow of the message, disable this function.
      */
-    function retryMessage(
+    function reemitAckMessage( // TODO: namings.
         bytes32 sourceIdentifier,
         bytes calldata implementationIdentifier,
         bytes calldata receiveAckWithContext
@@ -853,7 +874,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
         // Then, check if the storedAckHash matches the executed one.
-        if (storedAckHash != bytes32(0) && storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
+        if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
         _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext);
@@ -871,18 +892,28 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * is because we don't know where the messageIdentifier was computed and don't know what hashing function was used
      * As a result, it is expected that the sender of this function checks for inclusion manually, otherwise they could
      * waste a lot of gas.
-     * TODO: How do we implement proper relaying guards? (Paying incentive, protecting relayers against fradulent messages, spam, etc.)
+     * There is no reliable way to block this function such that it can't be called twice after a message has been timed out
+     * since the content could we wrong or the proof may still exist.
+     * @param messageIdentifier The message identifier. Will be used to check if the proof has already arrived
+     * @param destinationIncentives The address of the source generalisedIncentives that emitted the original message
+     * @param messageSenderBytes64 The address of the application on the source chain // TODO: Can be found in the raw message
+     * @param deadline The deadline of the message. While it is initially untrusted here, it will be validated on the source chain.
+     * @param originBlockNumber The block number when the message was originally emitted. 
+     * Note that for some L2 this could be the block number of the underlying chain. It is the same block number which generated the
+     * message identifier.
+     * @param sourceIdentifier The identifier for the source chain (where to send the message)
+     * @param feeRecipient Who should be paid for emitting this timeout?
+     * @param message
      */
     function timeoutMessage(
         bytes32 messageIdentifier,
-        bytes calldata messageSenderAmb,
-        bytes calldata messageSenderBytes64,
+        bytes calldata destinationIncentives,
+        bytes calldata messageSenderBytes65,
         uint64 deadline,
         uint256 originBlockNumber,
         bytes32 sourceIdentifier,
-        bytes32 destinationIdentifier, // TODO, is this needed?
         bytes32 feeRecipient,
-        bytes memory message  // TODO: Should we have the raw message here so we can fine the application payload for the relayer?
+        bytes memory message  // TODO: Should we have the raw message here so we can find the application payload for the relayer?
     ) external payable virtual checkBytes65Address(messageSenderBytes64) {
         // Read the status of the package at MessageIdentifier.
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
@@ -895,19 +926,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // When the message arrives, the usual incentive check ensures only 1 message can arrive. Since the incentive check is based on
         // messageIdentifier, we need to verify it.
 
-        // Check that the deadline has passed
-        if (deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        // Check that the deadline has passed AND that there is no opt out.
+        if (deadline != 0 && deadline <= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // reconstruct message
         bytes memory receiveAckWithContext = bytes.concat(
             CTX_TIMEDOUT_ON_DESTINATION,
             messageIdentifier,
-            messageSenderBytes64,
+            messageSenderBytes65,
             feeRecipient,
             bytes8(deadline),
             bytes32(originBlockNumber),
-            destinationIdentifier,
-            sourceIdentifier,
             message
         );
 
@@ -917,7 +946,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send the message
         _sendPacket(
             sourceIdentifier,
-            messageSenderAmb,
+            destinationIncentives,
             receiveAckWithContext
         );
     }

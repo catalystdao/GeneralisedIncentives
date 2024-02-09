@@ -28,8 +28,7 @@ pragma solidity ^0.8.13;
 //      + RELAYER_RECIPIENT             90 (32 bytes)
 //      + DEADLINE                      130 (32 bytes)
 //      + ORIGIN_BLOCKNUMER             162 (32 bytes)
-//      + SOURCE_IDENTIFIER             194 (32 bytes)
-//     => MESSAGE_START                 226 (remainder)
+//     => MESSAGE_START                 194 (remainder)
 
 
 // Contexts *********************************************************************************************************************
@@ -91,7 +90,4 @@ uint constant CTX2_DEADLINE_END                     = 162;
 uint constant CTX2_ORIGIN_BLOCK_NUMBER_START        = 162;
 uint constant CTX2_ORIGIN_BLOCK_NUMBER_END          = 194;
 
-uint constant CTX2_SOURCE_IDENTIFIER_START          = 194;
-uint constant CTX2_SOURCE_IDENTIFIER_END            = 226;
-
-uint constant CTX2_MESSAGE_START                    = 226;
+uint constant CTX2_MESSAGE_START                    = 194;
