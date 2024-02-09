@@ -16,8 +16,8 @@ interface IMessageEscrowErrors {
     error NotEnoughGasExeuction(); // 6fa3d3bb
     error RefundGasToIsZero(); // 6a1a6afe
     error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 54090af9
-    error CannotRetryWrongMessage(bytes32 expected, bytes32 actual); // TODO: id
-    error MessageAlreadyProcessed(); // TODO: id
-    error DeadlineNotPassed(uint64 expected, uint64 actual);
-    error InvalidTimeoutPackage(bytes32 expected, bytes32 actual);
+    error CannotRetryWrongMessage(bytes32 expected, bytes32 actual); // 48ce7fac
+    error MessageAlreadyProcessed(); // 7b042609
+    error DeadlineNotPassed(uint64 expected, uint64 actual); // 862c57f4
+    error InvalidTimeoutPackage(bytes32 expected, bytes32 actual); // e020885d
 }

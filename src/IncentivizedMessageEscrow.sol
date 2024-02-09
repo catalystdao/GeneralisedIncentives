@@ -342,8 +342,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure message is unique and can only be execyted once
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
-        // TODO: Makes changes to support hash of ack.
         // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
+        // We will re-set _messageDelivered[messageIdentifier] again later as the hash of the ack, however, we need re-entry protection
+        // so applications don't try to claim incentives multiple times. So, we set it now and change it later.
         bytes32 messageState = _messageDelivered[messageIdentifier];
         if (messageState != bytes32(0)) revert MessageAlreadySpent();
         _messageDelivered[messageIdentifier] = bytes32(uint256(1));
@@ -387,7 +388,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
             return receiveAckWithContext;
-        // Check that the package is still valid.
         }
 
         // Check that if the deadline has been set (deadline != 0). If the deadline has been set,
@@ -654,7 +654,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // - MESSAGE_IDENTIFIER
         // - FROM_APPLICATION      \
         // - DEADLINE               \
-        // - ORIGIN_BLOCK_NUMBER     >
+        // - ORIGIN_BLOCK_NUMBER     > Message Identifier
         // - SOURCE_IDENTIFIER      /
         // - MESSAGE               /
 
@@ -667,7 +667,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             fromApplication,
             uint64(bytes8(message[CTX2_DEADLINE_START:CTX2_DEADLINE_END])),
             uint256(bytes32(message[CTX2_ORIGIN_BLOCK_NUMBER_START:CTX2_ORIGIN_BLOCK_NUMBER_END])),
-            bytes32(message[CTX2_SOURCE_IDENTIFIER_START:CTX2_SOURCE_IDENTIFIER_END]), // TODO Is this needed?
+            bytes32(message[CTX2_SOURCE_IDENTIFIER_START:CTX2_SOURCE_IDENTIFIER_END]), // TODO Is this needed? _uniqueSourceIdentifier()?
             destinationIdentifier,
             applicationMessage
         );
@@ -675,9 +675,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Get the reference message identifier from the package. We need to verify this since we used it on the sending chain.
         messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         if (computedMessageIdentifier != messageIdentifier) revert InvalidTimeoutPackage(messageIdentifier, computedMessageIdentifier);
-
-        // We will also load message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]; again, as such it is important
-        // that 
     }
 
     /** 
@@ -843,12 +840,15 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @dev If an AMB controls the entire flow of the message, disable this function.
      */
     function retryMessage(
-        bytes32 messageIdentifier, // TODO: is this safe? We could try to load messageIdentifier from receiveAckWithContext?
         bytes32 sourceIdentifier,
         bytes calldata implementationIdentifier,
         bytes calldata receiveAckWithContext
     ) external payable virtual {
         // Has the package previously been executed? (otherwise timeout might be more appropiate)
+
+        // Load the messageIdentifier from receiveAckWithContext.
+        // This makes it ever so slighly easier to retry messages.
+        bytes32 messageIdentifier = receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]; // TODO: Do we want to get this on function call for sanity instead?
 
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
@@ -864,16 +864,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * If a message has been executed but the proof for the ack might have been lost
      * then the message can be retried.
      * If a message has not been executed and the message is beyond timeout, then it can be
-     * timed out.
+     * timed out. The intended usecase for this function is the latter case AND when the proof is lost.
+     * If the proof is intact, delivering the proof normally is safer.
      * @dev If an AMB has a native way to timeout messages, disable this function.
      * The reason why we don't verify that the message is contained within the message identifier
      * is because we don't know where the messageIdentifier was computed and don't know what hashing function was used
      * As a result, it is expected that the sender of this function checks for inclusion manually, otherwise they could
      * waste a lot of gas.
-     * TODO: Expose a way for us to verify that a message identifier is correct. (maybe be more strict with the way messageIDentifier is computed)
-     * TODO: How do we fail a badly timedout message (on source, we are on destination)?
-     * TODO: How to determine the relayer for a timedout message?
-     * TODO: Do we only allow a single relayer to relay the message?
      * TODO: How do we implement proper relaying guards? (Paying incentive, protecting relayers against fradulent messages, spam, etc.)
      */
     function timeoutMessage(
@@ -885,15 +882,18 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 sourceIdentifier,
         bytes32 destinationIdentifier, // TODO, is this needed?
         bytes32 feeRecipient,
-        bytes memory message
+        bytes memory message  // TODO: Should we have the raw message here so we can fine the application payload for the relayer?
     ) external payable virtual checkBytes65Address(messageSenderBytes64) {
         // Read the status of the package at MessageIdentifier.
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // If has already been processed, then don't allow timeouting the message. Instead, it should be retried.
         if (storedAckHash != bytes32(0)) revert MessageAlreadyProcessed();
         // This also protects a relayer that delivered a timedout message.
-        // Notice that it could still be that someone delivers a timedout message after this has been emitted!
-        // TODO: Verify above still implies correct flow.
+        // ! It could still be that someone delivers the "true" message along with the proof after this has been emitted!
+        // As a result, the above check only ensures that if the message properly arrives, then this cannot be called afterwards.
+        // ensuring that the original relayer isn't cheated.
+        // When the message arrives, the usual incentive check ensures only 1 message can arrive. Since the incentive check is based on
+        // messageIdentifier, we need to verify it.
 
         // Check that the deadline has passed
         if (deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
@@ -911,13 +911,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             message
         );
 
+        // To maintain a common implementation langauge, emit our event before message.
+        emit TimeoutInitiated(messageIdentifier);
+
         // Send the message
         _sendPacket(
             sourceIdentifier,
             messageSenderAmb,
             receiveAckWithContext
         );
-
-        // TODO: Emit message which impies it is post deadline.
     }
 }
