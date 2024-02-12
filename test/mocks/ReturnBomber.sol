@@ -20,14 +20,15 @@ contract ReturnBomber is ICrossChainReceiver {
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
-        IIncentivizedMessageEscrow.IncentiveDescription calldata incentive
+        IIncentivizedMessageEscrow.IncentiveDescription calldata incentive,
+        uint64 deadline
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         (gasRefund, messageIdentifier) = MESSAGE_ESCROW.submitMessage{value: msg.value}(
             destinationIdentifier,
             destinationAddress,
             message,
             incentive,
-            0
+            deadline
         );
 
         // emit submitMessage(gasRefund, messageIdentifier);

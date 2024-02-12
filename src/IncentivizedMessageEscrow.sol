@@ -78,7 +78,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _maxDeadline(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
 
     function maxDeadline(bytes32 destinationIdentifier) external view returns(uint64 timestamp) {
-        return timestamp = _maxDeadline(destinationIdentifier);
+        return timestamp = uint64(block.timestamp) + _maxDeadline(destinationIdentifier);
     }
 
     /// @param sendLostGasTo Who should receive Ether which would otherwise block
@@ -232,8 +232,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that the deadline is lower than the AMB specification.
         unchecked {
             // Timestamps do not overflow in uint64 within reason.
-            uint64 ambMaxDeadline = block.timestamp + _maxDeadline(destinationIdentifier);
-            if (ambMaxDeadline != 0 && deadline < ambMaxDeadline) revert DeadlineTooLong(ambMaxDeadline, deadline);
+            uint64 ambMaxDeadline = _maxDeadline(destinationIdentifier);
+            if (ambMaxDeadline != 0 && deadline < uint64(block.timestamp) + ambMaxDeadline) revert DeadlineTooLong(ambMaxDeadline, deadline);
         }
 
         // Prepare to store incentive
@@ -804,7 +804,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         }
         payable(sourceFeeRecipient).transfer(forSourceRelayer);  // If this reverts, then the relayer that is executing this tx provided a bad input.
 
-        return (gasSpentOnSource, deliveryFee, ackFee);
+        return (gasSpentOnSource, forDestinationRelayer, forSourceRelayer);
     }
 
     /// @notice Sets a bounty for a message
@@ -869,7 +869,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Load the messageIdentifier from receiveAckWithContext.
         // This makes it ever so slighly easier to retry messages.
-        bytes32 messageIdentifier = receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]; // TODO: Do we want to get this on function call for sanity instead?
+        bytes32 messageIdentifier = bytes32(receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]); // TODO: Do we want to get this on function call for sanity instead?
 
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
@@ -896,14 +896,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * since the content could we wrong or the proof may still exist.
      * @param messageIdentifier The message identifier. Will be used to check if the proof has already arrived
      * @param destinationIncentives The address of the source generalisedIncentives that emitted the original message
-     * @param messageSenderBytes64 The address of the application on the source chain // TODO: Can be found in the raw message
+     * @param messageSenderBytes65 The address of the application on the source chain // TODO: Can be found in the raw message
      * @param deadline The deadline of the message. While it is initially untrusted here, it will be validated on the source chain.
      * @param originBlockNumber The block number when the message was originally emitted. 
      * Note that for some L2 this could be the block number of the underlying chain. It is the same block number which generated the
      * message identifier.
      * @param sourceIdentifier The identifier for the source chain (where to send the message)
      * @param feeRecipient Who should be paid for emitting this timeout?
-     * @param message
+     * @param message Application message // TODO: Should we have the raw message here so we can find the application payload for the relayer?
      */
     function timeoutMessage(
         bytes32 messageIdentifier,
@@ -914,7 +914,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 sourceIdentifier,
         bytes32 feeRecipient,
         bytes memory message  // TODO: Should we have the raw message here so we can find the application payload for the relayer?
-    ) external payable virtual checkBytes65Address(messageSenderBytes64) {
+    ) external payable virtual checkBytes65Address(messageSenderBytes65) {
         // Read the status of the package at MessageIdentifier.
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // If has already been processed, then don't allow timeouting the message. Instead, it should be retried.

@@ -58,7 +58,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 destinationFeeRecipient,
-                uint48(0x36eaa),  // Gas used
+                uint48(0x36e96),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
