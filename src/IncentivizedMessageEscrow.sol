@@ -72,12 +72,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         SEND_LOST_GAS_TO = sendLostGasTo;
     }
 
-    /// @notice Generates a unique message identifier for a message
-    /// @dev Should be overwritten. The identifier should:
-    ///  - Be unique over time: Use blocknumber or blockhash
-    ///  - Be unique on destination chain: Use a unique source identifier 
-    ///  - Be unique on the source chain: Use a unique destinationIdentifier
-    ///  - Depend on the message
+    /**
+     * @notice Generates a unique message identifier for a message
+     * @dev Should be overwritten. The identifier should:
+     *  - Be unique over time: Use blocknumber or blockhash
+     *  - Be unique on destination chain: Use a unique source identifier 
+     *  - Be unique on the source chain: Use a unique destinationIdentifier
+     *  - Depend on the message
+     *  - Depend on the sender such that applications can't be dosed. 
+     *  This also implies that application should make their messages user specific.
+     */
     function _getMessageIdentifier(
         bytes32 destinationIdentifier,
         bytes calldata message
