@@ -909,8 +909,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata destinationIncentives,
         bytes32 sourceIdentifier,
         uint256 originBlockNumber,
-        bytes memory message
-    ) external payable virtual checkBytes65Address(messageSenderBytes65) {
+        bytes calldata message
+    ) external payable virtual {
         //! When reading this function, it is important to remember that 'message' is
         // entirely untrusted. We do no verification on it. As a result, we shouldn't
         // trust any data within it. It is first when this message hits the source chain we can begin to verify data.
@@ -929,7 +929,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // messageIdentifier, we need to verify it.
 
         // Load the deadline from the message.
-        uint64 deadline = message[CTX0_DEADLINE_START:CTX0_DEADLINE_END];
+        uint64 deadline = uint64(bytes8(message[CTX0_DEADLINE_START:CTX0_DEADLINE_END]));
 
         // Check that the deadline has passed AND that there is no opt out.
         // This isn't a strong check but if a relayer is honest, then it can be used as a sanity check.
