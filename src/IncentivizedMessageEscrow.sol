@@ -5,7 +5,6 @@ import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEsc
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
 import { CTX_SOURCE_TO_DESTINATION, CTX_DESTINATION_TO_SOURCE, CTX_TIMEDOUT_ON_DESTINATION } from "./MessagePayload.sol";
-import { Multicall } from "openzeppelin/utils/Multicall.sol";
 import "./MessagePayload.sol";
 
 
@@ -28,7 +27,7 @@ import "./MessagePayload.sol";
  * - Seperate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
  */
-abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65, Multicall {
+abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
     
     //--- Constants ---//
 
@@ -327,10 +326,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             _handleAck(chainIdentifier, implementationIdentifier, message, feeRecipient, gasLimit);
         } else if (context == CTX_TIMEDOUT_ON_DESTINATION) {
             // Verify that the timeout is valid.
-            // Anyone is able to control the inputs to this function: They are not protected by us
-            // controlling the logic for the roundtrip. Instead, we need to authenticate the whole message.
+            // Anyone is able to not only get here but also control the inputs to this code section
+            // This logic is not protected by us controlling the logic for the roundtrip.
+            // Instead, we need to authenticate the whole message:
             (bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage) = _verifyTimeout(chainIdentifier, implementationIdentifier, message);
-            // Handle the timeout ack logic.
+
+            // Now that we have the verified the inputs, we can actually use them. Execute the timeout:
             _handleTimeout(chainIdentifier, messageIdentifier, fromApplication, applicationMessage, feeRecipient, gasLimit);
         } else {
             revert NotImplementedError();
@@ -493,6 +494,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint96 priceOfDeliveryGas = incentive.priceOfDeliveryGas;
         uint96 priceOfAckGas = incentive.priceOfAckGas;
         uint64 targetDelta = incentive.targetDelta;
+
+        // Ensure the bounty can only be claimed once. This call is matched on the ack side,
+        // so it also ensures that an ack cannot be delivered if a timeout has been
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
@@ -589,8 +593,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint96 priceOfDeliveryGas = incentive.priceOfDeliveryGas;
         uint96 priceOfAckGas = incentive.priceOfAckGas;
 
-        // Ensure the bounty can only be claimed once.
-        // And timeout can only be executed once. // TODO: Is this enough?
+        // Ensure the bounty can only be claimed once. This call is matched on the ack side,
+        // so it also ensures that an ack cannot be delivered if a timeout has been
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
@@ -628,7 +632,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             maxGasAck,
             priceOfAckGas,
             refundGasTo,
-            address(uint160(uint256(feeRecipient))), // TODO: corretly set,
+            address(uint160(uint256(feeRecipient))),
             address(uint160(uint256(feeRecipient))),
             0, // Disable target delta, since there is only 1 relayer.
             0
@@ -860,7 +864,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * and the ack proof expired.
      * @dev If an AMB controls the entire flow of the message, disable this function.
      */
-    function reemitAckMessage( // TODO: namings.
+    function reemitAckMessage(
         bytes32 sourceIdentifier,
         bytes calldata implementationIdentifier,
         bytes calldata receiveAckWithContext
@@ -869,7 +873,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Load the messageIdentifier from receiveAckWithContext.
         // This makes it ever so slighly easier to retry messages.
-        bytes32 messageIdentifier = bytes32(receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]); // TODO: Do we want to get this on function call for sanity instead?
+        bytes32 messageIdentifier = bytes32(receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
@@ -894,27 +898,25 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * waste a lot of gas.
      * There is no reliable way to block this function such that it can't be called twice after a message has been timed out
      * since the content could we wrong or the proof may still exist.
-     * @param messageIdentifier The message identifier. Will be used to check if the proof has already arrived
      * @param destinationIncentives The address of the source generalisedIncentives that emitted the original message
-     * @param messageSenderBytes65 The address of the application on the source chain // TODO: Can be found in the raw message
-     * @param deadline The deadline of the message. While it is initially untrusted here, it will be validated on the source chain.
-     * @param originBlockNumber The block number when the message was originally emitted. 
-     * Note that for some L2 this could be the block number of the underlying chain. It is the same block number which generated the
-     * message identifier.
      * @param sourceIdentifier The identifier for the source chain (where to send the message)
-     * @param feeRecipient Who should be paid for emitting this timeout?
-     * @param message Application message // TODO: Should we have the raw message here so we can find the application payload for the relayer?
+     * @param originBlockNumber The block number when the message was originally emitted. 
+     * Note that for some L2 this could be the block number of the underlying chain. 
+     * Regardless: It is the same block number which generated themessage identifier.
+     * @param message Original Generalised Incentives messag
      */
     function timeoutMessage(
-        bytes32 messageIdentifier,
         bytes calldata destinationIncentives,
-        bytes calldata messageSenderBytes65,
-        uint64 deadline,
-        uint256 originBlockNumber,
         bytes32 sourceIdentifier,
-        bytes32 feeRecipient,
-        bytes memory message  // TODO: Should we have the raw message here so we can find the application payload for the relayer?
+        uint256 originBlockNumber,
+        bytes memory message
     ) external payable virtual checkBytes65Address(messageSenderBytes65) {
+        //! When reading this function, it is important to remember that 'message' is
+        // entirely untrusted. We do no verification on it. As a result, we shouldn't
+        // trust any data within it. It is first when this message hits the source chain we can begin to verify data.
+
+        // Get the message identifier from the message.
+        bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         // Read the status of the package at MessageIdentifier.
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // If has already been processed, then don't allow timeouting the message. Instead, it should be retried.
@@ -926,18 +928,21 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // When the message arrives, the usual incentive check ensures only 1 message can arrive. Since the incentive check is based on
         // messageIdentifier, we need to verify it.
 
+        // Load the deadline from the message.
+        uint64 deadline = message[CTX0_DEADLINE_START:CTX0_DEADLINE_END];
+
         // Check that the deadline has passed AND that there is no opt out.
+        // This isn't a strong check but if a relayer is honest, then it can be used as a sanity check.
         if (deadline != 0 && deadline <= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
-        // reconstruct message
+        // Reconstruct message
         bytes memory receiveAckWithContext = bytes.concat(
             CTX_TIMEDOUT_ON_DESTINATION,
             messageIdentifier,
-            messageSenderBytes65,
-            feeRecipient,
+            message[FROM_APPLICATION_START:FROM_APPLICATION_END],
             bytes8(deadline),
             bytes32(originBlockNumber),
-            message
+            message[CTX0_MESSAGE_START: ]
         );
 
         // To maintain a common implementation langauge, emit our event before message.
