@@ -6,7 +6,7 @@ import "../src/apps/mock/IncentivizedMockEscrow.sol";
 import "../src/interfaces/IIncentivizedMessageEscrow.sol";
 import { IMessageEscrowEvents } from "../src/interfaces/IMessageEscrowEvents.sol";
 import { IMessageEscrowStructs } from "../src/interfaces/IMessageEscrowStructs.sol";
-import "./mocks/MockApplication.sol";
+import { MockApplication } from "./mocks/MockApplication.sol";
 import { ICrossChainReceiver } from "../src/interfaces/ICrossChainReceiver.sol";
 
 interface ICansubmitMessage is IMessageEscrowStructs{
@@ -45,7 +45,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
         sendLostGasTo = makeAddr("sendLostGasTo");
-        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, 0);
+        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, 0, 0);
 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 

@@ -29,7 +29,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         amount = WORMHOLE.messageFee();
     }
 
-    function _maxDeadline(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
+    function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
         return 0;
     }
 

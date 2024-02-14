@@ -70,14 +70,14 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @dev Should generally be the same as the one set by the AMB such that we can verify messages with this identifier
     function _uniqueSourceIdentifier() virtual internal view returns(bytes32 sourceIdentifier);
 
-    /// @notice Returns the max deadline for this AMB.
+    /// @notice Returns the duration for which a proof is valid for.
     /// It may vary by destination.
     /// @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
     /// @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
-    function _maxDeadline(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
+    function _proofValidPeriod(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
 
-    function maxDeadline(bytes32 destinationIdentifier) external view returns(uint64 timestamp) {
-        return timestamp = uint64(block.timestamp) + _maxDeadline(destinationIdentifier);
+    function proofValidPeriod(bytes32 destinationIdentifier) external view returns(uint64 timestamp) {
+        return timestamp = _proofValidPeriod(destinationIdentifier);
     }
 
     /// @param sendLostGasTo Who should receive Ether which would otherwise block
@@ -231,8 +231,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that the deadline is lower than the AMB specification.
         unchecked {
             // Timestamps do not overflow in uint64 within reason.
-            uint64 ambMaxDeadline = _maxDeadline(destinationIdentifier);
-            if (ambMaxDeadline != 0 && deadline < uint64(block.timestamp) + ambMaxDeadline) revert DeadlineTooLong(ambMaxDeadline, deadline);
+            uint64 ambMaxDeadline = _proofValidPeriod(destinationIdentifier);
+            if (ambMaxDeadline != 0 && deadline > uint64(block.timestamp) + ambMaxDeadline) revert DeadlineTooLong(uint64(block.timestamp) + ambMaxDeadline, deadline);
+            // Check that the deadline is in the future.
+            if (deadline != 0 && block.timestamp >= deadline) revert DeadlineInPast(uint64(block.timestamp), deadline);
         }
 
         // Prepare to store incentive

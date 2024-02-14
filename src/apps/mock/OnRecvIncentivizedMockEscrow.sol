@@ -39,7 +39,7 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         amount = 0;
     }
 
-    function _maxDeadline(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
+    function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
         return 0;
     }
 
