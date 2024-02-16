@@ -90,5 +90,136 @@ contract sendPacketPaymentTest is TestCommon {
             newMessage,
             bytes32(abi.encodePacked(address(this)))
         );
+
+        // This doesn't fail
+        escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST}(
+            _metadata,
+            newMessage,
+            bytes32(abi.encodePacked(address(this)))
+        );
+    }
+
+    function test_process_message_refund_with_cost(uint32 excess) external {
+        IncentiveDescription storage incentive = _INCENTIVE;
+
+        vm.recordLogs();
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+            bytes32(uint256(0x123123) + uint256(2**255)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
+            incentive,
+            0
+        );
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+        
+        (bytes memory _metadata, bytes memory newMessage) = getVerifiedMessage(address(escrow), messageWithContext);
+
+        // This doesn't fail
+        escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST + excess}(
+            _metadata,
+            newMessage,
+            bytes32(abi.encodePacked(address(this)))
+        );
+
+        assertEq(_receive, excess, "Didn't receive excess.");
+    }
+
+    function test_process_message_reemit_with_cost(uint64 excess) external {
+        IncentiveDescription storage incentive = _INCENTIVE;
+
+        vm.recordLogs();
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+            bytes32(uint256(0x123123) + uint256(2**255)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
+            incentive,
+            0
+        );
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+        
+        (bytes memory _metadata, bytes memory newMessage) = getVerifiedMessage(address(escrow), messageWithContext);
+
+        vm.recordLogs();
+
+        escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST}(
+            _metadata,
+            newMessage,
+            bytes32(abi.encodePacked(address(this)))
+        );
+
+        entries = vm.getRecordedLogs();
+
+        (, , bytes memory ackMessageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+        bytes memory ackMessage = this.sliceMemory(ackMessageWithContext, 64);
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "NotEnoughGasProvided(uint128,uint128)",
+                uint128(0),
+                uint128(SEND_MESSAGE_PAYMENT_COST)
+            )
+        );
+        escrow.reemitAckMessage(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), ackMessage);
+
+        escrow.reemitAckMessage{value:SEND_MESSAGE_PAYMENT_COST + excess}(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), this.sliceMemory(ackMessageWithContext, 64));
+
+        assertEq(_receive, excess, "Didn't receive excess.");
+    }
+
+    function test_process_message_timeout_with_cost(uint64 excess) external {
+        uint256 currentTime = 1000000;
+        vm.warp(1000000);
+        IncentiveDescription storage incentive = _INCENTIVE;
+
+        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+            bytes32(uint256(0x123123) + uint256(2**255)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
+            incentive,
+            0
+        );
+
+        bytes memory FROM_APPLICATION_START = new bytes(65);
+
+        bytes memory mockMessage = abi.encodePacked(
+            bytes1(0),
+            bytes32(0),
+            FROM_APPLICATION_START,
+            FROM_APPLICATION_START,
+            uint64(currentTime),
+            bytes32(0),
+            bytes32(0),
+            bytes32(0)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "NotEnoughGasProvided(uint128,uint128)",
+                uint128(0),
+                uint128(SEND_MESSAGE_PAYMENT_COST)
+            )
+        );
+        escrow.timeoutMessage(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), 100, mockMessage);
+
+        escrow.timeoutMessage{value:SEND_MESSAGE_PAYMENT_COST + excess}(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), 100, mockMessage);
+
+        assertEq(_receive, excess, "Didn't receive excess.");
+    }
+
+    function sliceMemory(bytes calldata b, uint256 startSlice) external returns(bytes memory) {
+        return b[startSlice: ];
+    }
+
+    receive() external payable {
+        _receive = msg.value;
     }
 }
