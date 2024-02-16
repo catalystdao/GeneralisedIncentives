@@ -17,6 +17,9 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
     // in cases where they would change it.
     bytes32 public immutable UNIQUE_SOURCE_IDENTIFIER;
 
+    // For EVM it is generally set that 15 => Finality
+    uint8 constant WORMHOLE_CONSISTENCY = 15;
+
     constructor(address sendLostGasTo, address wormhole_) IncentivizedMessageEscrow(sendLostGasTo) WormholeVerifier(wormhole_) {
         WORMHOLE = IWormhole(wormhole_);
 
@@ -77,7 +80,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
                 destinationChainIdentifier,
                 message
             ),
-            0   // Finality = complete.
+            WORMHOLE_CONSISTENCY
         );
     }
 }
