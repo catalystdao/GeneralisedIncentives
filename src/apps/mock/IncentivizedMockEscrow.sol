@@ -7,7 +7,6 @@ import { Ownable2Step } from "openzeppelin/access/Ownable2Step.sol";
 
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
-    error NotEnoughGasProvidedForVerification();
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
     uint256 public costOfMessages;
     uint256 public accumulator = 1;
@@ -87,7 +86,6 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         );
         uint256 verificationCost = costOfMessages;
         if (verificationCost > 0) {
-            if (msg.value < verificationCost) revert NotEnoughGasProvidedForVerification();
             accumulator += verificationCost;
         }
         return costOfsendPacketInNativeToken = uint128(verificationCost);

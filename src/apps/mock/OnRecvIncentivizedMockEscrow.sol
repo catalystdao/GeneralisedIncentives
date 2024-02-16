@@ -9,7 +9,6 @@ import "../../MessagePayload.sol";
 // where messages are delivered directly to the messaging protocol's contract rather than this contract.
 // Comments marked by * imply that an integration point should be changed by external contracts.
 contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
-    error NotEnoughGasProvidedForVerification();
     error NonVerifiableMessage();
     error NotImplemented();
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;

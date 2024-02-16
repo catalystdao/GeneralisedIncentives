@@ -142,7 +142,9 @@ contract sendPacketPaymentTest is TestCommon {
 
         vm.expectRevert(
             abi.encodeWithSignature(
-                "NotEnoughGasProvidedForVerification()"
+                "NotEnoughGasProvided(uint128,uint128)",
+                uint128(9999),
+                uint128(SEND_MESSAGE_PAYMENT_COST)
             )
         );
         escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST - 1}(
