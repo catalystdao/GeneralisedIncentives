@@ -923,7 +923,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * waste a lot of gas.
      * There is no reliable way to block this function such that it can't be called twice after a message has been timed out
      * since the content could we wrong or the proof may still exist.
-     * @param destinationIncentives The address of the source generalisedIncentives that emitted the original message
+     * @param implementationIdentifier The address of the source generalisedIncentives that emitted the original message
      * @param sourceIdentifier The identifier for the source chain (where to send the message)
      * @param originBlockNumber The block number when the message was originally emitted. 
      * Note that for some L2 this could be the block number of the underlying chain. 
@@ -931,8 +931,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param message Original Generalised Incentives messag
      */
     function timeoutMessage(
-        bytes calldata destinationIncentives,
         bytes32 sourceIdentifier,
+        bytes calldata implementationIdentifier,
         uint256 originBlockNumber,
         bytes calldata message
     ) external payable virtual {
@@ -958,7 +958,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Check that the deadline has passed AND that there is no opt out.
         // This isn't a strong check but if a relayer is honest, then it can be used as a sanity check.
-        if (deadline != 0 && deadline <= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        if (deadline != 0 && deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // Reconstruct message
         bytes memory receiveAckWithContext = bytes.concat(
@@ -976,7 +976,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send the message
         uint128 cost = _sendPacket(
             sourceIdentifier,
-            destinationIncentives,
+            implementationIdentifier,
             receiveAckWithContext
         );
 

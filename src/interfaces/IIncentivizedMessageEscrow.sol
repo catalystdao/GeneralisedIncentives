@@ -38,8 +38,8 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
     function estimateAdditionalCost() external view returns(address asset, uint256 amount);
 
     function timeoutMessage(
-        bytes calldata destinationIncentives,
         bytes32 sourceIdentifier,
+        bytes calldata implementationIdentifier,
         uint256 originBlockNumber,
         bytes calldata message
     ) external payable;
