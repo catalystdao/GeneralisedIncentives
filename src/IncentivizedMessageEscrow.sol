@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
+import { Address } from "openzeppelin/utils/Address.sol";
+
 import { IIncentivizedMessageEscrow } from "./interfaces/IIncentivizedMessageEscrow.sol";
 import { ICrossChainReceiver } from "./interfaces/ICrossChainReceiver.sol";
 import { Bytes65 } from "./utils/Bytes65.sol";
@@ -285,7 +287,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (msg.value > sum) {
                 // We know: msg.value >= sum, thus msg.value - sum >= 0.
                 gasRefund = msg.value - sum;
-                payable(incentive.refundGasTo).transfer(gasRefund);
+                Address.sendValue(payable(incentive.refundGasTo), msg.value - uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
             }
         }
@@ -316,12 +318,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         (bytes32 chainIdentifier, bytes memory implementationIdentifier, bytes calldata message) = _verifyPacket(messagingProtocolContext, rawMessage);
 
         // Figure out if this is a call or an ack.
+        uint128 cost = 0;
         bytes1 context = bytes1(message[0]);
         if (context == CTX_SOURCE_TO_DESTINATION) {
             bytes memory receiveAckWithContext = _handleMessage(chainIdentifier, implementationIdentifier, message, feeRecipient, gasLimit);
 
             // The cost management is made by _sendPacket so we don't have to check if enough gas has been provided.
-            _sendPacket(chainIdentifier, implementationIdentifier, receiveAckWithContext);
+            cost = _sendPacket(chainIdentifier, implementationIdentifier, receiveAckWithContext);
         } else if (context == CTX_DESTINATION_TO_SOURCE) {
             // Notice that sometimes ack actually handles deadlines which have been passed.
             // However, these are much different from "timeouts".
@@ -337,6 +340,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             _handleTimeout(chainIdentifier, messageIdentifier, fromApplication, applicationMessage, feeRecipient, gasLimit);
         } else {
             revert NotImplementedError();
+        }
+
+        // Check if there is a mis-match between the cost and the value of the message.
+        if (uint128(msg.value) != cost) {
+            if (uint128(msg.value) > cost) {
+                // Send the unused gas back to the the user.
+                Address.sendValue(payable(msg.sender), msg.value - uint256(cost));
+            } else {
+                revert NotEnoughGasProvided(uint128(msg.value), cost);
+            }
         }
     }
 
@@ -883,7 +896,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
-        _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext);
+        uint128 cost = _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext);
+
+        // Check if there is a mis-match between the cost and the value of the message.
+        if (uint128(msg.value) != cost) {
+            if (uint128(msg.value) > cost) {
+                // Send the unused gas back to the the user.
+                Address.sendValue(payable(msg.sender), msg.value - uint256(cost));
+            } else {
+                revert NotEnoughGasProvided(uint128(msg.value), cost);
+            }
+        }
     }
 
     /**
@@ -951,10 +974,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         emit TimeoutInitiated(messageIdentifier);
 
         // Send the message
-        _sendPacket(
+        uint128 cost = _sendPacket(
             sourceIdentifier,
             destinationIncentives,
             receiveAckWithContext
         );
+
+        // Check if there is a mis-match between the cost and the value of the message.
+        if (uint128(msg.value) != cost) {
+            if (uint128(msg.value) > cost) {
+                // Send the unused gas back to the the user.
+                Address.sendValue(payable(msg.sender), msg.value - uint256(cost));
+            } else {
+                revert NotEnoughGasProvided(uint128(msg.value), cost);
+            }
+        }
     }
 }

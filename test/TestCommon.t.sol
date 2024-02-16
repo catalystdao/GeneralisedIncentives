@@ -21,8 +21,8 @@ interface ICansubmitMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 6583;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 31480;
+    uint256 constant GAS_SPENT_ON_SOURCE = 6586;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 31491;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
