@@ -159,7 +159,7 @@ contract sendPacketPaymentTest is TestCommon {
 
         (, , bytes memory ackMessageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
 
-        bytes memory ackMessage = this.sliceMemory(ackMessageWithContext, 64);
+        bytes memory ackMessage = this.memorySlice(ackMessageWithContext, 64);
 
         vm.expectRevert(
             abi.encodeWithSignature(
@@ -170,7 +170,7 @@ contract sendPacketPaymentTest is TestCommon {
         );
         escrow.reemitAckMessage(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), ackMessage);
 
-        escrow.reemitAckMessage{value:SEND_MESSAGE_PAYMENT_COST + excess}(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), this.sliceMemory(ackMessageWithContext, 64));
+        escrow.reemitAckMessage{value:SEND_MESSAGE_PAYMENT_COST + excess}(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), this.memorySlice(ackMessageWithContext, 64));
 
         assertEq(_receive, excess, "Didn't receive excess.");
     }
@@ -213,10 +213,6 @@ contract sendPacketPaymentTest is TestCommon {
         escrow.timeoutMessage{value:SEND_MESSAGE_PAYMENT_COST + excess}(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), 100, mockMessage);
 
         assertEq(_receive, excess, "Didn't receive excess.");
-    }
-
-    function sliceMemory(bytes calldata b, uint256 startSlice) external returns(bytes memory) {
-        return b[startSlice: ];
     }
 
     receive() external payable {

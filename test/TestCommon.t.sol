@@ -143,5 +143,12 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         return (messageIdentifier, setupprocessPacket(messageWithContext, destinationFeeRecipient));
     }
-    
+
+    function memorySlice(bytes calldata data, uint256 start) pure external returns(bytes memory slice) {
+        slice = data[start: ];
+    }
+
+    function memorySlice(bytes calldata data, uint256 start, uint256 end) pure external returns(bytes memory slice) {
+        slice = data[start:end];
+    }
 }
