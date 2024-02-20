@@ -25,9 +25,9 @@ pragma solidity ^0.8.13;
 //     => MESSAGE_START                 144 (remainder)
 //
 //    CTX2 - 0x02 - Timed Out on Destination
-//      + DEADLINE                      90 (32 bytes)
-//      + ORIGIN_BLOCKNUMER             130 (32 bytes)
-//     => MESSAGE_START                 162 (remainder)
+//      + DEADLINE                      98 (8 bytes)
+//      + ORIGIN_BLOCKNUMER             106 (32 bytes)
+//     => MESSAGE_START                 138 (remainder)
 
 
 // Contexts *********************************************************************************************************************
@@ -81,9 +81,9 @@ uint constant CTX1_MESSAGE_START                    = 144;
 // CTX2 Message Timed out **************************************************************************************************
 
 uint constant CTX2_DEADLINE_START                   = 98;
-uint constant CTX2_DEADLINE_END                     = 130;
+uint constant CTX2_DEADLINE_END                     = 106;
 
-uint constant CTX2_ORIGIN_BLOCK_NUMBER_START        = 130;
-uint constant CTX2_ORIGIN_BLOCK_NUMBER_END          = 162;
+uint constant CTX2_ORIGIN_BLOCK_NUMBER_START        = 106;
+uint constant CTX2_ORIGIN_BLOCK_NUMBER_END          = 138;
 
-uint constant CTX2_MESSAGE_START                    = 162;
+uint constant CTX2_MESSAGE_START                    = 138;

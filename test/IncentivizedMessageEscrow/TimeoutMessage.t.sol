@@ -89,6 +89,28 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
 
 
         (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+        messageWithContext = bytes.concat(
+            abi.encode(address(escrow)),
+            messageWithContext
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
+        bytes memory mockContext = abi.encode(v, r, s);
+
+        vm.expectCall(
+            address(application),
+            abi.encodeWithSignature(
+                "receiveAck(bytes32,bytes32,bytes)",
+                _DESTINATION_IDENTIFIER,
+                bytes32(this.memorySlice(rawSubmitMessage, MESSAGE_IDENTIFIER_START, MESSAGE_IDENTIFIER_END)),
+                bytes.concat(
+                    hex"fd",
+                    message
+                )
+            )
+        );
+        escrow.processPacket(mockContext, messageWithContext, bytes32(uint256(uint160(address(this)))));
     }
 
     function test_message_cannot_be_timeouted_after_exec(bytes calldata message) public {
@@ -171,4 +193,6 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
             newRawSubmitMessage
         );
     }
+
+    receive() external payable {}
 }
