@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import { TestCommon } from "../../TestCommon.t.sol";
+import { TestCommon } from "../TestCommon.t.sol";
 
 contract ReemitAckMessageTest is TestCommon {
     event Message(
@@ -31,7 +31,7 @@ contract ReemitAckMessageTest is TestCommon {
         escrow.reemitAckMessage(_DESTINATION_IDENTIFIER, abi.encodePacked(address(escrow)), rawMessage);
     }
 
-    // 
+    // This tests a relayer trying to reemit a message which is slightly changed.
     function test_reemit_ack_wrong_message(bytes calldata message) public {
         bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 

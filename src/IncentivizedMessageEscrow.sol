@@ -928,7 +928,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param originBlockNumber The block number when the message was originally emitted. 
      * Note that for some L2 this could be the block number of the underlying chain. 
      * Regardless: It is the same block number which generated themessage identifier.
-     * @param message Original Generalised Incentives messag
+     * @param message Original Generalised Incentives message
      */
     function timeoutMessage(
         bytes32 sourceIdentifier,
@@ -964,7 +964,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes memory receiveAckWithContext = bytes.concat(
             CTX_TIMEDOUT_ON_DESTINATION,
             messageIdentifier,
-            message[FROM_APPLICATION_START:FROM_APPLICATION_END],
+            message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END],
             bytes8(deadline),
             bytes32(originBlockNumber),
             message[CTX0_MESSAGE_START: ]
