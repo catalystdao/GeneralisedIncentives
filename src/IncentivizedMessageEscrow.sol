@@ -958,7 +958,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Check that the deadline has passed AND that there is no opt out.
         // This isn't a strong check but if a relayer is honest, then it can be used as a sanity check.
-        if (deadline != 0 && deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        if (deadline == 0 || deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // Reconstruct message
         bytes memory receiveAckWithContext = bytes.concat(

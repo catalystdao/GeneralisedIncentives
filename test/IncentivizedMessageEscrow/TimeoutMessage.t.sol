@@ -19,7 +19,8 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
 
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message);
+        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 100);
+        vm.warp(101);
 
         // Remove the context
         bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);
@@ -45,6 +46,49 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
             block.number,
             rawSubmitMessage
         );
+    }
+
+    function test_deliver_timeout_message(bytes calldata message) public {
+        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
+
+        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
+
+
+        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 100);
+
+        vm.warp(101);
+
+        // Remove the context
+        bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);
+        
+        vm.expectEmit();
+        emit Message(
+            _DESTINATION_IDENTIFIER,
+            abi.encodePacked(address(escrow)),
+            bytes.concat(
+                _DESTINATION_IDENTIFIER,
+                _DESTINATION_IDENTIFIER,
+                CTX_TIMEDOUT_ON_DESTINATION,
+                this.memorySlice(rawSubmitMessage, MESSAGE_IDENTIFIER_START, FROM_APPLICATION_END),
+                this.memorySlice(rawSubmitMessage, CTX0_DEADLINE_START, CTX0_DEADLINE_END),
+                bytes32(block.number),
+                message
+            )
+        );
+
+        vm.recordLogs();
+
+        escrow.timeoutMessage(
+            _DESTINATION_IDENTIFIER,
+            abi.encodePacked(address(escrow)),
+            block.number,
+            rawSubmitMessage
+        );
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
     }
 
     function test_message_cannot_be_timeouted_after_exec(bytes calldata message) public {
@@ -78,7 +122,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
 
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message);
+        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, newTimestamp+1);
 
         // Remove the context
         bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);
@@ -100,13 +144,13 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         );
     }
 
-    function test_message_deadline_0_implies_any(bytes calldata message, uint64 newTimestamp) public {
+    function test_message_deadline_0_implies_no(bytes calldata message, uint64 newTimestamp) public {
         bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
         bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
 
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message);
+        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 0);
 
         // Remove the context
         bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);
@@ -119,6 +163,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
             this.memorySlice(rawSubmitMessage, CTX0_DEADLINE_END)
         );
 
+        vm.expectRevert(abi.encodeWithSignature("DeadlineNotPassed(uint64,uint64)", 0, newTimestamp));
         escrow.timeoutMessage(
             _DESTINATION_IDENTIFIER,
             abi.encodePacked(address(escrow)),
