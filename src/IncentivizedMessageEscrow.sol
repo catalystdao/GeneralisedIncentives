@@ -144,10 +144,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /// @notice Returns a hash of the ack unless there was no ack then it returns bytes32(uint256(1));
+    // If the message hasn't been delivered yet it still returns bytes32(0)
    function messageDelivered(bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted) {
         return _messageDelivered[messageIdentifier];
    }
-
 
     /// @notice Sets the escrow implementation for a specific chain
     /// @dev This can only be set once. When set, is cannot be changed.
