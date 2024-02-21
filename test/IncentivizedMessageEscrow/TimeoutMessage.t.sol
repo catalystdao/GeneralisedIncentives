@@ -14,12 +14,8 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
     );
 
     function test_timeout_message(bytes calldata message) public {
-        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
+        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 100);
 
-        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
-
-
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 100);
         vm.warp(101);
 
         // Remove the context
@@ -49,12 +45,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
     }
 
     function test_deliver_timeout_message(bytes calldata message) public {
-        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
-
-        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
-
-
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 100);
+        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 100);
 
         vm.warp(101);
 
@@ -114,12 +105,9 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
     }
 
     function test_message_cannot_be_timeouted_after_exec(bytes calldata message) public {
-        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
-
         bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
-
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message);
+        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message);
 
         // Ready for ack.
         setupprocessPacket(submitMessageWithContext, destinationFeeRecipient);
@@ -139,12 +127,8 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
     function test_message_cannot_be_timeouted_before_deadline(bytes calldata message, uint64 newTimestamp) public {
         vm.assume(newTimestamp < type(uint64).max - 100);
         vm.assume(newTimestamp > 100);
-        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
 
-        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
-
-
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, newTimestamp+1);
+        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, newTimestamp+1);
 
         // Remove the context
         bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);
@@ -167,12 +151,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
     }
 
     function test_message_deadline_0_implies_no(bytes calldata message, uint64 newTimestamp) public {
-        bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
-
-        bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
-
-
-        (bytes32 messageIdentifier, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 0);
+        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 0);
 
         // Remove the context
         bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);

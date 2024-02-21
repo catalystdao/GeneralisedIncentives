@@ -413,7 +413,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that if the deadline has been set (deadline != 0). If the deadline has been set,
         // check if the current timestamp is beyond the deadline and return TIMED_OUT if it is.
         uint64 deadline = uint64(bytes8(message[CTX0_DEADLINE_START:CTX0_DEADLINE_END]));
-        if ((deadline != 0) && deadline < block.timestamp) {
+        if (deadline != 0 && deadline < block.timestamp) {
             acknowledgement = bytes.concat(
                 MESSAGE_TIMED_OUT,
                 message[CTX0_MESSAGE_START: ]
@@ -610,7 +610,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Ensure the bounty can only be claimed once. This call is matched on the ack side,
         // so it also ensures that an ack cannot be delivered if a timeout has been
-        if (refundGasTo == address(0)) revert MessageAlreadyAcked();  // TODO: test
+        if (refundGasTo == address(0)) revert MessageAlreadyAcked();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
         // We delegate checking the if the destination implementation is correct to outside this contract.
@@ -679,7 +679,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // This is because we must expect the remote implementation to also do the check to save gas
         // since it is an obvious and valid remote check
         uint64 deadline = uint64(bytes8(message[CTX2_DEADLINE_START:CTX2_DEADLINE_END]));
-        if (deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        if (deadline >= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // The entirty of the incoming message is untrusted. So far we havn't done any verification of
         // the message but rather of the origin of the message.
@@ -711,7 +711,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Get the reference message identifier from the package. We need to verify this since we used it on the sending chain.
         messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-        if (computedMessageIdentifier != messageIdentifier) revert InvalidTimeoutPackage(messageIdentifier, computedMessageIdentifier);  // TODO test
+        if (computedMessageIdentifier != messageIdentifier) revert InvalidTimeoutPackage(messageIdentifier, computedMessageIdentifier);
     }
 
     /** 
@@ -958,7 +958,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Check that the deadline has passed AND that there is no opt out.
         // This isn't a strong check but if a relayer is honest, then it can be used as a sanity check.
-        if (deadline == 0 || deadline > block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        if (deadline == 0 || deadline >= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // Reconstruct message
         bytes memory receiveAckWithContext = bytes.concat(
