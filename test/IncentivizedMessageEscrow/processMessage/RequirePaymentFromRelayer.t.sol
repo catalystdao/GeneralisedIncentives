@@ -195,7 +195,7 @@ contract sendPacketPaymentTest is TestCommon {
             bytes32(0),
             FROM_APPLICATION_START,
             FROM_APPLICATION_START,
-            uint64(currentTime),
+            uint64(currentTime-1),
             bytes32(0),
             bytes32(0),
             bytes32(0)
