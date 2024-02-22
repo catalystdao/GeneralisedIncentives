@@ -291,7 +291,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 Address.sendValue(payable(incentive.refundGasTo), msg.value - uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
             }
-        // Valid refund to.
         }
         return (0, messageIdentifier);
     }
