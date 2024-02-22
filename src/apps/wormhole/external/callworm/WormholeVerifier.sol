@@ -11,7 +11,13 @@ import "../wormhole/libraries/external/BytesLib.sol";
 contract WormholeVerifier is GettersGetter {
     using BytesLib for bytes;
 
-    constructor(address wormholeState) GettersGetter(wormholeState) {}
+    error InvalidSignatory();
+    error SignatureIndicesNotAscending();
+    error GuardianIndexOutOfBounds();
+    error VMVersionIncompatible();
+    error TooManyGuardians();
+
+    constructor(address wormholeState) payable GettersGetter(wormholeState) {}
 
     /// @dev parseAndVerifyVM serves to parse an encodedVM and wholy validate it for consumption
     function parseAndVerifyVM(bytes calldata encodedVM) public view returns (
@@ -53,8 +59,10 @@ contract WormholeVerifier is GettersGetter {
         }
 
         /// @dev Checks if VM guardian set index matches the current index (unless the current set is expired).
-        if(vm.guardianSetIndex != getCurrentGuardianSetIndex() && guardianSet.expirationTime < block.timestamp){
-            return (false, "guardian set has expired");
+        if (guardianSet.expirationTime < block.timestamp) {
+            if (vm.guardianSetIndex != getCurrentGuardianSetIndex()) {
+                return (false, "guardian set has expired");
+            }
         }
 
        /**
@@ -102,11 +110,10 @@ contract WormholeVerifier is GettersGetter {
             address signatory = ecrecover(hash, v, r, s);
             // ecrecover returns 0 for invalid signatures. We explicitly require valid signatures to avoid unexpected
             // behaviour due to the default storage slot value also being 0.
-            require(signatory != address(0), "ecrecover failed with signature");
-
+             if (signatory == address(0)) revert InvalidSignatory();
 
             /// Ensure that provided signature indices are ascending only
-            require(i == 0 || guardianIndex > lastIndex, "signature indices must be ascending");
+            if(!(i == 0 || guardianIndex > lastIndex)) revert SignatureIndicesNotAscending();
             lastIndex = guardianIndex;
 
             /// @dev Ensure that the provided signature index is within the
@@ -115,7 +122,7 @@ contract WormholeVerifier is GettersGetter {
             /// However, reverting explicitly here ensures that a bug is not
             /// introduced accidentally later due to the nontrivial storage
             /// semantics of solidity.
-            require(guardianIndex < guardianCount, "guardian index out of bounds");
+            if (guardianIndex >= guardianCount) revert GuardianIndexOutOfBounds();
 
             /// Check to see if the signer of the signature does not match a specific Guardian key at the provided index
             if(signatory != guardianSet.keys[guardianIndex]){
@@ -147,7 +154,7 @@ contract WormholeVerifier is GettersGetter {
         // This means that this field's integrity is not protected and cannot be trusted. 
         // This is not a problem today since there is only one accepted version, but it 
         // could be a problem if we wanted to allow other versions in the future. 
-        require(version == 1, "VM version incompatible"); 
+        if(version != 1) revert VMVersionIncompatible();
 
         vm.guardianSetIndex = uint32(bytes4(encodedVM[1:4+1]));
         index += 4;
@@ -178,7 +185,7 @@ contract WormholeVerifier is GettersGetter {
         But xDapps rely on the hash of an observation for replay protection.
         */
         bytes calldata body = encodedVM[index:];
-        bodyHash = keccak256(abi.encodePacked(keccak256(body)));
+        bodyHash = keccak256(bytes.concat(keccak256(body)));
 
         // Parse the body
         // vm.timestamp = uint32(bytes4(encodedVM[index:index+4]));
@@ -207,8 +214,12 @@ contract WormholeVerifier is GettersGetter {
      * @dev quorum serves solely to determine the number of signatures required to acheive quorum
      */
     function quorum(uint numGuardians) public pure virtual returns (uint numSignaturesRequiredForQuorum) {
+        unchecked {
+            
         // The max number of guardians is 255
-        require(numGuardians < 256, "too many guardians");
+        if (numGuardians >= 256) revert TooManyGuardians();
         return ((numGuardians * 2) / 3) + 1;
+        
+        }
     }
 }

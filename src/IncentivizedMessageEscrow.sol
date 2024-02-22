@@ -106,9 +106,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         implementationAddress[msg.sender][destinationIdentifier] = implementation;
-        implementationAddressHash[msg.sender][destinationIdentifier] = keccak256(implementation);
+        bytes32 _implementationHash = keccak256(implementation);
+        implementationAddressHash[msg.sender][destinationIdentifier] = _implementationHash;
 
-        emit RemoteImplementationSet(msg.sender, destinationIdentifier, keccak256(implementation), implementation);
+        emit RemoteImplementationSet(msg.sender, destinationIdentifier, _implementationHash, implementation);
     }
 
     //--- Public Endpoints ---//
@@ -168,7 +169,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         IncentiveDescription calldata incentive
     ) checkBytes65Address(destinationAddress) external payable returns(uint256 gasRefund, bytes32 messageIdentifier) {
         if (incentive.refundGasTo == address(0)) revert RefundGasToIsZero();
-        // Check that the application has set a destination implementation
+
+        // Check that the application has set a destination implementation by checking if the is not 0.
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
         // Check that the length is not 0.
         if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
@@ -206,6 +208,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             destinationIdentifier,
             destinationImplementation,
             messageWithContext
+     * Furthermore, if the package timesout there is no gas refund.
         );
         // Add the cost of the send message.
         sum += costOfsendPacketInNativeToken;
@@ -222,6 +225,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
                 payable(incentive.refundGasTo).transfer(gasRefund);
                 return (gasRefund, messageIdentifier);
             }
+        // Valid refund to.
         }
         return (0, messageIdentifier);
     }
@@ -280,7 +284,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Deliver message to application.
         // Decode gas limit, application address and sending application.
-        uint48 maxGas = uint48(bytes6(message[CTX0_MAX_GAS_LIMIT_START:CTX0_MAX_GAS_LIMIT_END]));
         address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
 
@@ -573,9 +576,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // check if the application trusts the implementation on the destination chain.
             bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][chainIdentifier];
             if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
-
             ICrossChainReceiver(fromApplication).receiveAck(chainIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
-
             emit MessageAcked(messageIdentifier);
         } else {
             revert NotImplementedError();

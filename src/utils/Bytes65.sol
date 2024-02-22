@@ -14,8 +14,8 @@ contract Bytes65 {
     }
 
     function convertEVMTo65(address evmAddress) public pure returns(bytes memory) {
-        return abi.encodePacked(
-            uint8(20),                              // Size of address. Is always 20 for EVM
+        return bytes.concat(
+            bytes1(uint8(20)),                      // Size of address. Is always 20 for EVM
             bytes32(0),                             // First 32 bytes on EVM are 0
             bytes32(uint256(uint160((evmAddress)))) // Encode the address in bytes32.
         );

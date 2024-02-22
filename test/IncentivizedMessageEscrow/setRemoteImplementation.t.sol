@@ -9,6 +9,7 @@ import { IncentivizedMessageEscrow } from "../../src/IncentivizedMessageEscrow.s
 contract TestSetRemoteImplementation is TestCommon {
 
     function test_set_remote_implementation(bytes32 destination_identifier, bytes calldata implementation) public {
+        vm.assume(destination_identifier != _DESTINATION_IDENTIFIER);
 
         vm.expectEmit();
         emit RemoteImplementationSet(address(this), destination_identifier, keccak256(implementation), implementation);
