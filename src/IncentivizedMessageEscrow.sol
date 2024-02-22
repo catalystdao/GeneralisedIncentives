@@ -275,7 +275,6 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             destinationIdentifier,
             destinationImplementation,
             messageWithContext
-     * Furthermore, if the package timesout there is no gas refund.
         );
         // Add the cost of the send message.
         sum += costOfsendPacketInNativeToken;

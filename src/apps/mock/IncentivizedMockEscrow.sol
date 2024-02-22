@@ -10,13 +10,15 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     error InvalidSigner();
 
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
-    uint256 public accumulator = 1;
+
+    uint128 public accumulator = 1;
+    uint128 costOfMessages;
 
     uint64 immutable PROOF_PERIOD;
 
     event Message(bytes32 destinationIdentifier, bytes recipient, bytes message);
 
-    constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_, uint64 proofPeriod) IncentivizedMessageEscrow(sendLostGasTo) {
+    constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint128 costOfMessages_, uint64 proofPeriod) IncentivizedMessageEscrow(sendLostGasTo) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
         _transferOwnership(signer);
         costOfMessages = costOfMessages_;
@@ -87,7 +89,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
                 message
             )
         );
-        uint256 verificationCost = costOfMessages;
+        uint128 verificationCost = costOfMessages;
         unchecked{
             if (verificationCost > 0) {
                 accumulator += verificationCost;
