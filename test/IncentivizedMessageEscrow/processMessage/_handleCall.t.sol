@@ -106,7 +106,8 @@ contract processPacketCallTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
-            _INCENTIVE
+            _INCENTIVE,
+            0
         );
 
         Vm.Log[] memory entries = vm.getRecordedLogs();

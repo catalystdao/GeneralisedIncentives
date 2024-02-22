@@ -26,8 +26,8 @@ contract sendPacketPaymentTest is TestCommon {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
-        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, SEND_MESSAGE_PAYMENT_COST);
-
+        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, SEND_MESSAGE_PAYMENT_COST, 0);
+ 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 
         // Set implementations to the escrow address.
@@ -72,7 +72,8 @@ contract sendPacketPaymentTest is TestCommon {
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         // Check that the message identifier points exposes the bounty.
@@ -99,7 +100,8 @@ contract sendPacketPaymentTest is TestCommon {
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         // Check that the message identifier points exposes the bounty.
@@ -140,7 +142,9 @@ contract sendPacketPaymentTest is TestCommon {
 
         vm.expectRevert(
             abi.encodeWithSignature(
-                "NotEnoughGasProvidedForVerification()"
+                "NotEnoughGasProvided(uint128,uint128)",
+                uint128(9999),
+                uint128(SEND_MESSAGE_PAYMENT_COST)
             )
         );
         escrow.processPacket{value: SEND_MESSAGE_PAYMENT_COST - 1}(

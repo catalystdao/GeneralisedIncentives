@@ -110,9 +110,15 @@ This definition works well in combination with the single relayer addition: If a
 
 It is very important to remember that the ack "clock" starts ticking from when the destination call has been executed not when the first message was emitted. As a result, if it takes 30 days to send the message from the source to the destination but the ack from the destination to the source only takes 10 seconds, then it is those 10 seconds that are counted against `targetDelta`. As a result, the base `maxGasDelivery` will incentivize the delivery of the message to the destination until it has been delivered.
 
+## Timeout & Expired Proofs
+
+Not all AMBs support perpetually verifable proofs. To avoid loss of packages, timeouts are implemented. When submitting messages, applications can specify a timestamp where if a message is delivered after that, the destination application will not receive it. Instead an ack with failure code `0xfe` will be send back. Additionally, if no mesasge has been delivered a timeout attempt can be sent back.
+
+If an AMB supports perpetually verifyable proofs OR supports a manual proof recovery process, then timeouts can be disabled by setting the deadline to 0 otherwise there is a limit to how far in the future the deadline can be set.
+
 ## Message structure
 
-The messages structure can be found in src/MessagePayload.sol. 2 message types are defined: `SourcetoDestination` and `DestinationtoSource` which can be identified by the first byte of the message as 0x00 and 0x01 respectively.
+The messages structure can be found in src/MessagePayload.sol. 3 message types are defined: `SourcetoDestination`, `DestinationtoSource`, and `essageTimedout` which can be identified by the first byte of the message as 0x00, 0x01, or 0x02 respectively.
 
 ## Implementation Asterisks
 
@@ -131,6 +137,10 @@ For EVM this is currently limited by [Solidity #13869](https://github.com/ethere
 Ack calls are not limited by the bad execution named above. As a result, if the ack gas limit is not properly set and the ack runs out of gas the application could lose out on critical information.
 
 As a result, a fallback function that allows acks to be executed as many times as needed exists. Applications should ensure that critical logic cannot be executed twice in acks by resubmitting the ack message.
+
+### Application Gas Enforcements
+
+If an application doesn't use all of the allocated gas, it may be provided less EXCEPT if the application's call fails. This can be an issue for applications that might expect to get 100% of the gas they asked for but instead got less AND would silently fail. This is because the gas check is done after the application call and only if the application failed, rather than before to save gas and increase support with transaction simulation tools.
 
 ### Invalid gas destination addresses are sent to a collection address
 
@@ -164,7 +174,7 @@ If on the destination chain, the application which is being called hasn't set th
 If a message fails, a failure code is prepended to the original message and sent back. Below a list of failure codes can be found:
 - `0xff`: Generic application logic failure. Destination application couldn't be called, reverted or out of gas.
 - `0xfe`: Sending escrow implementation is not authenticated to call the application.
-- `0xfd`: The message has timeouted and hasn't been executed on the destination chain.
+- `0xfd`: The message has timed out and hasn't been executed on the destination chain.
 
 ## Repository Structure
 

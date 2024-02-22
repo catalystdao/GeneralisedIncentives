@@ -13,10 +13,11 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
-        assertEq(messageIdentifier, bytes32(0x63d67e3fce2ed64674223d39595772649b279109e9bffd287446258b536459ac));
+        assertEq(messageIdentifier, bytes32(0xb052184a54ac360ad9357b08ecca6fb0db95533777c220ddb24a2c9447636a36));
     }
 
     function test_unique_identifier_block_11() public {
@@ -26,10 +27,11 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
-        assertEq(messageIdentifier, bytes32(0xff33b82153b4b666a3b395852e06879d8be2aab78d77e93307ba3879e1cf7042));
+        assertEq(messageIdentifier, bytes32(0x8c4b4f4125bc7c9c0943754a03bdea1a58c680a4069139deed023e4964e762a0));
     }
 
     // Even with the same message, the identifier should be different between blocks.
@@ -39,7 +41,8 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             message,
-            incentive
+            incentive,
+            0
         );
         // No blocks pass between the 2 calls:
         vm.expectRevert(
@@ -49,7 +52,8 @@ contract MessageIdentifierTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             message,
-            incentive
+            incentive,
+            0
         );
     }
 
@@ -63,7 +67,8 @@ contract MessageIdentifierTest is TestCommon {
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(1)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         escrow.setRemoteImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)), abi.encode(address(escrow)));
@@ -72,10 +77,46 @@ contract MessageIdentifierTest is TestCommon {
             bytes32(uint256(_DESTINATION_IDENTIFIER) + uint256(2)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
-        assertEq(messageIdentifier1, bytes32(0x0336e79dacdcf5c72d112c6a1dcc16484993043f84feb08300a9c78ee317ff09));
-        assertEq(messageIdentifier2, bytes32(0x27a6da8297249099dc55dcdcd0de9b3114fdded9901a151414e2a1eea034f9db));
+        assertEq(messageIdentifier1, bytes32(0xdc4a66de9adecec9a06bc8afaffeb73714efb0ad20624b4347fa815035425616));
+        assertEq(messageIdentifier2, bytes32(0x95135d09fbf48438c5b9e293dcb9a3f876eaf5f33cbe764ec253cf1770505a85));
+    }
+
+    // With different destination identifiers they should produce different identifiers.
+    function test_sender_impacts_message_identifier(address a, address b) public {
+        vm.assume(a != b);
+        IncentiveDescription storage incentive = _INCENTIVE;
+
+        vm.deal(a, _getTotalIncentive(_INCENTIVE));
+        vm.deal(b, _getTotalIncentive(_INCENTIVE));
+
+        vm.prank(a);
+        escrow.setRemoteImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER)), abi.encode(address(escrow)));
+
+        vm.prank(a);
+        (, bytes32 messageIdentifier1) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
+            bytes32(uint256(_DESTINATION_IDENTIFIER)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
+            incentive,
+            0
+        );
+
+        vm.prank(b);
+        escrow.setRemoteImplementation(bytes32(uint256(_DESTINATION_IDENTIFIER)), abi.encode(address(escrow)));
+
+        vm.prank(b);
+        (, bytes32 messageIdentifier2) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
+            bytes32(uint256(_DESTINATION_IDENTIFIER)),
+            _DESTINATION_ADDRESS_THIS,
+            _MESSAGE,
+            incentive,
+            0
+        );
+
+        assertNotEq(messageIdentifier1, messageIdentifier2);
     }
 }

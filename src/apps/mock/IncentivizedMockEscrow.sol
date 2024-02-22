@@ -8,15 +8,19 @@ import { Ownable2Step } from "openzeppelin/access/Ownable2Step.sol";
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     error InvalidSigner();
+
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
     uint256 public accumulator = 1;
 
+    uint64 immutable PROOF_PERIOD;
+
     event Message(bytes32 destinationIdentifier, bytes recipient, bytes message);
 
-    constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_) IncentivizedMessageEscrow(sendLostGasTo) {
+    constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_, uint64 proofPeriod) IncentivizedMessageEscrow(sendLostGasTo) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
         _transferOwnership(signer);
         costOfMessages = costOfMessages_;
+        PROOF_PERIOD = proofPeriod;
     }
 
     function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
@@ -29,6 +33,10 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
             payable(owner()).transfer(accumulator - 1);
         }
         accumulator = 1;
+    }
+    
+    function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal view returns(uint64) {
+        return PROOF_PERIOD;
     }
 
     function _uniqueSourceIdentifier() override internal view returns(bytes32 sourceIdentifier) {
