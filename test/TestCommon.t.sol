@@ -6,7 +6,7 @@ import "../src/apps/mock/IncentivizedMockEscrow.sol";
 import "../src/interfaces/IIncentivizedMessageEscrow.sol";
 import { IMessageEscrowEvents } from "../src/interfaces/IMessageEscrowEvents.sol";
 import { IMessageEscrowStructs } from "../src/interfaces/IMessageEscrowStructs.sol";
-import "./mocks/MockApplication.sol";
+import { MockApplication } from "./mocks/MockApplication.sol";
 import { ICrossChainReceiver } from "../src/interfaces/ICrossChainReceiver.sol";
 
 interface ICansubmitMessage is IMessageEscrowStructs{
@@ -14,15 +14,15 @@ interface ICansubmitMessage is IMessageEscrowStructs{
         bytes32 destinationIdentifier,
         bytes calldata destinationAddress,
         bytes calldata message,
-        IncentiveDescription calldata incentive
+        IncentiveDescription calldata incentive,
+        uint64 deadline
     ) external payable returns(uint256 gasRefund, bytes32 messageIdentifier);
 }
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 6388;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 31494;
-    uint256 constant GAS_RECEIVE_CONSTANT = 5935205298;
+    uint256 constant GAS_SPENT_ON_SOURCE = 6586;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 31491;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -45,7 +45,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
         sendLostGasTo = makeAddr("sendLostGasTo");
-        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, 0);
+        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, 0, 0);
 
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 
@@ -108,7 +108,26 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
-            _INCENTIVE
+            _INCENTIVE,
+            0
+        );
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        (, , bytes memory messageWithContext) = abi.decode(entries[1].data, (bytes32, bytes, bytes));
+
+        return (messageIdentifier, abi.encodePacked(bytes32(uint256(uint160(address(escrow)))), messageWithContext));
+    }
+
+    function setupsubmitMessage(address fromAddress, bytes memory message, uint64 deadline) internal returns(bytes32, bytes memory) {
+        vm.recordLogs();
+        (, uint256 cost) = escrow.estimateAdditionalCost();
+        (, bytes32 messageIdentifier) = ICansubmitMessage(fromAddress).submitMessage{value: _getTotalIncentive(_INCENTIVE) + cost}(
+            _DESTINATION_IDENTIFIER,
+            _DESTINATION_ADDRESS_APPLICATION,
+            message,
+            _INCENTIVE,
+            deadline
         );
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
@@ -142,5 +161,12 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
 
         return (messageIdentifier, setupprocessPacket(messageWithContext, destinationFeeRecipient));
     }
-    
+
+    function memorySlice(bytes calldata data, uint256 start) pure external returns(bytes memory slice) {
+        slice = data[start: ];
+    }
+
+    function memorySlice(bytes calldata data, uint256 start, uint256 end) pure external returns(bytes memory slice) {
+        slice = data[start:end];
+    }
 }

@@ -13,7 +13,8 @@ contract EscrowInformationTest is TestCommon {
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         // Check that the message identifier points exposes the bounty.
@@ -31,13 +32,14 @@ contract EscrowInformationTest is TestCommon {
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.expectEmit();
-        emit BountyPlaced(bytes32(0xb9ca07b4390ffb7693876d025f356c92a2a0502b46c9cd4ad0aecb195774ec98), incentive);
+        emit BountyPlaced(bytes32(0xe6cf68bb866196fb8c6b9d52ee71bd509245c307ed60b2a4ceb91e341f5f9d37), incentive);
 
         escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
     }
 
@@ -52,7 +54,8 @@ contract EscrowInformationTest is TestCommon {
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            incentive
+            incentive,
+            0
         );
 
         assertEq(gasRefund, overpay);

@@ -136,7 +136,8 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
         _DESTINATION_IDENTIFIER,
         convertEVMTo65(address(this)),
         message,
-        incentive
+        incentive,
+        0
     );
     Vm.Log[] memory entries = vm.getRecordedLogs();
 

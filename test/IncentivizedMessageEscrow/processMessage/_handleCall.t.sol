@@ -40,7 +40,7 @@ contract processPacketCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipient,
-                uint48(0x7b06),  // Gas used
+                uint48(0x7b03),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -106,7 +106,8 @@ contract processPacketCallTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_APPLICATION,
             message,
-            _INCENTIVE
+            _INCENTIVE,
+            0
         );
 
         Vm.Log[] memory entries = vm.getRecordedLogs();

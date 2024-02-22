@@ -18,7 +18,8 @@ contract NoImplementationAddressSetTest is TestCommon {
             _DESTINATION_IDENTIFIER,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
-            _INCENTIVE
+            _INCENTIVE,
+            0
         );
     }
 }
