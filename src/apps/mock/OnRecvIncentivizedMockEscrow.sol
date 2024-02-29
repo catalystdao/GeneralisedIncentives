@@ -67,6 +67,26 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         revert NotImplemented();
     }
 
+    // Disable reemit since the AMB manages this flow.
+    function reemitAckMessage(
+        bytes32 /* sourceIdentifier */,
+        bytes calldata /* implementationIdentifier */,
+        bytes calldata /* receiveAckWithContext */
+    ) external payable override {
+        revert NotImplemented();
+    }
+
+    // Disable timeout since the AMB manages this flow.
+    function timeoutMessage(
+        bytes32 /* sourceIdentifier */,
+        bytes calldata /* implementationIdentifier */,
+        uint256 /* originBlockNumber */,
+        bytes calldata /* message */
+    ) external payable override {
+        revert NotImplemented();
+    }
+
+
     function onReceive(
         bytes32 chainIdentifier,
         bytes calldata sourceImplementationIdentifier,

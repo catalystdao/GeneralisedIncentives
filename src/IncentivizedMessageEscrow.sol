@@ -44,16 +44,19 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /// @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
     /// the gas is sent here instead.
+    /// @dev This may not invoke any logic on receive()
     address immutable public SEND_LOST_GAS_TO;
 
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
 
+    /// @notice A hash of the emitted message on receive such that we can emit a similar one.
     mapping(bytes32 => bytes32) _messageDelivered;
 
     // Maps applications to their escrow implementations.
     mapping(address => mapping(bytes32 => bytes)) public implementationAddress;
     mapping(address => mapping(bytes32 => bytes32)) public implementationAddressHash;
+
     //--- Virtual Functions ---//
     // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
 
@@ -75,6 +78,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice Returns the duration for which a proof is valid for.
     /// It may vary by destination.
     /// @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
+    /// The setting needs to be sane: Do not set the proofValidPeriod to more than ~1 years.
     /// @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
     function _proofValidPeriod(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
 
@@ -152,10 +156,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /// @notice Sets the escrow implementation for a specific chain
     /// @dev This can only be set once. When set, is cannot be changed.
     /// This is to protect relayers as this could be used to fail acks.
+    /// You are not allowed to set a 0 length implementation address. If you want to disable a specific route, set it to hex"00";
     function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
         if (implementationAddressHash[msg.sender][destinationIdentifier] != bytes32(0)) revert ImplementationAddressAlreadySet(
             implementationAddress[msg.sender][destinationIdentifier]
         );
+        if (implementation.length == 0) revert NoImplementationAddressSet();
 
         implementationAddress[msg.sender][destinationIdentifier] = implementation;
         bytes32 _implementationHash = keccak256(implementation);
@@ -235,8 +241,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         unchecked {
             // Timestamps do not overflow in uint64 within reason.
             uint64 ambMaxDeadline = _proofValidPeriod(destinationIdentifier);
+            if (ambMaxDeadline != 0 && deadline == 0) revert DeadlineTooLong(ambMaxDeadline, 0);
             if (ambMaxDeadline != 0 && deadline > uint64(block.timestamp) + ambMaxDeadline) revert DeadlineTooLong(uint64(block.timestamp) + ambMaxDeadline, deadline);
-            // Check that the deadline is in the future.
+            // Check that the deadline is in the future = not (block.timestamp < deadline) = block.timestamp >= deadline
             if (deadline != 0 && block.timestamp >= deadline) revert DeadlineInPast(uint64(block.timestamp), deadline);
         }
 
@@ -251,13 +258,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Add escrow context to the message.
         bytes memory messageWithContext = bytes.concat(
-            bytes1(CTX_SOURCE_TO_DESTINATION),    // This is a sendPacket,
-            bytes32(messageIdentifier),              // A unique message identifier
-            convertEVMTo65(msg.sender),     // Original sender
-            destinationAddress,             // The address to deliver the (original) message to.
+            bytes1(CTX_SOURCE_TO_DESTINATION),      // This is a sendPacket,
+            bytes32(messageIdentifier),             // A unique message identifier
+            convertEVMTo65(msg.sender),             // Original sender
+            destinationAddress,                     // The address to deliver the (original) message to.
             bytes8(uint64(deadline)),
             bytes6(incentive.maxGasDelivery),       // Send the gas limit to the other chain so we can enforce it
-            message                         // The message to deliver to the destination.
+            message                                 // The message to deliver to the destination.
         );
 
         // Emit the event for off-chain relayers.
@@ -288,7 +295,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (msg.value > sum) {
                 // We know: msg.value >= sum, thus msg.value - sum >= 0.
                 gasRefund = msg.value - sum;
-                Address.sendValue(payable(incentive.refundGasTo), msg.value - uint256(gasRefund));
+                Address.sendValue(payable(incentive.refundGasTo), uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
             }
         }
@@ -348,9 +355,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (uint128(msg.value) > cost) {
                 // Send the unused gas back to the the user.
                 Address.sendValue(payable(msg.sender), msg.value - uint256(cost));
-            } else {
-                revert NotEnoughGasProvided(uint128(msg.value), cost);
+                return;
             }
+            // => uint128(msg.value) < cost, so revert.
+            revert NotEnoughGasProvided(uint128(msg.value), cost);
         }
     }
 
@@ -547,7 +555,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // To ensure maximum compatibility with external tx simulation and gas estimation tools we will check a more complex
         // but more forgiving expression.
         // Before the call, there needs to be at least maxGasAck * 64/63 gas available. With that available, then
-        // the call is allocated exactly min((maxGasAck * 64/63) * 63/64 >= , maxGasAck) = maxGasAck.
+        // the call is allocated exactly min(+(maxGasAck * 64/63 * 63/64), maxGasAck) = maxGasAck.
         // If the call uses up all of the gas, then there must be maxGasAck * 64/63 - maxGasAck = maxGasAck * 1/63
         // gas left. It is sufficient to check that smaller limit rather than the larger limit.
         // Furthermore, if we only check when the call failed we don't have to read gasleft if it is not needed.
@@ -902,9 +910,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (uint128(msg.value) > cost) {
                 // Send the unused gas back to the the user.
                 Address.sendValue(payable(msg.sender), msg.value - uint256(cost));
-            } else {
-                revert NotEnoughGasProvided(uint128(msg.value), cost);
+                return;
             }
+            revert NotEnoughGasProvided(uint128(msg.value), cost);
         }
     }
 
@@ -957,6 +965,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Check that the deadline has passed AND that there is no opt out.
         // This isn't a strong check but if a relayer is honest, then it can be used as a sanity check.
+        // This protects against emitting rouge messages of timeout before the message has had a time to execute IF deadline belong to messageIdentifier.
         if (deadline == 0 || deadline >= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // Reconstruct message
@@ -984,9 +993,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (uint128(msg.value) > cost) {
                 // Send the unused gas back to the the user.
                 Address.sendValue(payable(msg.sender), msg.value - uint256(cost));
-            } else {
-                revert NotEnoughGasProvided(uint128(msg.value), cost);
+                return;
             }
+            revert NotEnoughGasProvided(uint128(msg.value), cost);
         }
     }
 }
