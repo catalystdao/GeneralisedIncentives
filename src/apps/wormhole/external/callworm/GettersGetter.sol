@@ -8,9 +8,9 @@ import "../wormhole/Getters.sol";
 contract GettersGetter {
     error WormholeStateAddressZero();
     
-    Getters immutable public WORMHOLE_STATE;
+    Getters immutable internal WORMHOLE_STATE;
 
-    constructor(address wormholeState) {
+    constructor(address wormholeState) payable {
         if (wormholeState == address(0)) revert WormholeStateAddressZero();
         WORMHOLE_STATE = Getters(wormholeState);
     }

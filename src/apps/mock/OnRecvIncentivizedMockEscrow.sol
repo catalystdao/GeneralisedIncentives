@@ -22,7 +22,7 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
     mapping(bytes32 => VerifiedMessageHashContext) public isVerifiedMessageHash;
 
 
-    constructor(address sendLostGasTo, address messagingProtocol) IncentivizedMessageEscrow(sendLostGasTo) {
+    constructor(address sendLostGasTo, address messagingProtocol) payable IncentivizedMessageEscrow(sendLostGasTo) {
         MESSAGING_PROTOCOL_CALLER = messagingProtocol;
         UNIQUE_SOURCE_IDENTIFIER = bytes32(uint256(111));  // Actual implementation should call to messagingProtocol
     }
@@ -43,8 +43,9 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
     }
 
     function _verifyPacket(bytes calldata /* _metadata */, bytes calldata _message) internal view override returns (bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
-        sourceIdentifier = isVerifiedMessageHash[keccak256(_message)].chainIdentifier;
-        implementationIdentifier = isVerifiedMessageHash[keccak256(_message)].implementationIdentifier;
+        VerifiedMessageHashContext storage _verifiedMessageHashContext = isVerifiedMessageHash[keccak256(_message)];
+        sourceIdentifier = _verifiedMessageHashContext.chainIdentifier;
+        implementationIdentifier = _verifiedMessageHashContext.implementationIdentifier;
         
         if (sourceIdentifier == bytes32(0)) revert NonVerifiableMessage();
 
@@ -65,6 +66,26 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
     ) external override payable {
         revert NotImplemented();
     }
+
+    // Disable reemit since the AMB manages this flow.
+    function reemitAckMessage(
+        bytes32 /* sourceIdentifier */,
+        bytes calldata /* implementationIdentifier */,
+        bytes calldata /* receiveAckWithContext */
+    ) external payable override {
+        revert NotImplemented();
+    }
+
+    // Disable timeout since the AMB manages this flow.
+    function timeoutMessage(
+        bytes32 /* sourceIdentifier */,
+        bytes calldata /* implementationIdentifier */,
+        uint256 /* originBlockNumber */,
+        bytes calldata /* message */
+    ) external payable override {
+        revert NotImplemented();
+    }
+
 
     function onReceive(
         bytes32 chainIdentifier,
@@ -90,10 +111,10 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         bytes32 feeRecipient
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
-        isVerifiedMessageHash[keccak256(rawMessage)] = VerifiedMessageHashContext({
-            chainIdentifier: chainIdentifier,
-            implementationIdentifier: destinationImplementationIdentifier
-        });
+        VerifiedMessageHashContext storage _verfiedMessageHashContext = isVerifiedMessageHash[keccak256(rawMessage)];
+        _verfiedMessageHashContext.chainIdentifier = chainIdentifier;
+        _verfiedMessageHashContext.implementationIdentifier = destinationImplementationIdentifier;
+        
         _handleAck(chainIdentifier, destinationImplementationIdentifier, rawMessage, feeRecipient, gasLimit);
     }
 
@@ -114,7 +135,7 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         MockOnRecvAMB(MESSAGING_PROTOCOL_CALLER).sendPacket(
             destinationChainIdentifier,
             destinationImplementation,
-            abi.encodePacked(
+            bytes.concat(
                 message
             )
         );

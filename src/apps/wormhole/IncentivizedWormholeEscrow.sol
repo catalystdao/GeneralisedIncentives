@@ -20,7 +20,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
     // For EVM it is generally set that 15 => Finality
     uint8 constant WORMHOLE_CONSISTENCY = 15;
 
-    constructor(address sendLostGasTo, address wormhole_) IncentivizedMessageEscrow(sendLostGasTo) WormholeVerifier(wormhole_) {
+    constructor(address sendLostGasTo, address wormhole_) payable IncentivizedMessageEscrow(sendLostGasTo) WormholeVerifier(wormhole_) {
         WORMHOLE = IWormhole(wormhole_);
 
         // Collect chainId from Wormhole.
@@ -51,8 +51,6 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
 
         require(valid, reason);
 
-        // Load the identifier for the calling contract.
-        implementationIdentifier = abi.encodePacked(vm.emitterAddress);
 
         // Local "supposedly" this chain identifier.
         bytes32 thisChainIdentifier = bytes32(payload[0:32]);
@@ -62,6 +60,9 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
 
         // Local the identifier for the source chain.
         sourceIdentifier = bytes32(uint256(vm.emitterChainId));
+
+        // Load the identifier for the calling contract.
+        implementationIdentifier = bytes.concat(vm.emitterAddress);
 
         // Get the application message.
         message_ = payload[32:];
@@ -76,7 +77,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         // Handoff the message to wormhole.
         WORMHOLE.publishMessage{value: costOfsendPacketInNativeToken}(
             0,
-            abi.encodePacked(
+            bytes.concat(
                 destinationChainIdentifier,
                 message
             ),

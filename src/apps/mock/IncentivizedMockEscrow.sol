@@ -7,15 +7,18 @@ import { Ownable2Step } from "openzeppelin/access/Ownable2Step.sol";
 
 // This is a mock contract which should only be used for testing.
 contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
+    error InvalidSigner();
+
     bytes32 immutable public UNIQUE_SOURCE_IDENTIFIER;
-    uint256 public costOfMessages;
-    uint256 public accumulator = 1;
+
+    uint128 public accumulator = 1;
+    uint128 costOfMessages;
 
     uint64 immutable PROOF_PERIOD;
 
     event Message(bytes32 destinationIdentifier, bytes recipient, bytes message);
 
-    constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint256 costOfMessages_, uint64 proofPeriod) IncentivizedMessageEscrow(sendLostGasTo) {
+    constructor(address sendLostGasTo, bytes32 uniqueChainIndex, address signer, uint128 costOfMessages_, uint64 proofPeriod) IncentivizedMessageEscrow(sendLostGasTo) {
         UNIQUE_SOURCE_IDENTIFIER = uniqueChainIndex;
         _transferOwnership(signer);
         costOfMessages = costOfMessages_;
@@ -28,7 +31,9 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
     }
 
     function collectPayments() external {
-        payable(owner()).transfer(accumulator - 1);
+        unchecked {
+            payable(owner()).transfer(accumulator - 1);
+        }
         accumulator = 1;
     }
     
@@ -62,7 +67,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         bytes32 thisChainIdentifier = bytes32(_message[64:96]);
 
         // Check that the message is intended for this chain.
-        require(thisChainIdentifier == UNIQUE_SOURCE_IDENTIFIER, "!Identifier");
+        if (thisChainIdentifier != UNIQUE_SOURCE_IDENTIFIER) revert InvalidSigner();
 
         // Local the identifier for the source chain.
         sourceIdentifier = bytes32(_message[32:64]);
@@ -78,15 +83,17 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         emit Message(
             destinationChainIdentifier,
             destinationImplementation,
-            abi.encodePacked(
+            bytes.concat(
                 UNIQUE_SOURCE_IDENTIFIER,
                 destinationChainIdentifier,
                 message
             )
         );
-        uint256 verificationCost = costOfMessages;
-        if (verificationCost > 0) {
-            accumulator += verificationCost;
+        uint128 verificationCost = costOfMessages;
+        unchecked{
+            if (verificationCost > 0) {
+                accumulator += verificationCost;
+            }
         }
         return costOfsendPacketInNativeToken = uint128(verificationCost);
     }
