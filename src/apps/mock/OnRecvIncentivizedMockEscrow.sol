@@ -98,7 +98,7 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         bytes memory receiveAck = _handleMessage(chainIdentifier, sourceImplementationIdentifier, rawMessage, feeRecipient, gasLimit);
 
         // Send ack:
-        _sendPacket(chainIdentifier, sourceImplementationIdentifier, receiveAck);
+        _sendPacket(chainIdentifier, sourceImplementationIdentifier, receiveAck, 0);
         // * For an actual implementation, the _sendPacket might also be implemented as a return value for onReceive like:
         // * return ReturnStruct?({chainIdentifier: chainIdentifier, message: receiveAck});
     }
@@ -131,7 +131,7 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
     }
 
     // * Send to messaging_protocol 
-    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 /* deadline */) internal override returns(uint128 costOfsendPacketInNativeToken) {
         MockOnRecvAMB(MESSAGING_PROTOCOL_CALLER).sendPacket(
             destinationChainIdentifier,
             destinationImplementation,

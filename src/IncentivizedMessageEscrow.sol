@@ -33,24 +33,26 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     
     //--- Constants ---//
 
-    /// @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte.
+    /** @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte. */
     bytes1 constant public MESSAGE_REVERTED = 0xff;
 
-    /// @notice  If the original sender is not authorised on the application on the destination chain, 1 bytes is sent back instead. This is the byte.
+    /** @notice  If the original sender is not authorised on the application on the destination chain, 1 bytes is sent back instead. This is the byte. */
     bytes1 constant public NO_AUTHENTICATION = 0xfe;
 
-    /// @notice  Message timed out on destination chain.
+    /** @notice  Message timed out on destination chain. */
     bytes1 constant public MESSAGE_TIMED_OUT = 0xfd;
 
-    /// @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
-    /// the gas is sent here instead.
-    /// @dev This may not invoke any logic on receive()
+    /**
+     * @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
+     * the gas is sent here instead.
+     * @dev This may not invoke any logic on receive()
+     */
     address immutable public SEND_LOST_GAS_TO;
 
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
 
-    /// @notice A hash of the emitted message on receive such that we can emit a similar one.
+    /** @notice A hash of the emitted message on receive such that we can emit a similar one. */
     mapping(bytes32 => bytes32) _messageDelivered;
 
     // Maps applications to their escrow implementations.
@@ -60,36 +62,51 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     //--- Virtual Functions ---//
     // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
 
-    /// @notice Verify a message's authenticity.
-    /// @dev Should be overwritten by the specific messaging protocol verification structure.
+    /** 
+     * @notice Verify a message's authenticity.
+     * @dev Should be overwritten by the specific messaging protocol verification structure.
+     */
     function _verifyPacket(bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes32 sourceIdentifier, bytes memory destinationIdentifier, bytes calldata message);
 
-    /// @notice Send the message to the messaging protocol.
-    /// @dev Should be overwritten to send a message using the specific messaging protocol.
-    /// If there is an additional cost to emitting messages, this cost should be caled on the function and returned
-    /// as costOfsendPacketInNativeToken. The function is allowed to take ERC20 tokens (transferFrom(msg.sender,...)) in which case 
-    /// costOfsendPacketInNativeToken should be set to 0.
-    function _sendPacket(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message) virtual internal returns(uint128 costOfsendPacketInNativeToken);
+    /** 
+     * @notice Send the message to the messaging protocol.
+     * @dev Should be overwritten to send a message using the specific messaging protocol.
+     * The function is allowed to claim native tokens (set costOfsendPacketInNativeToken). 
+     * The function is allowed to take ERC20 tokens (transferFrom(msg.sender,...)) 
+     * in which case set costOfsendPacketInNativeToken to 0.
+     * @param destinationIdentifier The destination chain for the message.
+     * @param destinationImplementation The destination escrow contract.
+     * @param message The message. Contains relevant escrow context.
+     * @param deadline When the message should be delivered before. If the AMB does not nativly support a timeout on their messages this parameter should be ignored. If 0 is provided, parse it as MAX
+     * @return costOfsendPacketInNativeToken An additional cost to emitting messages in NATIVE tokens.
+     */
+    function _sendPacket(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 deadline) virtual internal returns(uint128 costOfsendPacketInNativeToken);
 
-    /// @notice A unique source identifier used to generate the message identifier.
-    /// @dev Should generally be the same as the one set by the AMB such that we can verify messages with this identifier
+    /**
+     *  @notice A unique source identifier used to generate the message identifier.
+     *  @dev Should generally be the same as the one set by the AMB such that we can verify messages with this identifier
+     */
     function _uniqueSourceIdentifier() virtual internal view returns(bytes32 sourceIdentifier);
 
-    /// @notice Returns the duration for which a proof is valid for.
-    /// It may vary by destination.
-    /// @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
-    /// The setting needs to be sane: Do not set the proofValidPeriod to more than ~1 years.
-    /// @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
+    /**
+     * @notice Returns the duration for which a proof is valid for.
+     * It may vary by destination.
+     * @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
+     * The setting needs to be sane: Do not set the proofValidPeriod to more than ~1 years.
+     * @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
+     */
     function _proofValidPeriod(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
 
     function proofValidPeriod(bytes32 destinationIdentifier) external view returns(uint64 timestamp) {
         return timestamp = _proofValidPeriod(destinationIdentifier);
     }
 
-    /// @param sendLostGasTo Who should receive Ether which would otherwise block
-    /// execution? It should never be set to a contract which does not implement
-    /// either a fallback or receive function which never revert.
-    /// It can be set to address 0 or a similar burn address if no-one wants to take ownership of the ether.
+    /**
+     * @param sendLostGasTo Who should receive Ether which would otherwise block
+     * execution? It should never be set to a contract which does not implement
+     * either a fallback or receive function which never revert.
+     * It can be set to address 0 or a similar burn address if no-one wants to take ownership of the ether.
+     */
     constructor(address sendLostGasTo) {
         SEND_LOST_GAS_TO = sendLostGasTo;
     }
@@ -147,16 +164,20 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return _bounty[messageIdentifier];
     }
 
-    /// @notice Returns a hash of the ack unless there was no ack then it returns bytes32(uint256(1));
-    // If the message hasn't been delivered yet it still returns bytes32(0)
+    /**
+     * @notice Returns a hash of the ack unless there was no ack then it returns bytes32(uint256(1));
+     * If the message hasn't been delivered yet it still returns bytes32(0)
+     */
    function messageDelivered(bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted) {
         return _messageDelivered[messageIdentifier];
    }
 
-    /// @notice Sets the escrow implementation for a specific chain
-    /// @dev This can only be set once. When set, is cannot be changed.
-    /// This is to protect relayers as this could be used to fail acks.
-    /// You are not allowed to set a 0 length implementation address. If you want to disable a specific route, set it to hex"00";
+     /**
+     * @notice Sets the escrow implementation for a specific chain
+     * @dev This can only be set once. When set, is cannot be changed.
+     * This is to protect relayers as this could be used to fail acks.
+     * You are not allowed to set a 0 length implementation address. If you want to disable a specific route, set it to hex"00";
+     */
     function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
         if (implementationAddressHash[msg.sender][destinationIdentifier] != bytes32(0)) revert ImplementationAddressAlreadySet(
             implementationAddress[msg.sender][destinationIdentifier]
@@ -281,7 +302,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 costOfsendPacketInNativeToken = _sendPacket(
             destinationIdentifier,
             destinationImplementation,
-            messageWithContext
+            messageWithContext,
+            deadline
         );
         // Add the cost of the send message.
         sum += costOfsendPacketInNativeToken;
@@ -332,7 +354,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             bytes memory receiveAckWithContext = _handleMessage(chainIdentifier, implementationIdentifier, message, feeRecipient, gasLimit);
 
             // The cost management is made by _sendPacket so we don't have to check if enough gas has been provided.
-            cost = _sendPacket(chainIdentifier, implementationIdentifier, receiveAckWithContext);
+            cost = _sendPacket(chainIdentifier, implementationIdentifier, receiveAckWithContext, 0);
         } else if (context == CTX_DESTINATION_TO_SOURCE) {
             // Notice that sometimes ack actually handles deadlines which have been passed.
             // However, these are much different from "timeouts".
@@ -835,8 +857,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return (gasSpentOnSource, forDestinationRelayer, forSourceRelayer);
     }
 
-    /// @notice Sets a bounty for a message
-    /// @dev Doesn't check if enough incentives have been provided.
+    /** 
+     * @notice Sets a bounty for a message
+     * @dev Doesn't check if enough incentives have been provided.
+     */
     function _setBounty(
         bytes32 messageIdentifier, 
         IncentiveDescription calldata incentive
@@ -850,10 +874,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         _bounty[messageIdentifier] = incentive;
     }
 
-    /// @notice Allows anyone to re-execute an ack which didn't properly execute.
-    /// @dev No applciation should rely on this function. It should only be used in-case an
-    /// application has faulty logic. 
-    /// Example: Faulty logic results in wrong enforcement on gas limit => out of gas?
+    /**
+     * @notice Allows anyone to re-execute an ack which didn't properly execute.
+     * @dev No applciation should rely on this function. It should only be used in-case an
+     * application has faulty logic. 
+     * Example: Faulty logic results in wrong enforcement on gas limit => out of gas?
+     */
     function recoverAck(
         bytes calldata messagingProtocolContext,
         bytes calldata rawMessage
@@ -903,7 +929,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
-        uint128 cost = _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext);
+        uint128 cost = _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext, 0);
 
         // Check if there is a mis-match between the cost and the value of the message.
         if (uint128(msg.value) != cost) {
@@ -985,7 +1011,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint128 cost = _sendPacket(
             sourceIdentifier,
             implementationIdentifier,
-            receiveAckWithContext
+            receiveAckWithContext,
+            0
         );
 
         // Check if there is a mis-match between the cost and the value of the message.
