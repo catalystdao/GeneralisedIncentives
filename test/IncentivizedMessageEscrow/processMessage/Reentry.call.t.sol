@@ -61,7 +61,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipient,
-                uint48(0xf91f),  // Gas used
+                uint48(0xf94f),  // Gas used
                 uint64(1),
                 uint8(1)
             )

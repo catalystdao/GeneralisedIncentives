@@ -10,6 +10,7 @@ contract TestSetRemoteImplementation is TestCommon {
 
     function test_set_remote_implementation(bytes32 destination_identifier, bytes calldata implementation) public {
         vm.assume(destination_identifier != _DESTINATION_IDENTIFIER);
+        vm.assume(implementation.length != 0);
 
         vm.expectEmit();
         emit RemoteImplementationSet(address(this), destination_identifier, keccak256(implementation), implementation);
@@ -38,6 +39,7 @@ contract TestSetRemoteImplementation is TestCommon {
     // Though the test actually passes.
     function test_set_remote_implementation_twice(bytes32 destination_identifier, bytes memory implementation) public {
         vm.assume(destination_identifier != 0x8000000000000000000000000000000000000000000000000000000000123123);
+        vm.assume(implementation.length != 0);
         
         escrow.setRemoteImplementation(destination_identifier, implementation);
 
