@@ -68,7 +68,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         message_ = payload[32:];
     }
 
-    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory /* destinationImplementation */, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory /* destinationImplementation */, bytes memory message, uint64 /* deadline */) internal override returns(uint128 costOfsendPacketInNativeToken) {
         // Get the cost of sending wormhole messages.
         costOfsendPacketInNativeToken = uint128(WORMHOLE.messageFee());
 

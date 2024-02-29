@@ -76,7 +76,7 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         message_ = _message[96:];
     }
 
-    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 /* deadline */) internal override returns(uint128 costOfsendPacketInNativeToken) {
         // Check if the owner called renounceOwnership().
         require(address(0) != owner(), "Contract Disabled");
         
