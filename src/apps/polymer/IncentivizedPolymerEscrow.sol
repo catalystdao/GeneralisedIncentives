@@ -115,8 +115,7 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser, IbcUnivers
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
         bytes calldata rawMessage = ack.data;
-        // TODO: get dest chain ID?
-        bytes32 chainIdentifier;
+        bytes32 chainIdentifier = _getChannelId(channelId);
         bytes memory destinationImplementationIdentifier = abi.encodePacked(packet.destPortAddr);
 
         isVerifiedMessageHash[keccak256(rawMessage)] = VerifiedMessageHashContext({
@@ -127,15 +126,12 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser, IbcUnivers
     }
 
     // For timeouts, we need to construct the message.
-    function onTimeoutUniversalPacket(bytes32 chanelId, UniversalPacket calldata packet) external onlyIbcMw {
+    function onTimeoutUniversalPacket(bytes32 channelId, UniversalPacket calldata packet) external onlyIbcMw {
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
         bytes calldata rawMessage = packet.appData;
-        // TODO: get dest chain ID?
-        bytes32 chainIdentifier;
-
-        _handleTimeout(chainIdentifier, rawMessage, feeRecipitent, gasLimit);
+        _handleTimeout(_getDestChainId(channelId), rawMessage, feeRecipitent, gasLimit);
     }
 
     // * Send to messaging_protocol
@@ -144,7 +140,7 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser, IbcUnivers
         bytes memory, /* destinationImplementation */
         bytes memory message
     ) internal override returns (uint128 costOfsendPacketInNativeToken) {
-        // TODO: get Polymer universal channelId from Polymer registry. Each channelID is unique for a pair of chains.
+        // call `setChannelId` to set the channelId for the destination chain before calling this function.
         bytes32 channelId = _getChannelId(destinationChainIdentifier);
         // set timeoutTimestamp to 1 day from now. It's the dest chain's block time in nanoseconds since the epoch.
         uint64 timeoutTimestamp = uint64(block.timestamp + 1 days) * 1e9;
@@ -154,10 +150,26 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser, IbcUnivers
         return 0;
     }
 
+    // ChannelIds are always from the running chain's perspective.
+    // Each universal channel/channelId represents a directional path from the running chain to a destination chain.
+    // Universal ChannelIds should _destChainIdToChannelIdd from the Polymer registry.
+    // Although everyone is free to establish their own channels, they're not "officially" vetted until they're in the Polymer registry.
     mapping(bytes32 => bytes32) _destChainChannelIds;
+    mapping(bytes32 => bytes32) _channelIdToDestChainId;
+
+    // Contract owner set a map of allowed channelIds for each destination chain.
+    function setChannelId(bytes32 destChainId, bytes32 channelId) external onlyOwner {
+        _destChainChannelIds[destChainId] = channelId;
+        _channelIdToDestChainId[channelId] = destChainId;
+    }
 
     function _getChannelId(bytes32 destChainId) internal view returns (bytes32) {
         // verify destChainId has a valid channelId
         return _destChainChannelIds[destChainId];
+    }
+
+    function _getDestChainId(bytes32 channelId) internal view returns (bytes32) {
+        // verify channelId has a valid destChainId
+        return _channelIdToDestChainId[channelId];
     }
 }
