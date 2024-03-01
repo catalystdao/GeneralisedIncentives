@@ -5,6 +5,7 @@ libs = ["lib"]
 via_ir = true
 optimizer = true
 optimizer_runs = 100_000
+fs_permissions = [{ access = "read-write", path = "./script/bridge_contracts.json" }]
 solc_version = "0.8.22"
 evm_version = "paris"
 
