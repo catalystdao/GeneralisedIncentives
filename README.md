@@ -197,3 +197,15 @@ forge coverage --ir-minimum
 This will return a coverage report. You can also add `--report lcov` and use a suitable program to view the coverage report graphically. VS Code has `Coverage Gutters` but other online tools also exist.
 
 Note that the coverage report isn't perfect. Several lines which are tested are reported as untested. It is unknown if this is caused by the `--ir-minimum` flag or bad test configuration.
+
+## Deploying
+
+You can deploy Generalised Incentives by running the deploy script:
+
+```
+forge script DeployGeneralisedIncentives -vv --sig "deploy(string[],string[])" "[<...ambs>]" "[<...chains>]"
+```
+
+The script will write `./script/bridge_contracts.json` with the new deployments.
+
+If you want to deploy Catalyst to a new chain, it is likely that you need to add the correct chain configuration. You do this by configurating `./script/bridge_contracts.json` with the applicable contracts. You also need to add an applicable RPC to the `.env` file along with setting your private key.
