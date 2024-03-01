@@ -45,11 +45,30 @@ contract IncentivizedPolymerEscrow is IncentivizedMessageEscrow, IbcMwUser, IbcU
         return 0;
     }
 
-    /// @dev Disable processPacket
+    /** @dev Disable processPacket */
     function processPacket(
         bytes calldata, /* messagingProtocolContext */
         bytes calldata, /* rawMessage */
         bytes32 /* feeRecipitent */
+    ) external payable override {
+        revert NotImplemented();
+    }
+
+    /** @dev Disable reemitAckMessage. Polymer manages the entire flow, so we don't need to worry about expired proofs. */
+    function reemitAckMessage(
+        bytes32 /* sourceIdentifier */,
+        bytes calldata /* implementationIdentifier */,
+        bytes calldata /* receiveAckWithContext */
+    ) external payable override {
+        revert NotImplemented();
+    }
+
+    /** @dev Disable timeoutMessage */
+    function timeoutMessage(
+        bytes32 /* sourceIdentifier */,
+        bytes calldata /* implementationIdentifier */,
+        uint256 /* originBlockNumber */,
+        bytes calldata /* message */
     ) external payable override {
         revert NotImplemented();
     }
@@ -81,7 +100,7 @@ contract IncentivizedPolymerEscrow is IncentivizedMessageEscrow, IbcMwUser, IbcU
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
-        bytes memory sourceImplementationIdentifier = abi.encodePacked(packet.srcPortAddr);
+        bytes memory sourceImplementationIdentifier = bytes.concat(packet.srcPortAddr);
 
         bytes memory receiveAck =
             _handleMessage(channelId, sourceImplementationIdentifier, packet.appData, feeRecipitent, gasLimit);
@@ -99,7 +118,7 @@ contract IncentivizedPolymerEscrow is IncentivizedMessageEscrow, IbcMwUser, IbcU
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
         bytes calldata rawMessage = ack.data;
-        bytes memory destinationImplementationIdentifier = abi.encodePacked(packet.destPortAddr);
+        bytes memory destinationImplementationIdentifier = bytes.concat(packet.destPortAddr);
 
         isVerifiedMessageHash[keccak256(rawMessage)] = VerifiedMessageHashContext({
             chainIdentifier: channelId,
@@ -121,7 +140,6 @@ contract IncentivizedPolymerEscrow is IncentivizedMessageEscrow, IbcMwUser, IbcU
         );
     }
 
-    // * Send to messaging_protocol
     /**
      * @param destinationChainIdentifier  Universal Channel ID. It's always from the running chain's perspective.
      * Each universal channel/channelId represents a directional path from the running chain to a destination chain.
@@ -129,14 +147,17 @@ contract IncentivizedPolymerEscrow is IncentivizedMessageEscrow, IbcMwUser, IbcU
      * Although everyone is free to establish their own channels, they're not "officially" vetted until they're in the Polymer registry.
      * @param destinationImplementation IncentivizedPolymerEscrow address on the counterparty chain.
      * @param message packet payload
+     * @param deadline Packet will timeout after the dest chain's block time in nanoseconds since the epoch passes timeoutTimestamp.
      */
     function _sendPacket(
         bytes32 destinationChainIdentifier,
         bytes memory destinationImplementation,
-        bytes memory message
+        bytes memory message,
+        uint64 deadline
     ) internal override returns (uint128 costOfsendPacketInNativeToken) {
-        // Packet will timeout after the dest chain's block time in nanoseconds since the epoch passes timeoutTimestamp.
-        uint64 timeoutTimestamp = uint64(block.timestamp + _TIMEOUT_AFTER_BLOCK) * 1e9;
+        // If timeoutTimestamp is set to 0, set it to maximum. This does not really apply to Polymer since it is an onRecv implementation
+        // but it should still conform to the general spec of Generalised Incentives.
+        uint64 timeoutTimestamp = deadline > 0 ? deadline : type(uint64).max;
         IbcUniversalPacketSender(mw).sendUniversalPacket(
             destinationChainIdentifier, bytes32(destinationImplementation), message, timeoutTimestamp
         );
