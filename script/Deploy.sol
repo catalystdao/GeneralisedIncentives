@@ -9,6 +9,7 @@ import { BaseMultiChainDeployer} from "./BaseMultiChainDeployer.s.sol";
 // Import all the Apps for deployment here.
 import { IncentivizedMockEscrow } from "../src/apps/mock/IncentivizedMockEscrow.sol";
 import { IncentivizedWormholeEscrow } from "../src/apps/wormhole/IncentivizedWormholeEscrow.sol";
+import { IncentivizedPolymerEscrow } from "../src/apps/polymer/IncentivizedPolymerEscrow.sol";
 
 contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
     using stdJson for string;
@@ -78,7 +79,18 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
             require(polymerBridgeContract != address(0), "bridge cannot be address(0)");
 
-            // incentive = address(new IncentivizedPolymerEscrow(vm.envAddress("CATALYST_ADDRESS"), polymerContract[chain]));
+            address expectedAddress = _getAddress(
+                abi.encodePacked(
+                    type(IncentivizedPolymerEscrow).creationCode,
+                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract)
+                ),
+                salt
+            );
+
+            // Check if it is already deployed. If it is, we skip.
+            if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
+
+            incentive = address(new IncentivizedPolymerEscrow(vm.envAddress("CATALYST_ADDRESS"), polymerBridgeContract));
         } else {
             revert IncentivesVersionNotFound();
         }
