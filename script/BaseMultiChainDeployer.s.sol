@@ -25,7 +25,6 @@ contract BaseMultiChainDeployer is Script {
     }
 
     mapping(Chains => string) public chainKey;
-    mapping(string => Chains) public reverseChainKey;
 
 
     Chains[] chain_list;

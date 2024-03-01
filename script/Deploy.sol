@@ -55,6 +55,17 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
             require(wormholeBridgeContract != address(0), "bridge cannot be address(0)");
 
+            address expectedAddress = _getAddress(
+                abi.encodePacked(
+                    type(IncentivizedWormholeEscrow).creationCode,
+                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), wormholeBridgeContract)
+                ),
+                salt
+            );
+
+            // Check if it is already deployed. If it is, we skip.
+            if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
+
             IncentivizedWormholeEscrow wormholeEscrow = new IncentivizedWormholeEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), wormholeBridgeContract);
 
             incentive = address(wormholeEscrow);
@@ -105,6 +116,16 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
         }
 
         _;
+    }
+
+    // get the computed address before the contract DeployWithCreate2 deployed using Bytecode of contract
+    function _getAddress(bytes memory bytecode, bytes32 _salt) internal pure returns (address) {
+        bytes32 create2Hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff), address(0x4e59b44847b379578588920cA78FbF26c0B4956C), _salt, keccak256(bytecode)
+            )
+        );
+        return address(uint160(uint(create2Hash)));
     }
 
     function write_config(address escrow, string memory bridge, string memory chain) internal {
