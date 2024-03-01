@@ -12,9 +12,7 @@ import {
     IbcUniversalPacketReceiver
 } from "vibc-core-smart-contracts/IbcMiddleware.sol";
 
-// This is an example contract which exposes an onReceive interface. This is for messaging protocols
-// where messages are delivered directly to the messaging protocol's contract rather than this contract.
-// Comments marked by * imply that an integration point should be changed by external contracts.
+/// @notice Polymer implementation of the Generalised Incentives based on vIBC.
 contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
     error NotEnoughGasProvidedForVerification();
     error NonVerifiableMessage();
@@ -58,6 +56,8 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
         );
     }
 
+    /// @notice This function is used to allow acks to be executed twice (if the first one ran out of gas)
+    /// This is not intended to allow processPacket to work.
     function _verifyPacket(bytes calldata, /* _metadata */ bytes calldata _message)
         internal
         view
@@ -72,9 +72,7 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
         message_ = _message;
     }
 
-    /// @dev This is an example of how this function can be disabled.
-    /// This doesn't have to be how it is done. This implementation works
-    /// fine with and without (There is even a test for that).
+    /// @dev Disable processPacket
     function processPacket(
         bytes calldata, /* messagingProtocolContext */
         bytes calldata, /* rawMessage */
@@ -108,7 +106,7 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
         return AckPacket({success: true, data: receiveAck});
     }
 
-    // The escrow manages acks, so any message can be directly provided to _onReceive.
+    // The escrow manages acks, so any message can be directly provided to _handleAck.
     function onUniversalAcknowledgement(UniversalPacket calldata packet, AckPacket calldata ack) external onlyIbcMw {
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
