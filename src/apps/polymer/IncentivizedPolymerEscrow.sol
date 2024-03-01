@@ -13,7 +13,7 @@ import {
 } from "vibc-core-smart-contracts/IbcMiddleware.sol";
 
 /// @notice Polymer implementation of the Generalised Incentives based on vIBC.
-contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
+contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser, IbcUniversalPacketReceiver {
     error NotEnoughGasProvidedForVerification();
     error NonVerifiableMessage();
     error NotImplemented();
@@ -107,7 +107,10 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
     }
 
     // The escrow manages acks, so any message can be directly provided to _handleAck.
-    function onUniversalAcknowledgement(UniversalPacket calldata packet, AckPacket calldata ack) external onlyIbcMw {
+    function onUniversalAcknowledgement(bytes32 channelId, UniversalPacket calldata packet, AckPacket calldata ack)
+        external
+        onlyIbcMw
+    {
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
@@ -124,7 +127,7 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
     }
 
     // For timeouts, we need to construct the message.
-    function onTimeoutUniversalPacket(UniversalPacket calldata packet) external onlyIbcMw {
+    function onTimeoutUniversalPacket(bytes32 chanelId, UniversalPacket calldata packet) external onlyIbcMw {
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
@@ -143,11 +146,11 @@ contract IncentivizedPolymerEscrow is IMETimeoutExtension, IbcMwUser {
     ) internal override returns (uint128 costOfsendPacketInNativeToken) {
         // TODO: get Polymer universal channelId from Polymer registry. Each channelID is unique for a pair of chains.
         bytes32 channelId = _getChannelId(destinationChainIdentifier);
-        // TODO: get IncentivizedPolymerEscrow address deployed on the destination chain.
-        address destEscrowAddr;
         // set timeoutTimestamp to 1 day from now. It's the dest chain's block time in nanoseconds since the epoch.
         uint64 timeoutTimestamp = uint64(block.timestamp + 1 days) * 1e9;
-        IbcUniversalPacketSender(mw).sendUniversalPacket(channelId, destEscrowAddr, message, timeoutTimestamp);
+        IbcUniversalPacketSender(mw).sendUniversalPacket(
+            channelId, destinationChainIdentifier, message, timeoutTimestamp
+        );
         return 0;
     }
 
