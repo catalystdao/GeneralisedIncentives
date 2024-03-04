@@ -2,33 +2,33 @@
   "Wormhole": {
     "mumbai": {
       "bridge": "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "escrow": "0xFb4B1475e61642b3930d762B66d9DD4E08B14367"
     },
     "sepolia": {
       "bridge": "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "escrow": "0x45C140Dd2526E4bfD1c2A5Bb0Aa6aA1DB00b1744"
     },
     "basesepolia": {
       "bridge": "0x79A1027a6A159502049F10906D333EC57E95F083",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "escrow": "0xEA2F1d38e31fBE501c0b42BA25E217a47132D8fa"
     },
     "arbitrumsepolia": {
       "bridge": "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "escrow": "0xdF25f1BdE09Cee5ac1e6ef8dFA7113addBd58B28"
     },
     "optimismsepolia": {
       "bridge": "0x31377888146f3253211EFEf5c676D41ECe7D58Fe",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "escrow": "0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F"
     }
   },
   "Polymer": {
     "basesepolia": {
-      "bridge": "0x0000000000000000000000000000000000000000",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "bridge": "0x50E32e236bfE4d514f786C9bC80061637dd5AF98",
+      "escrow": "0x147d414F1964c94c4Ac7422aC148aBddb4BEdC82"
     },
     "optimismsepolia": {
-      "bridge": "0x0000000000000000000000000000000000000000",
-      "escrow": "0x0000000000000000000000000000000000000000"
+      "bridge": "0x34a0e37cCCEdaC70EC1807e5a1f6A4a91D4AE0Ce",
+      "escrow": "0x62e27C0bD89D7AC599Df8765cDEe0183A34A9929"
     }
   }
 }

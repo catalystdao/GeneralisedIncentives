@@ -90,7 +90,9 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
             // Check if it is already deployed. If it is, we skip.
             if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
 
-            incentive = address(new IncentivizedPolymerEscrow(vm.envAddress("CATALYST_ADDRESS"), polymerBridgeContract));
+            IncentivizedPolymerEscrow polymerEscrow = new IncentivizedPolymerEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract);
+
+            incentive = address(polymerEscrow);
         } else {
             revert IncentivesVersionNotFound();
         }
