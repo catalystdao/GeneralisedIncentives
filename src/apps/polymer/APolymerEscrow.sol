@@ -6,7 +6,6 @@ import "../../MessagePayload.sol";
 
 /// @notice Scaffolding for Polymer Escrows
 abstract contract APolymerEscrow is IncentivizedMessageEscrow {
-    error NotEnoughGasProvidedForVerification();
     error NonVerifiableMessage();
     error NotImplemented();
 
