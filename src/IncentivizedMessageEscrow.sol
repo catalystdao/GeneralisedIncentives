@@ -972,6 +972,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // entirely untrusted. We do no verification on it. As a result, we shouldn't
         // trust any data within it. It is first when this message hits the source chain we can begin to verify data.
 
+        // Check that at least the context is set correctly.
+        if (message[CONTEXT_POS] != CTX_SOURCE_TO_DESTINATION) revert MessageHasInvalidContext();
+
         // Get the message identifier from the message.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         // Read the status of the package at MessageIdentifier.
