@@ -91,8 +91,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Returns the duration for which a proof is valid for.
      * It may vary by destination.
-     * @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
-     * The setting needs to be sane: Do not set the proofValidPeriod to more than ~1 years.
+     * @dev On checks, block.timestamp is added to the return of this function such that
+     * block.timestamp + _proofValidPeriod > deadline.
+     * Can be set to 0 which implies any is valid.
      * @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
      */
     function _proofValidPeriod(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
