@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity >=0.8.0;
 
 interface IMessageEscrowErrors {
     error NotEnoughGasProvided(uint128 expected, uint128 actual);  // 030748b5
