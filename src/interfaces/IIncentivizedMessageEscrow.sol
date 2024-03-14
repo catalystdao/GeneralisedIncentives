@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
-
+pragma solidity >=0.8.0;
 
 import { IMessageEscrowStructs } from "./IMessageEscrowStructs.sol";
 import { IMessageEscrowErrors } from "./IMessageEscrowErrors.sol";
 import { IMessageEscrowEvents } from "./IMessageEscrowEvents.sol";
-
 
 interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErrors, IMessageEscrowEvents {
    function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive);
