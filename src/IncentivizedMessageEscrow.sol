@@ -145,9 +145,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 sourceIdentifier,
         bytes32 destinationIdentifier,
         bytes memory message
-    ) pure internal virtual returns(bytes32) {
+    ) view internal virtual returns(bytes32) {
         return keccak256(
             bytes.concat(
+                bytes20(address(this)),
                 bytes20(messageSender),
                 bytes8(deadline),
                 bytes32(blockNumber),
