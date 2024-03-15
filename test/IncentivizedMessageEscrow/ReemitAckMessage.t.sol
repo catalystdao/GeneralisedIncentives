@@ -24,11 +24,11 @@ contract ReemitAckMessageTest is TestCommon {
         vm.expectEmit();
         emit Message(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(address(escrow)),
+            abi.encode(address(escrow)),
             this.memorySlice(messageWithContext, 32)
         );
 
-        escrow.reemitAckMessage(_DESTINATION_IDENTIFIER, abi.encodePacked(address(escrow)), rawMessage);
+        escrow.reemitAckMessage(_DESTINATION_IDENTIFIER, abi.encode(address(escrow)), rawMessage);
     }
 
     // This tests a relayer trying to reemit a message which is slightly changed.

@@ -52,7 +52,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
 
-    /** @notice A hash of the emitted message on receive such that we can emit a similar one. */
+    /** @notice A hash of the emitted message and associated message context on receive
+     * that we can emit the same message to the same intended targets later.
+     */
     mapping(bytes32 => bytes32) _messageDelivered;
 
     // Maps applications to their escrow implementations.
@@ -435,7 +437,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             );
 
             // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-            _messageDelivered[messageIdentifier] = keccak256(receiveAckWithContext);
+            _messageDelivered[messageIdentifier] = keccak256(bytes.concat(
+                sourceIdentifier,
+                sourceImplementationIdentifier,
+                receiveAckWithContext
+            ));
 
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
@@ -464,7 +470,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             );
 
             // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-            _messageDelivered[messageIdentifier] = keccak256(receiveAckWithContext);
+            _messageDelivered[messageIdentifier] = keccak256(bytes.concat(
+                sourceIdentifier,
+                sourceImplementationIdentifier,
+                receiveAckWithContext
+            ));
 
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
@@ -511,7 +521,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-        _messageDelivered[messageIdentifier] = keccak256(receiveAckWithContext);
+        _messageDelivered[messageIdentifier] = keccak256(bytes.concat(
+            sourceIdentifier,
+            sourceImplementationIdentifier,
+            receiveAckWithContext
+        ));
 
         // Why is the messageDelivered event emitted before _sendPacket?
         // Because it lets us pop messageIdentifier from the stack. This avoid a stack limit reached error. 
@@ -926,8 +940,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         bytes32 storedAckHash = _messageDelivered[messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
-        // Then, check if the storedAckHash matches the executed one.
-        if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
+        // Then, check if the storedAckHash & the source target (sourceIdentifier & implementationIdentifier) matches the executed one.
+        if (storedAckHash == bytes32(0) || storedAckHash != keccak256(bytes.concat(
+            sourceIdentifier,
+            implementationIdentifier,
+            receiveAckWithContext
+        ))) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
         uint128 cost = _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext, 0);
