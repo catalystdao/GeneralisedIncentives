@@ -725,7 +725,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // This is because we must expect the remote implementation to also do the check to save gas
         // since it is an obvious and valid remote check
         uint64 deadline = uint64(bytes8(message[CTX2_DEADLINE_START:CTX2_DEADLINE_END]));
-        if (deadline >= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        if (deadline >= block.timestamp || deadline == 0) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
         // The entirety of the incoming message is untrusted. So far we havn't done any verification of
         // the message but rather of the origin of the message.
