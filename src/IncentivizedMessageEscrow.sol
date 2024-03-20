@@ -52,10 +52,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     //--- Storage ---//
     mapping(bytes32 => IncentiveDescription) _bounty;
 
-    /** @notice A hash of the emitted message and associated message context on receive
-     * that we can emit the same message to the same intended targets later.
-     */
-    mapping(bytes32 => bytes32) _messageDelivered;
+    /** @notice A hash of the emitted message on receive such that we can emit a similar one. */
+    mapping(bytes32 => mapping(bytes => mapping(bytes32 => bytes32))) _messageDelivered;
 
     // Maps applications to their escrow implementations.
     mapping(address => mapping(bytes32 => bytes)) public implementationAddress;
@@ -170,8 +168,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @notice Returns a hash of the ack unless there was no ack then it returns bytes32(uint256(1));
      * If the message hasn't been delivered yet it still returns bytes32(0)
      */
-   function messageDelivered(bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted) {
-        return _messageDelivered[messageIdentifier];
+   function messageDelivered(bytes32 sourceIdentifier, bytes calldata sourceImplementationIdentifier, bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted) {
+        return _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
    }
 
      /**
@@ -398,9 +396,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
         // We will re-set _messageDelivered[messageIdentifier] again later as the hash of the ack, however, we need re-entry protection
         // so applications don't try to claim incentives multiple times. So, we set it now and change it later.
-        bytes32 messageState = _messageDelivered[messageIdentifier];
+        bytes32 messageState = _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
         if (messageState != bytes32(0)) revert MessageAlreadySpent();
-        _messageDelivered[messageIdentifier] = bytes32(uint256(1));
+        _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = bytes32(uint256(1));
 
         // Prepare to deliver the message to application.
         // We need toApplication to check if the source implementation is valid
@@ -437,11 +435,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             );
 
             // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-            _messageDelivered[messageIdentifier] = keccak256(bytes.concat(
-                sourceIdentifier,
-                sourceImplementationIdentifier,
-                receiveAckWithContext
-            ));
+            _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
@@ -470,11 +464,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             );
 
             // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-            _messageDelivered[messageIdentifier] = keccak256(bytes.concat(
-                sourceIdentifier,
-                sourceImplementationIdentifier,
-                receiveAckWithContext
-            ));
+            _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
@@ -521,11 +511,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-        _messageDelivered[messageIdentifier] = keccak256(bytes.concat(
-            sourceIdentifier,
-            sourceImplementationIdentifier,
-            receiveAckWithContext
-        ));
+        _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
         // Why is the messageDelivered event emitted before _sendPacket?
         // Because it lets us pop messageIdentifier from the stack. This avoid a stack limit reached error. 
@@ -938,7 +924,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // This makes it ever so slighly easier to retry messages.
         bytes32 messageIdentifier = bytes32(receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
-        bytes32 storedAckHash = _messageDelivered[messageIdentifier];
+        bytes32 storedAckHash = _messageDelivered[sourceIdentifier][implementationIdentifier][messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
         // Then, check if the storedAckHash & the source target (sourceIdentifier & implementationIdentifier) matches the executed one.
         if (storedAckHash == bytes32(0) || storedAckHash != keccak256(bytes.concat(
@@ -998,7 +984,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Get the message identifier from the message.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         // Read the status of the package at MessageIdentifier.
-        bytes32 storedAckHash = _messageDelivered[messageIdentifier];
+        bytes32 storedAckHash = _messageDelivered[sourceIdentifier][implementationIdentifier][messageIdentifier];
         // If has already been processed, then don't allow timeouting the message. Instead, it should be retried.
         if (storedAckHash != bytes32(0)) revert MessageAlreadyProcessed();
         // This also protects a relayer that delivered a timedout message.

@@ -45,7 +45,7 @@ contract OnRecvCallTest is TestOnRecvCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipient,
-                uint48(0x6b4e),  // Gas used
+                uint48(0x6d9b),  // Gas used
                 uint64(1),
                 hex"d9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b"
             )
