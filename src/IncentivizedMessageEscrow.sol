@@ -927,11 +927,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 storedAckHash = _messageDelivered[sourceIdentifier][implementationIdentifier][messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
         // Then, check if the storedAckHash & the source target (sourceIdentifier & implementationIdentifier) matches the executed one.
-        if (storedAckHash == bytes32(0) || storedAckHash != keccak256(bytes.concat(
-            sourceIdentifier,
-            implementationIdentifier,
-            receiveAckWithContext
-        ))) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
+        if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
         uint128 cost = _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext, 0);

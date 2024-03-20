@@ -88,6 +88,8 @@ contract MessageIdentifierTest is TestCommon {
     // With different destination identifiers they should produce different identifiers.
     function test_sender_impacts_message_identifier(address a, address b) public {
         vm.assume(a != b);
+        vm.assume(a != address(application));
+        vm.assume(b != address(application));
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.deal(a, _getTotalIncentive(_INCENTIVE));
