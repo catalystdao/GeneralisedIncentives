@@ -112,13 +112,13 @@ It is very important to remember that the ack "clock" starts ticking from when t
 
 ## Timeout & Expired Proofs
 
-Not all AMBs support perpetually verifable proofs. To avoid loss of packages, timeouts are implemented. When submitting messages, applications can specify a timestamp where if a message is delivered after that, the destination application will not receive it. Instead an ack with failure code `0xfe` will be send back. Additionally, if no mesasge has been delivered a timeout attempt can be sent back.
+Not all AMBs support perpetually verifiable proofs. To avoid loss of packages, timeouts are implemented. When submitting messages, applications can specify a timestamp where if a message is delivered after that, the destination application will not receive it. Instead an ack with failure code `0xfe` will be send back. Additionally, if no message has been delivered a timeout attempt can be sent back.
 
-If an AMB supports perpetually verifyable proofs OR supports a manual proof recovery process, then timeouts can be disabled by setting the deadline to 0 otherwise there is a limit to how far in the future the deadline can be set.
+If an AMB supports perpetually verifiable proofs OR supports a manual proof recovery process, then timeouts can be disabled by setting the deadline to 0 otherwise there is a limit to how far in the future the deadline can be set.
 
 ## Message structure
 
-The messages structure can be found in src/MessagePayload.sol. 3 message types are defined: `SourcetoDestination`, `DestinationtoSource`, and `essageTimedout` which can be identified by the first byte of the message as 0x00, 0x01, or 0x02 respectively.
+The messages structure can be found in src/MessagePayload.sol. 3 message types are defined: `SourcetoDestination`, `DestinationtoSource`, and `messageTimedOut` which can be identified by the first byte of the message as 0x00, 0x01, or 0x02 respectively.
 
 ## Implementation Asterisks
 

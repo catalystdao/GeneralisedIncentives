@@ -76,7 +76,7 @@ contract VerifyTimeoutTest is TestCommon, Bytes65 {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidTimeoutPackage(bytes32,bytes32)", messageIdentifier, bytes32(0x2b1bdc835d9f2d5e46f60739ad5859411ddd54b2869ea56f120a011aa489263a)));
+        vm.expectRevert(abi.encodeWithSignature("InvalidTimeoutPackage(bytes32,bytes32)", messageIdentifier, bytes32(0x7280fbbf4b961ae2be60ac602f2b79cadc7d2270f2d4fe335b40763289bc68d3)));
         escrow.processPacket(mockContext, messageWithContext, bytes32(uint256(uint160(address(this)))));
     }
 
@@ -114,7 +114,7 @@ contract VerifyTimeoutTest is TestCommon, Bytes65 {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidTimeoutPackage(bytes32,bytes32)", messageIdentifier, bytes32(0x873f3ee80aab5f6ae30316ed7feb167fb7e98325987170724537a863114a292b)));
+        vm.expectRevert(abi.encodeWithSignature("InvalidTimeoutPackage(bytes32,bytes32)", messageIdentifier, bytes32(0xf1fce73f881b84131b8681088de648b38e71841d0a3b34a37f9558b561f2075a)));
         escrow.processPacket(mockContext, messageWithContext, bytes32(uint256(uint160(address(this)))));
     }
 
@@ -153,7 +153,7 @@ contract VerifyTimeoutTest is TestCommon, Bytes65 {
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidTimeoutPackage(bytes32,bytes32)", messageIdentifier, bytes32(0x5f98afa36c60ca7f856dd4c62d5b4eee89b802852eb3692095d19d9f533090c8)));
+        vm.expectRevert(abi.encodeWithSignature("InvalidTimeoutPackage(bytes32,bytes32)", messageIdentifier, bytes32(0x04aa4b2e2cba9007a1992ace08f58e5d15aee89dde337d565dcd6e6699e3a493)));
         escrow.processPacket(mockContext, messageWithContext, bytes32(uint256(uint160(address(this)))));
     }
 

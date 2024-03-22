@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity >=0.8.0;
 
 interface IMessageEscrowErrors {
     error NotEnoughGasProvided(uint128 expected, uint128 actual);  // 030748b5
@@ -21,4 +21,5 @@ interface IMessageEscrowErrors {
     error MessageAlreadyProcessed(); // 7b042609
     error DeadlineNotPassed(uint64 expected, uint64 actual); // 862c57f4
     error InvalidTimeoutPackage(bytes32 expected, bytes32 actual); // e020885d
+    error MessageHasInvalidContext(); // 3fcdbaba
 }

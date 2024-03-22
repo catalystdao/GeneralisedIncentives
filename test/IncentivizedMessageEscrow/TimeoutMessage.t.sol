@@ -24,7 +24,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         vm.expectEmit();
         emit Message(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(address(escrow)),
+            abi.encode(address(escrow)),
             bytes.concat(
                 _DESTINATION_IDENTIFIER,
                 _DESTINATION_IDENTIFIER,
@@ -38,7 +38,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
 
         escrow.timeoutMessage(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(address(escrow)),
+            abi.encode(address(escrow)),
             block.number,
             rawSubmitMessage
         );
@@ -107,7 +107,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
     function test_message_cannot_be_timeouted_after_exec(bytes calldata message) public {
         bytes32 destinationFeeRecipient = bytes32(uint256(uint160(address(this))));
 
-        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message);
+        (, bytes memory submitMessageWithContext) = setupsubmitMessage(address(application), message, 2);
 
         // Ready for ack.
         setupprocessPacket(submitMessageWithContext, destinationFeeRecipient);
@@ -115,10 +115,12 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         // Remove the context
         bytes memory rawSubmitMessage = this.memorySlice(submitMessageWithContext, 96);
 
+        vm.warp(3);
+
         vm.expectRevert(abi.encodeWithSignature("MessageAlreadyProcessed()"));
         escrow.timeoutMessage(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(address(escrow)),
+            abi.encode(address(escrow)),
             block.number,
             rawSubmitMessage
         );
@@ -144,7 +146,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         vm.expectRevert(abi.encodeWithSignature("DeadlineNotPassed(uint64,uint64)", uint64(newTimestamp+1), uint64(newTimestamp)));
         escrow.timeoutMessage(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(address(escrow)),
+            abi.encode(address(escrow)),
             block.number,
             newRawSubmitMessage
         );
@@ -167,7 +169,7 @@ contract TimeoutMessageTest is TestCommon, Bytes65 {
         vm.expectRevert(abi.encodeWithSignature("DeadlineNotPassed(uint64,uint64)", 0, newTimestamp));
         escrow.timeoutMessage(
             _DESTINATION_IDENTIFIER,
-            abi.encodePacked(address(escrow)),
+            abi.encode(address(escrow)),
             block.number,
             newRawSubmitMessage
         );
