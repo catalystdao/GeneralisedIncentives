@@ -27,7 +27,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
     uint constant POLYMER_PACKAGE_PAYLOAD_START = 32;
 
     bytes32[] public connectedChannels;
-    string constant VERSION = 'vIBC Escrow 1.0';
+    string constant VERSION = '1.0';
 
     // Make a shortcut to save a bit of gas.
     bytes32 immutable ADDRESS_THIS = bytes32(uint256(uint160(address(this))));
