@@ -685,7 +685,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             0
         );
 
-        emit MessageTimedout(messageIdentifier);
+        emit MessageTimedOut(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,
             0,  // No Gas spent on destiantion chain.

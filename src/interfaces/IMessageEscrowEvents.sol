@@ -11,7 +11,7 @@ interface IMessageEscrowEvents {
     event MessageDelivered(bytes32 indexed messageIdentifier);
     event MessageAcked(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
     event TimeoutInitiated(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed
-    event MessageTimedout(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
+    event MessageTimedOut(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
     event BountyClaimed(
         bytes32 indexed uniqueIdentifier,
         uint64 gasSpentOnDestination,
