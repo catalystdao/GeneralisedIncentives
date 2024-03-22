@@ -21,6 +21,7 @@ import { IbcReceiverBase, IbcReceiver } from "vibc-core-smart-contracts/interfac
 contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiver {
     error ChannelNotFound();
     error UnsupportedVersion();
+    error UnsupportedChannelOrder();
 
     uint constant POLYMER_SENDER_IDENTIFIER_START = 0;
     uint constant POLYMER_SENDER_IDENTIFIER_END = 32;
@@ -41,11 +42,14 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
 
     function onOpenIbcChannel(
         string calldata version,
-        ChannelOrder /*  */,
+        ChannelOrder order,
         bool,
         string[] calldata,
         CounterParty calldata counterparty
     ) external view onlyIbcDispatcher returns (string memory selectedVersion) {
+        // Check that the order is unordered:
+        if (order != ChannelOrder.NONE) revert UnsupportedChannelOrder();
+
         if (counterparty.channelId == bytes32(0)) {
             // ChanOpenInit
             if (
