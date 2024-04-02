@@ -58,7 +58,7 @@ contract GasSpendControlTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 destinationFeeRecipient,
-                uint48(0x366fa),  // Gas used
+                uint48(0x3697d),  // Gas used
                 uint64(1),
                 bytes1(0xff),  // This states that the call went wrong.
                 message
@@ -113,7 +113,7 @@ contract GasSpendControlTest is TestCommon {
         vm.revertTo(snapshot_num);
 
         // While not perfect, it is a decent way to ensure that the gas delivery is kept true.
-        vm.expectRevert(abi.encodeWithSignature("NotEnoughGasExeuction()"));
+        vm.expectRevert(abi.encodeWithSignature("NotEnoughGasExecution()"));
         vm.expectCall(
             address(application),
             abi.encodeCall(
