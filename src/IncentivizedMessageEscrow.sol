@@ -488,7 +488,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // Check that enough gas was provided to the application. For further documentation of this statement, check
             // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
             // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
-            if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExeuction();
+            if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExecution();
 
             // Send the message back if the execution failed.
             // This lets you store information in the message that you can trust 
@@ -583,7 +583,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // gas left. It is sufficient to check that smaller limit rather than the larger limit.
         // Furthermore, if we only check when the call failed we don't have to read gasleft if it is not needed.
         unchecked {
-            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
+            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExecution();
         }
         // Why is this better (than checking before)?
         // 1. We only have to check when the call failed. The vast majority of acks should not revert so it won't be checked.
@@ -668,7 +668,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
         // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
         unchecked {
-            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
+            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExecution();
         }
 
         (uint256 gasSpentOnSource, uint256 deliveryFee, uint256 ackFee) = _payoutIncentive(

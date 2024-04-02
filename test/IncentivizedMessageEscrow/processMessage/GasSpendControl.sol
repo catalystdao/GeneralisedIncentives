@@ -113,7 +113,7 @@ contract GasSpendControlTest is TestCommon {
         vm.revertTo(snapshot_num);
 
         // While not perfect, it is a decent way to ensure that the gas delivery is kept true.
-        vm.expectRevert(abi.encodeWithSignature("NotEnoughGasExeuction()"));
+        vm.expectRevert(abi.encodeWithSignature("NotEnoughGasExecution()"));
         vm.expectCall(
             address(application),
             abi.encodeCall(
