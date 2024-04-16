@@ -53,7 +53,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     mapping(bytes32 => IncentiveDescription) _bounty;
 
     /** @notice A hash of the emitted message on receive such that we can emit a similar one. */
-    mapping(bytes32 => bytes32) _messageDelivered;
+    mapping(bytes32 => mapping(bytes => mapping(bytes32 => bytes32))) _messageDelivered;
 
     // Maps applications to their escrow implementations.
     mapping(address => mapping(bytes32 => bytes)) public implementationAddress;
@@ -91,8 +91,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice Returns the duration for which a proof is valid for.
      * It may vary by destination.
-     * @dev Remember to add block.timestamp to the duration where proofs remain vaild for.
-     * The setting needs to be sane: Do not set the proofValidPeriod to more than ~1 years.
+     * @dev On checks, block.timestamp is added to the return of this function such that
+     * block.timestamp + _proofValidPeriod > deadline.
+     * Can be set to 0 which implies any is valid.
      * @return timestamp The timestamp of when the application's message won't get delivered but rather acked back.
      */
     function _proofValidPeriod(bytes32 destinationIdentifier) virtual internal view returns(uint64 timestamp);
@@ -102,9 +103,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /**
-     * @param sendLostGasTo Who should receive Ether which would otherwise block
-     * execution? It should never be set to a contract which does not implement
-     * either a fallback or receive function which never revert.
+     * @param sendLostGasTo It should only be set to an EOA or a contract which implements either a fallback or a receive function that never reverts.
      * It can be set to address 0 or a similar burn address if no-one wants to take ownership of the ether.
      */
     constructor(address sendLostGasTo) {
@@ -146,9 +145,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 sourceIdentifier,
         bytes32 destinationIdentifier,
         bytes memory message
-    ) pure internal virtual returns(bytes32) {
+    ) view internal virtual returns(bytes32) {
         return keccak256(
             bytes.concat(
+                bytes20(address(this)),
                 bytes20(messageSender),
                 bytes8(deadline),
                 bytes32(blockNumber),
@@ -168,8 +168,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @notice Returns a hash of the ack unless there was no ack then it returns bytes32(uint256(1));
      * If the message hasn't been delivered yet it still returns bytes32(0)
      */
-   function messageDelivered(bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted) {
-        return _messageDelivered[messageIdentifier];
+   function messageDelivered(bytes32 sourceIdentifier, bytes calldata sourceImplementationIdentifier, bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted) {
+        return _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
    }
 
      /**
@@ -234,7 +234,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      *     1. That incentive.maxGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
      *     2. That incentive.maxGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
      *     3. The relay incentive is enough to get the message relayed within the expected time. If that is never, this check is not needed.
-     * Furthermore, if the package timesout there is no gas refund.
+     * Furthermore, if the package times out there is no gas refund.
      * @param destinationIdentifier 32 bytes which identifies the destination chain.
      * @param destinationAddress The destination address encoded in 65 bytes: First byte is the length and last 64 is the destination address.
      * @param message The message to be sent to the destination. Please ensure the message is block-unique.
@@ -254,7 +254,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Valid refund to.
         if (incentive.refundGasTo == address(0)) revert RefundGasToIsZero();
 
-        // Check that the application has set a destination implementation by checking if the is not 0.
+        // Check that the application has set a destination implementation by checking if the length of the destinationImplementation entry is not 0.
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
         if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
 
@@ -396,12 +396,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // The 3 next lines act as a reentry guard, so this call doesn't have to be protected by reentry.
         // We will re-set _messageDelivered[messageIdentifier] again later as the hash of the ack, however, we need re-entry protection
         // so applications don't try to claim incentives multiple times. So, we set it now and change it later.
-        bytes32 messageState = _messageDelivered[messageIdentifier];
+        bytes32 messageState = _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
         if (messageState != bytes32(0)) revert MessageAlreadySpent();
-        _messageDelivered[messageIdentifier] = bytes32(uint256(1));
+        _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = bytes32(uint256(1));
 
-        // Deliver message to application.
-        // Decode gas limit, application address and sending application.
+        // Prepare to deliver the message to application.
+        // We need toApplication to check if the source implementation is valid
+        // and we optimistically decode fromApplication since it is needed in all cases.
         address toApplication = address(bytes20(message[CTX0_TO_APPLICATION_START_EVM:CTX0_TO_APPLICATION_END])); 
         bytes calldata fromApplication = message[FROM_APPLICATION_LENGTH_POS:FROM_APPLICATION_END];
 
@@ -434,7 +435,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             );
 
             // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-            _messageDelivered[messageIdentifier] = keccak256(receiveAckWithContext);
+            _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
@@ -463,7 +464,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             );
 
             // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-            _messageDelivered[messageIdentifier] = keccak256(receiveAckWithContext);
+            _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
             emit MessageDelivered(messageIdentifier);
@@ -487,7 +488,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             // Check that enough gas was provided to the application. For further documentation of this statement, check
             // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
             // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
-            if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExeuction();
+            if(gasleft() < maxGas * 1 / 63) revert NotEnoughGasExecution();
 
             // Send the message back if the execution failed.
             // This lets you store information in the message that you can trust 
@@ -510,7 +511,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         // Store a hash of the acknowledgement so we can later retry a potentially invalid ack proof.
-        _messageDelivered[messageIdentifier] = keccak256(receiveAckWithContext);
+        _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
         // Why is the messageDelivered event emitted before _sendPacket?
         // Because it lets us pop messageIdentifier from the stack. This avoid a stack limit reached error. 
@@ -542,7 +543,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint64 targetDelta = incentive.targetDelta;
 
         // Ensure the bounty can only be claimed once. This call is matched on the ack side,
-        // so it also ensures that an ack cannot be delivered if a timeout has been
+        // so it also ensures that an ack cannot be delivered if a timeout has been seen.
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
@@ -582,7 +583,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // gas left. It is sufficient to check that smaller limit rather than the larger limit.
         // Furthermore, if we only check when the call failed we don't have to read gasleft if it is not needed.
         unchecked {
-            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
+            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExecution();
         }
         // Why is this better (than checking before)?
         // 1. We only have to check when the call failed. The vast majority of acks should not revert so it won't be checked.
@@ -640,7 +641,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         uint96 priceOfAckGas = incentive.priceOfAckGas;
 
         // Ensure the bounty can only be claimed once. This call is matched on the ack side,
-        // so it also ensures that an ack cannot be delivered if a timeout has been
+        // so it also ensures that an ack cannot be delivered if a timeout has been seen.
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
         delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
 
@@ -667,7 +668,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // the long description on ack. TLDR: The relayer can cheat the application by providing less gas
         // but this statement ensures that if they try to do that, then it will fail (assuming the application reverts).
         unchecked {
-            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExeuction();
+            if (!success) if(gasleft() < maxGasAck * 1 / 63) revert NotEnoughGasExecution();
         }
 
         (uint256 gasSpentOnSource, uint256 deliveryFee, uint256 ackFee) = _payoutIncentive(
@@ -684,7 +685,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             0
         );
 
-        emit MessageTimedout(messageIdentifier);
+        emit MessageTimedOut(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,
             0,  // No Gas spent on destiantion chain.
@@ -702,7 +703,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         fromApplication = address(uint160(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
         bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][destinationIdentifier];
         // Check that the application approves of the remote implementation.
-        // For timeouts, this could fail because of fradulent sender or badly data.
+        // For timeouts, this could fail because of fradulent sender or bad data.
         if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
 
         // Do we need to check deadline again?
@@ -710,9 +711,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // This is because we must expect the remote implementation to also do the check to save gas
         // since it is an obvious and valid remote check
         uint64 deadline = uint64(bytes8(message[CTX2_DEADLINE_START:CTX2_DEADLINE_END]));
-        if (deadline >= block.timestamp) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
+        if (deadline >= block.timestamp || deadline == 0) revert DeadlineNotPassed(deadline, uint64(block.timestamp));
 
-        // The entirty of the incoming message is untrusted. So far we havn't done any verification of
+        // The entirety of the incoming message is untrusted. So far we havn't done any verification of
         // the message but rather of the origin of the message.
         // As a result, we need to verify the rest of the message, specifically:
         // - MESSAGE_IDENTIFIER
@@ -789,13 +790,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             payable(SEND_LOST_GAS_TO).transfer(refund);  // If we don't send the gas somewhere, the gas is lost forever.
         }
 
-        // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who.
+        // If both the destination relayer and source relayer are the same then we don't have to figure out which fraction goes to who. For timeouts, logic should end here.
         if (destinationFeeRecipient == sourceFeeRecipient) {
             payable(sourceFeeRecipient).transfer(actualFee);  // If this reverts, then the relayer that is executing this tx provided a bad input.
             return (gasSpentOnSource, deliveryFee, ackFee);
         }
 
-        // If targetDelta is 0, then distribute exactly the rewards. For timeouts, logic should end here.
+        // If targetDelta is 0, then distribute exactly the rewards.
         if (targetDelta == 0) {
             // ".send" is used to ensure this doesn't revert. ".transfer" could revert and block the ack from ever being delivered.
             if(!payable(destinationFeeRecipient).send(deliveryFee)) {  // If this returns false, it implies that the transfer failed.
@@ -923,9 +924,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // This makes it ever so slighly easier to retry messages.
         bytes32 messageIdentifier = bytes32(receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
-        bytes32 storedAckHash = _messageDelivered[messageIdentifier];
+        bytes32 storedAckHash = _messageDelivered[sourceIdentifier][implementationIdentifier][messageIdentifier];
         // First, check if there is actually an appropiate hash at the message identifier.
-        // Then, check if the storedAckHash matches the executed one.
+        // Then, check if the storedAckHash & the source target (sourceIdentifier & implementationIdentifier) matches the executed one.
         if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
@@ -973,10 +974,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // entirely untrusted. We do no verification on it. As a result, we shouldn't
         // trust any data within it. It is first when this message hits the source chain we can begin to verify data.
 
+        // Check that at least the context is set correctly.
+        if (message[CONTEXT_POS] != CTX_SOURCE_TO_DESTINATION) revert MessageHasInvalidContext();
+
         // Get the message identifier from the message.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         // Read the status of the package at MessageIdentifier.
-        bytes32 storedAckHash = _messageDelivered[messageIdentifier];
+        bytes32 storedAckHash = _messageDelivered[sourceIdentifier][implementationIdentifier][messageIdentifier];
         // If has already been processed, then don't allow timeouting the message. Instead, it should be retried.
         if (storedAckHash != bytes32(0)) revert MessageAlreadyProcessed();
         // This also protects a relayer that delivered a timedout message.
@@ -1004,7 +1008,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             message[CTX0_MESSAGE_START: ]
         );
 
-        // To maintain a common implementation langauge, emit our event before message.
+        // To maintain a common implementation language, emit our event before message.
         emit TimeoutInitiated(messageIdentifier);
 
         // Send the message

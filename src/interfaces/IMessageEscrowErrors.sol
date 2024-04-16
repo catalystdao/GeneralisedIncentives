@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity >=0.8.0;
 
 interface IMessageEscrowErrors {
     error NotEnoughGasProvided(uint128 expected, uint128 actual);  // 030748b5
@@ -13,7 +13,7 @@ interface IMessageEscrowErrors {
     error InvalidImplementationAddress();  // c970156c
     error IncorrectValueProvided(uint128 expected, uint128 actual); // 0b52a60b
     error ImplementationAddressAlreadySet(bytes currentImplementation); // dba47850
-    error NotEnoughGasExeuction(); // 6fa3d3bb
+    error NotEnoughGasExecution(); // 6bc33587
     error RefundGasToIsZero(); // 6a1a6afe
     error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 54090af9
     error DeadlineInPast(uint64 blocktimestamp, uint64 actual); // 2d098d59
@@ -21,4 +21,5 @@ interface IMessageEscrowErrors {
     error MessageAlreadyProcessed(); // 7b042609
     error DeadlineNotPassed(uint64 expected, uint64 actual); // 862c57f4
     error InvalidTimeoutPackage(bytes32 expected, bytes32 actual); // e020885d
+    error MessageHasInvalidContext(); // 3fcdbaba
 }

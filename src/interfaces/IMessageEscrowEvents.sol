@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity >=0.8.0;
 
 import { IMessageEscrowStructs } from "./IMessageEscrowStructs.sol";
 
@@ -10,8 +10,8 @@ interface IMessageEscrowEvents {
     );
     event MessageDelivered(bytes32 indexed messageIdentifier);
     event MessageAcked(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
-    event TimeoutInitiated(bytes32 messageIdentifier); // Not indexed since relayers can 
-    event MessageTimedout(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
+    event TimeoutInitiated(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed
+    event MessageTimedOut(bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
     event BountyClaimed(
         bytes32 indexed uniqueIdentifier,
         uint64 gasSpentOnDestination,

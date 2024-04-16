@@ -17,7 +17,7 @@ contract MessageIdentifierTest is TestCommon {
             0
         );
 
-        assertEq(messageIdentifier, bytes32(0xb052184a54ac360ad9357b08ecca6fb0db95533777c220ddb24a2c9447636a36));
+        assertEq(messageIdentifier, bytes32(0xaa02b82738a85f91a4e3a5b6a6298a176a0d235e631bbad51b406591f0159796));
     }
 
     function test_unique_identifier_block_11() public {
@@ -31,7 +31,7 @@ contract MessageIdentifierTest is TestCommon {
             0
         );
 
-        assertEq(messageIdentifier, bytes32(0x8c4b4f4125bc7c9c0943754a03bdea1a58c680a4069139deed023e4964e762a0));
+        assertEq(messageIdentifier, bytes32(0x6fa210ac6eb9452215853391fbea47494907f6de90635d3c70f5ab97b9e873d5));
     }
 
     // Even with the same message, the identifier should be different between blocks.
@@ -81,13 +81,15 @@ contract MessageIdentifierTest is TestCommon {
             0
         );
 
-        assertEq(messageIdentifier1, bytes32(0xdc4a66de9adecec9a06bc8afaffeb73714efb0ad20624b4347fa815035425616));
-        assertEq(messageIdentifier2, bytes32(0x95135d09fbf48438c5b9e293dcb9a3f876eaf5f33cbe764ec253cf1770505a85));
+        assertEq(messageIdentifier1, bytes32(0xa175faea5cf764546faa147a161c4632a6326383d7dc842c16c79aa4d51970c2));
+        assertEq(messageIdentifier2, bytes32(0xc81f8569a4c9c2944957b6313a5992cba9befad01d065f8e2a904cd4d3121aa2));
     }
 
     // With different destination identifiers they should produce different identifiers.
     function test_sender_impacts_message_identifier(address a, address b) public {
         vm.assume(a != b);
+        vm.assume(a != address(application));
+        vm.assume(b != address(application));
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.deal(a, _getTotalIncentive(_INCENTIVE));
