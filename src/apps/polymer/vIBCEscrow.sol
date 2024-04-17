@@ -6,7 +6,7 @@ import "../../MessagePayload.sol";
 
 import  "vibc-core-smart-contracts/interfaces/IbcDispatcher.sol";
 import { AckPacket } from "vibc-core-smart-contracts/libs/Ibc.sol";
-import { IbcReceiverBase, IbcReceiver } from "vibc-core-smart-contracts/interfaces/IbcReceiver.sol";
+import { IbcReceiverBase, IbcReceiver, IbcPacket } from "vibc-core-smart-contracts/interfaces/IbcReceiver.sol";
 
 /** 
  * @notice Polymer implementation of the Generalised Incentives based on vIBC.
@@ -19,8 +19,6 @@ import { IbcReceiverBase, IbcReceiver } from "vibc-core-smart-contracts/interfac
  * trust the account AND the set value.
  */
 contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiver {
-    error ChannelNotFound();
-    error UnsupportedVersion();
     error UnsupportedChannelOrder();
 
     uint constant POLYMER_SENDER_IDENTIFIER_START = 0;
@@ -28,7 +26,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
     uint constant POLYMER_PACKAGE_PAYLOAD_START = 32;
 
     bytes32[] public connectedChannels;
-    string constant VERSION = '1.0';
+    string[] public supportedVersions = ["1.0", "2.0"];
 
     // Make a shortcut to save a bit of gas.
     bytes32 immutable ADDRESS_THIS = bytes32(uint256(uint160(address(this))));
@@ -39,57 +37,83 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
     {}
 
     //--- IBC Channel Callbacks ---//
+    // Inspired by Mars.sol: https://github.com/open-ibc/vibc-core-smart-contracts/blob/v2.0.0-rc4/contracts/examples/Mars.sol
 
-    function onOpenIbcChannel(
+    function triggerChannelInit(
         string calldata version,
-        ChannelOrder order,
-        bool,
-        string[] calldata,
-        CounterParty calldata counterparty
-    ) external view onlyIbcDispatcher returns (string memory selectedVersion) {
-        // Check that the order is unordered:
-        if (order != ChannelOrder.NONE) revert UnsupportedChannelOrder();
-
-        if (counterparty.channelId == bytes32(0)) {
-            // ChanOpenInit
-            if (
-                keccak256(abi.encodePacked(version)) != keccak256(abi.encodePacked(VERSION))
-            ) revert UnsupportedVersion();
-        } else {
-            // ChanOpenTry
-            if (
-                keccak256(abi.encodePacked(counterparty.version)) != keccak256(abi.encodePacked(VERSION))
-            ) revert UnsupportedVersion();
-        }
-        return VERSION;
+        ChannelOrder ordering,
+        bool feeEnabled,
+        string[] calldata connectionHops,
+        string calldata counterpartyPortId
+    ) external onlyOwner {
+        if (ordering != ChannelOrder.NONE && ordering != ChannelOrder.UNORDERED) revert UnsupportedChannelOrder();
+        dispatcher.channelOpenInit(version, ordering, feeEnabled, connectionHops, counterpartyPortId);
     }
 
-    function onConnectIbcChannel(
+    function onChanOpenInit(ChannelOrder ordering, string[] calldata, string calldata, string calldata version)
+        external
+        view
+        virtual
+        onlyIbcDispatcher
+        returns (string memory selectedVersion)
+    {
+        if (ordering != ChannelOrder.NONE && ordering != ChannelOrder.UNORDERED) revert UnsupportedChannelOrder();
+        return _openChannel(version);
+    }
+
+    function onChanOpenTry(
+        ChannelOrder ordering,
+        string[] memory,
         bytes32 channelId,
+        string memory,
         bytes32,
         string calldata counterpartyVersion
-    ) external onlyIbcDispatcher {
-        if (
-            keccak256(abi.encodePacked(counterpartyVersion)) != keccak256(abi.encodePacked(VERSION))
-        ) revert UnsupportedVersion();
-        connectedChannels.push(channelId);
+    ) external virtual onlyIbcDispatcher returns (string memory selectedVersion) {
+        if (ordering != ChannelOrder.NONE && ordering != ChannelOrder.UNORDERED) revert UnsupportedChannelOrder();
+        return _connectChannel(channelId, counterpartyVersion);
     }
 
-    function onCloseIbcChannel(bytes32 channelId, string calldata, bytes32) external onlyIbcDispatcher {
+    function onChanOpenAck(bytes32 channelId, bytes32, string calldata counterpartyVersion) external virtual onlyIbcDispatcher {
+        _connectChannel(channelId, counterpartyVersion);
+    }
+
+    function onChanOpenConfirm(bytes32 channelId) external onlyIbcDispatcher {}
+
+    function _connectChannel(bytes32 channelId, string calldata counterpartyVersion) private returns (string memory version) {
         unchecked {
+        // ensure negotiated version is supported
+        for (uint256 i = 0; i < supportedVersions.length; ++i) {
+            if (keccak256(abi.encodePacked(counterpartyVersion)) == keccak256(abi.encodePacked(supportedVersions[i]))) {
+                connectedChannels.push(channelId);
+                return counterpartyVersion;
+            }
+        }
+        revert UnsupportedVersion();
+        }
+    }
+
+    function _openChannel(string calldata version) private view returns (string memory selectedVersion) {
+        unchecked {
+        for (uint256 i = 0; i < supportedVersions.length; ++i) {
+            if (keccak256(abi.encodePacked(version)) == keccak256(abi.encodePacked(supportedVersions[i]))) {
+                return version;
+            }
+        }
+        revert UnsupportedVersion();
+        }
+    }
+
+    function onCloseIbcChannel(bytes32 channelId, string calldata, bytes32) external virtual onlyIbcDispatcher {
         // logic to determin if the channel should be closed
         bool channelFound = false;
-        for (uint256 i = 0; i < connectedChannels.length; ++i) {
+        for (uint256 i = 0; i < connectedChannels.length; i++) {
             if (connectedChannels[i] == channelId) {
                 delete connectedChannels[i];
                 channelFound = true;
-                return;
-                // We could also break but early return saves gas.
+                break;
             }
         }
         if (!channelFound) revert ChannelNotFound();
-
-        }
     }
 
     //--- IBC Packet Callbacks ---//
