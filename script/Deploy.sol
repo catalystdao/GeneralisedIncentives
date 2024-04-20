@@ -9,7 +9,7 @@ import { BaseMultiChainDeployer} from "./BaseMultiChainDeployer.s.sol";
 // Import all the Apps for deployment here.
 import { IncentivizedMockEscrow } from "../src/apps/mock/IncentivizedMockEscrow.sol";
 import { IncentivizedWormholeEscrow } from "../src/apps/wormhole/IncentivizedWormholeEscrow.sol";
-import { UniversalPolymerEscrow } from "../src/apps/polymer/UniversalPolymerEscrow.sol";
+import { IncentivizedPolymerEscrow } from "../src/apps/polymer/vIBCEscrow.sol";
 
 contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
     using stdJson for string;
@@ -81,7 +81,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
             address expectedAddress = _getAddress(
                 abi.encodePacked(
-                    type(UniversalPolymerEscrow).creationCode,
+                    type(IncentivizedPolymerEscrow).creationCode,
                     abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract)
                 ),
                 salt
@@ -90,7 +90,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
             // Check if it is already deployed. If it is, we skip.
             if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
 
-            UniversalPolymerEscrow polymerEscrow = new UniversalPolymerEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract);
+            IncentivizedPolymerEscrow polymerEscrow = new IncentivizedPolymerEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract);
 
             incentive = address(polymerEscrow);
         } else {
