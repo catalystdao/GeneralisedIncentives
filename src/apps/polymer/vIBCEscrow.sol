@@ -45,7 +45,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
         bool feeEnabled,
         string[] calldata connectionHops,
         string calldata counterpartyPortId
-    ) external onlyOwner {
+    ) external {
         if (ordering != ChannelOrder.NONE && ordering != ChannelOrder.UNORDERED) revert UnsupportedChannelOrder();
         dispatcher.channelOpenInit(version, ordering, feeEnabled, connectionHops, counterpartyPortId);
     }
