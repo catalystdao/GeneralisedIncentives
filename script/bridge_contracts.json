@@ -24,11 +24,11 @@
   "Polymer": {
     "basesepolia": {
       "bridge": "0x9fcd52449261F732d017F8BD1CaCDc3dFbcD0361",
-      "escrow": "0x99d4e52dAd393972Cf1586B00cF85Ea6035CA13c"
+      "escrow": "0xE106643739deB1879CcD8E3ffe2736D8B489bC2F"
     },
     "optimismsepolia": {
       "bridge": "0xE2029629f51ab994210d671Dc08b7Ec94899b278",
-      "escrow": "0xb97D0844cD8AfB14275fd4BE747Fce6aD04E7BE8"
+      "escrow": "0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD"
     }
   }
 }

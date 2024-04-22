@@ -152,7 +152,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
-        // Collect the implementation identifier we added. Remember, this is trusted IFF packet.dest.channelId is trusted.
+        // Collect the implementation identifier we added. Remember, this is trusted IFF packet.src.channelId is trusted.
         bytes memory destinationImplementationIdentifier = ack.data[POLYMER_SENDER_IDENTIFIER_START:POLYMER_SENDER_IDENTIFIER_END];
 
         // Get the payload by removing the implementation identifier.
@@ -160,10 +160,10 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
 
         // Set a verificaiton context so we can recover the ack.
         isVerifiedMessageHash[keccak256(rawMessage)] = VerifiedMessageHashContext({
-            chainIdentifier: packet.dest.channelId,
+            chainIdentifier: packet.src.channelId,
             implementationIdentifier: destinationImplementationIdentifier
         });
-        _handleAck(packet.dest.channelId, destinationImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
+        _handleAck(packet.src.channelId, destinationImplementationIdentifier, rawMessage, feeRecipitent, gasLimit);
     }
 
     function onTimeoutPacket(IbcPacket calldata packet) external override onlyIbcDispatcher{
@@ -175,7 +175,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
         bytes32 messageIdentifier = bytes32(rawMessage[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         address fromApplication = address(uint160(bytes20(rawMessage[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
         _handleTimeout(
-            packet.dest.channelId, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START:], feeRecipitent, gasLimit
+            packet.src.channelId, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START:], feeRecipitent, gasLimit
         );
     }
 
