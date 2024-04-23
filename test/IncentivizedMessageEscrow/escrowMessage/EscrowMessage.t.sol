@@ -18,7 +18,7 @@ contract EscrowInformationTest is TestCommon {
         );
 
         // Check that the message identifier points exposes the bounty.
-        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(address(this), bytes32(uint256(0x123123) + uint256(2**255)), messageIdentifier);
 
         assertEq(incentive.maxGasDelivery, storedIncentiveAtEscrow.maxGasDelivery);
         assertEq(incentive.maxGasAck, storedIncentiveAtEscrow.maxGasAck);

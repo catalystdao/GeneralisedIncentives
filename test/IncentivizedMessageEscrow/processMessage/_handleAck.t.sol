@@ -67,7 +67,7 @@ contract processPacketAckTest is TestCommon {
             abi.encodeCall(
                 application.receiveAck,
                 (
-                    bytes32(0x8000000000000000000000000000000000000000000000000000000000123123),
+                    _DESTINATION_IDENTIFIER,
                     messageIdentifier,
                     _acknowledgement
                 )
@@ -81,7 +81,7 @@ contract processPacketAckTest is TestCommon {
         );
 
         // Check that the bounty has been deleted.
-        IncentiveDescription memory incentive = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory incentive = escrow.bounty(address(application), _DESTINATION_IDENTIFIER, messageIdentifier);
         assertEq(incentive.refundGasTo, address(0));
     }
 
@@ -168,7 +168,7 @@ contract processPacketAckTest is TestCommon {
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
 
         // Check that the bounty has been deleted.
-        IncentiveDescription memory incentive = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory incentive = escrow.bounty(address(application), _DESTINATION_IDENTIFIER, messageIdentifier);
         assertEq(incentive.refundGasTo, address(0));
     }
 
@@ -218,7 +218,7 @@ contract processPacketAckTest is TestCommon {
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
 
         // Check that the bounty has been deleted.
-        IncentiveDescription memory incentive = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory incentive = escrow.bounty(address(application), _DESTINATION_IDENTIFIER, messageIdentifier);
         assertEq(incentive.refundGasTo, address(0));
     }
 

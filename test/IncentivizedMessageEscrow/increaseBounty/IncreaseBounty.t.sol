@@ -14,6 +14,8 @@ contract IncreaseBountyTest is TestCommon {
             abi.encodeWithSignature("MessageDoesNotExist()")
         ); 
         escrow.increaseBounty{value: 100000}(
+            address(application),
+            bytes32(uint256(123123)),
             keccak256(abi.encodePacked(uint256(123))),
             123123,
             321321
@@ -24,6 +26,8 @@ contract IncreaseBountyTest is TestCommon {
         bytes32 messageIdentifier = submitMessage(_MESSAGE);
 
         escrow.increaseBounty{value: 0}(
+            address(application),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             0,
             0
@@ -39,6 +43,8 @@ contract IncreaseBountyTest is TestCommon {
             abi.encodeWithSignature("IncorrectValueProvided(uint128,uint128)", 0, overPay)
         );
         escrow.increaseBounty{value: overPay}(
+            address(application),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             0,
             0
@@ -65,6 +71,8 @@ contract IncreaseBountyTest is TestCommon {
             
         );
         escrow.increaseBounty{value: newPay}(
+            address(application),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             increaseDelivery,
             increaseAck
@@ -82,6 +90,8 @@ contract IncreaseBountyTest is TestCommon {
         uint128 difference = deliveryGas + ackGas;
 
         escrow.increaseBounty{value: difference}(
+            address(application),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             increaseDelivery,
             increaseAck

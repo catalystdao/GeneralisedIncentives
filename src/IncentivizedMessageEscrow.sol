@@ -50,7 +50,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     address immutable public SEND_LOST_GAS_TO;
 
     //--- Storage ---//
-    mapping(bytes32 => IncentiveDescription) _bounty;
+    /** 
+     * @notice messageIdentifier to IncentiveDescription.
+     * @dev fromApplication and destChain are required to fetch the bounty since those
+     * match to exactly 1 remote escrow implementation. As a result, this restricts this storage
+     * slot's security to the security of the remote escrow implementation.
+     */
+    mapping(address fromApplication => mapping(bytes32 destChain => mapping(bytes32 messageIdentifier => IncentiveDescription))) _bounty;
 
     /** @notice A hash of the emitted message on receive such that we can emit a similar one. */
     mapping(bytes32 => mapping(bytes => mapping(bytes32 => bytes32))) _messageDelivered;
@@ -160,8 +166,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     //--- Getter Functions ---//
-    function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive) {
-        return _bounty[messageIdentifier];
+    function bounty(address fromApplication, bytes32 destinationIdentifier, bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive) {
+        return _bounty[fromApplication][destinationIdentifier][messageIdentifier];
     }
 
     /**
@@ -198,13 +204,15 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @dev It is not possible to increase the gas budget for a message. 
      */
     function increaseBounty(
+        address fromApplication,
+        bytes32 destinationIdentifier,
         bytes32 messageIdentifier,
         uint96 deliveryGasPriceIncrease,
         uint96 ackGasPriceIncrease
     ) external payable {
-        if (_bounty[messageIdentifier].refundGasTo == address(0)) revert MessageDoesNotExist();
         // Find incentive scheme.
-        IncentiveDescription storage incentive = _bounty[messageIdentifier];
+        IncentiveDescription storage incentive = _bounty[fromApplication][destinationIdentifier][messageIdentifier];
+        if (incentive.refundGasTo == address(0)) revert MessageDoesNotExist();
 
         // Compute incentive metrics.
         uint128 maxDeliveryFee = incentive.maxGasDelivery * deliveryGasPriceIncrease;
@@ -275,7 +283,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             message
         );
         // Store the bounty, get the sum for later refunding excess.
-        uint128 sum = _setBounty(messageIdentifier, incentive);
+        uint128 sum = _setBounty(msg.sender, destinationIdentifier, messageIdentifier, incentive);
 
         // Add escrow context to the message.
         bytes memory messageWithContext = bytes.concat(
@@ -530,10 +538,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _handleAck(bytes32 destinationIdentifier, bytes memory destinationImplementationIdentifier, bytes calldata message, bytes32 feeRecipient, uint256 gasLimit) internal {
         // Ensure the bounty can only be claimed once.
         bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
+        address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
 
         // The 3 (9, loading the variables out of storage fills a bit.) next lines act as a reentry guard,
         // so this call doesn't have to be protected by reentry.
-        IncentiveDescription storage incentive = _bounty[messageIdentifier];
+        IncentiveDescription storage incentive = _bounty[fromApplication][destinationIdentifier][messageIdentifier];
         // Load all variables from storage onto the stack.
         uint48 maxGasDelivery = incentive.maxGasDelivery;
         uint48 maxGasAck = incentive.maxGasAck;
@@ -545,9 +554,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure the bounty can only be claimed once. This call is matched on the ack side,
         // so it also ensures that an ack cannot be delivered if a timeout has been seen.
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
-        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
+        delete _bounty[fromApplication][destinationIdentifier][messageIdentifier];  // The bounty cannot be accessed anymore.
 
-        address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
 
         // First check if the application trusts the implementation on the destination chain.
         bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][destinationIdentifier];
@@ -632,7 +640,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _handleTimeout(bytes32 destinationIdentifier, bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage, bytes32 feeRecipient, uint256 gasLimit) internal {
         // The 3 (9, loading the variables out of storage fills a bit.) next lines act as a reentry guard,
         // so this call doesn't have to be protected by reentry.
-        IncentiveDescription storage incentive = _bounty[messageIdentifier];
+        IncentiveDescription storage incentive = _bounty[fromApplication][destinationIdentifier][messageIdentifier];
         // Load all variables from storage onto the stack.
         uint48 maxGasDelivery = incentive.maxGasDelivery;
         uint48 maxGasAck = incentive.maxGasAck;
@@ -643,7 +651,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Ensure the bounty can only be claimed once. This call is matched on the ack side,
         // so it also ensures that an ack cannot be delivered if a timeout has been seen.
         if (refundGasTo == address(0)) revert MessageAlreadyAcked();
-        delete _bounty[messageIdentifier];  // The bounty cannot be accessed anymore.
+        delete _bounty[fromApplication][destinationIdentifier][messageIdentifier];  // The bounty cannot be accessed anymore.
 
         // We delegate checking the if the destination implementation is correct to outside this contract.
         // This is done such that this function can be as light as possible.
@@ -863,16 +871,18 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @dev Doesn't check if enough incentives have been provided.
      */
     function _setBounty(
+        address fromApplication,
+        bytes32 destinationIdentifier,
         bytes32 messageIdentifier, 
         IncentiveDescription calldata incentive
     ) internal returns(uint128 sum) {
-        if (_bounty[messageIdentifier].refundGasTo != address(0)) revert MessageAlreadyBountied();
+        if (_bounty[fromApplication][destinationIdentifier][messageIdentifier].refundGasTo != address(0)) revert MessageAlreadyBountied();
         // Compute incentive metrics.
         uint128 maxDeliveryFee = incentive.maxGasDelivery * incentive.priceOfDeliveryGas;
         uint128 maxAckFee = incentive.maxGasAck * incentive.priceOfAckGas;
         sum = maxDeliveryFee + maxAckFee;
         
-        _bounty[messageIdentifier] = incentive;
+        _bounty[fromApplication][destinationIdentifier][messageIdentifier] = incentive;
     }
 
     /**
@@ -892,10 +902,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Only allow acks to do this. Normal messages are invalid after first execution.
         if (context == CTX_DESTINATION_TO_SOURCE) {
             bytes32 messageIdentifier = bytes32(message[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
-            if(_bounty[messageIdentifier].refundGasTo != address(0)) revert AckHasNotBeenExecuted(); 
-
             address fromApplication = address(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END]));
-
+            if(_bounty[fromApplication][chainIdentifier][messageIdentifier].refundGasTo != address(0)) revert AckHasNotBeenExecuted();
             
             // check if the application trusts the implementation on the destination chain.
             bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][chainIdentifier];

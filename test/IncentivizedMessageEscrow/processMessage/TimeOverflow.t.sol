@@ -103,7 +103,7 @@ contract TimeOverflowTest is TestCommon {
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
 
         // Check that the bounty has been deleted.
-        IncentiveDescription memory incentive = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory incentive = escrow.bounty(address(application), _DESTINATION_IDENTIFIER, messageIdentifier);
         assertEq(incentive.refundGasTo, address(0));
     }
 
