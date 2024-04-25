@@ -31,8 +31,7 @@ contract OnRecvTimeoutTest is TestOnRecvCommon {
 
         vm.expectEmit();
         // Check MessageDelivered emitted
-        emit MessageTimedOut(messageIdentifier);
-        // );
+        emit MessageTimedOut(abi.encode(escrow), messageIdentifier);
 
         vm.expectCall(
             address(application),
@@ -48,6 +47,7 @@ contract OnRecvTimeoutTest is TestOnRecvCommon {
 
         escrow.onTimeout(
             _DESTINATION_IDENTIFIER,
+            abi.encode(escrow),
             messageWithContext,
             bytes32(uint256(uint160(address(this))))
         );

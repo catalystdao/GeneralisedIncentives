@@ -133,10 +133,11 @@ contract IncentivizedPolymerEscrow is IncentivizedMessageEscrow, IbcMwUser, IbcU
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
         bytes calldata rawMessage = packet.appData;
+        bytes memory destinationImplementationIdentifier = bytes.concat(packet.destPortAddr);
         bytes32 messageIdentifier = bytes32(rawMessage[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         address fromApplication = address(uint160(bytes20(rawMessage[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
         _handleTimeout(
-            channelId, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START:], feeRecipitent, gasLimit
+            channelId, destinationImplementationIdentifier, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START:], feeRecipitent, gasLimit
         );
     }
 
