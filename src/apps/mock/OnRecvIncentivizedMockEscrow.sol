@@ -128,7 +128,6 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         uint256 gasLimit = gasleft();
         bytes32 messageIdentifier = bytes32(rawMessage[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         address fromApplication = address(uint160(bytes20(rawMessage[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
-        // TODO: 
         _handleTimeout(chainIdentifier, destinationImplementationIdentifier, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START: ], feeRecipient, gasLimit);
     }
 
