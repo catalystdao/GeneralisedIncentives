@@ -688,7 +688,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         emit MessageTimedOut(messageIdentifier);
         emit BountyClaimed(
             messageIdentifier,
-            0,  // No Gas spent on destiantion chain.
+            uint64(maxGasDelivery),
             uint64(gasSpentOnSource),
             uint128(deliveryFee),
             uint128(ackFee)
