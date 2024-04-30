@@ -810,11 +810,9 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Compute the reward distribution. We need the time it took to deliver the ack back.
         uint64 executionTime;
         unchecked {
-            // If the timestamp between 2 different chains are not synced with eachother
-            // it may be that messageExecutionTimestamp > block.timestamp.
-            // If this happened, then the transaction was relayed pretty quickly
-            // So the source to destination relayer should get the funds.
-            executionTime = uint64(block.timestamp) > messageExecutionTimestamp ? uint64(block.timestamp) - messageExecutionTimestamp : 0;
+            // Underflow is desired in this code chuck. It ensures that the code piece continues working
+            // past the time when uint64 stops working. *As long as any timedelta is less than uint64.
+            executionTime = uint64(block.timestamp) - messageExecutionTimestamp;
         }
         // The incentive scheme is as follows: When executionTime = targetDelta then 
         // The rewards are distributed as per the incentive spec. If the time is less, then
