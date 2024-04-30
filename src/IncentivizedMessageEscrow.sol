@@ -104,9 +104,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /**
      * @param sendLostGasTo It should only be set to an EOA or a contract which implements either a fallback or a receive function that never reverts.
-     * It can be set to address 0 or a similar burn address if no-one wants to take ownership of the ether.
+     * It cannot be set to address 0, instead use a burn address (0xdead) if no-one wants to take responsibility of the Ether.
      */
     constructor(address sendLostGasTo) {
+        if (sendLostGasTo == address(0)) revert SendLostGasToAddress0();
         SEND_LOST_GAS_TO = sendLostGasTo;
     }
 

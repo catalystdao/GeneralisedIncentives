@@ -36,7 +36,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     bytes _DESTINATION_ADDRESS_APPLICATION;
 
     address SIGNER;
-    address sendLostGasTo;
+    address sendLostGasTo = address(0xdead);
     address BOB;
     uint256 PRIVATEKEY;
 
