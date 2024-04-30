@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { MockOnRecvAMB } from "../../../test/mocks/MockOnRecvAMB.sol";
