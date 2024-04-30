@@ -22,5 +22,6 @@ interface IMessageEscrowErrors {
     error NotEnoughGasProvided(uint128 expected, uint128 actual);    // 0x030748b5
     error NotImplementedError(); // 0xd41c17e7
     error RefundGasToIsZero(); // 0x6a1a6afe
-    error SendLostGasToAddress0(); // 0x470337f2
+    error SendLostGasToIsZero(); // 0x470337f2
+    error FeeRecipientIsZero(); // 0x6a1a6afe
 }

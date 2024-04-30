@@ -107,7 +107,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * It cannot be set to address 0, instead use a burn address (0xdead) if no-one wants to take responsibility of the Ether.
      */
     constructor(address sendLostGasTo) {
-        if (sendLostGasTo == address(0)) revert SendLostGasToAddress0();
+        if (sendLostGasTo == address(0)) revert SendLostGasToIsZero();
         SEND_LOST_GAS_TO = sendLostGasTo;
     }
 
@@ -344,6 +344,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes32 feeRecipient
     ) external virtual payable {
         uint256 gasLimit = gasleft();  // uint256 is used here instead of uint48, since there is no advantage to uint48 until after we calculate the difference.
+        if (feeRecipient == bytes32(0)) revert FeeRecipientIsZero();
 
         // Verify that the message is authentic and remove potential context that the messaging protocol added to the message.
         (bytes32 chainIdentifier, bytes memory implementationIdentifier, bytes calldata message) = _verifyPacket(messagingProtocolContext, rawMessage);
