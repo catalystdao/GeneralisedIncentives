@@ -60,13 +60,30 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     mapping(address => mapping(bytes32 => bytes32)) public implementationAddressHash;
 
     //--- Virtual Functions ---//
-    // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 3 functions.
+    // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 4 functions.
 
     /** 
      * @notice Verify a message's authenticity.
      * @dev Should be overwritten by the specific messaging protocol verification structure.
+     * @param messagingProtocolContext Some context that is useful for verifing the message.
+     * It should not containt the message but instead verification context like signatures, header, etc.
+     * Context may not be needed for verifying the message and can be prepended to rawMessage.
+     * @param rawMessage Some kind of package, initially untrusted. May contain the encoded message but
+     * the message contained within as a slice. It may contain more than just the message like signatures.
+     *
+     * @return sourceIdentifier The source chain identifier. A chainID, a channel ID, or similarly.
+     * @return implementationIdentifier An identifier for the address that emitted the message.
+     * @return message The emitted message as a calldata slice. Should not contain anything AMB specific
+     * and should be the exact message as delivered to _sendPacket
      */
-    function _verifyPacket(bytes calldata messagingProtocolContext, bytes calldata rawMessage) virtual internal returns(bytes32 sourceIdentifier, bytes memory destinationIdentifier, bytes calldata message);
+    function _verifyPacket(
+        bytes calldata messagingProtocolContext,
+        bytes calldata rawMessage
+    ) virtual internal returns(
+        bytes32 sourceIdentifier,
+        bytes memory implementationIdentifier,
+        bytes calldata message
+    );
 
     /** 
      * @notice Send the message to the messaging protocol.
@@ -80,7 +97,11 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param deadline When the message should be delivered before. If the AMB does not nativly support a timeout on their messages this parameter should be ignored. If 0 is provided, parse it as MAX
      * @return costOfsendPacketInNativeToken An additional cost to emitting messages in NATIVE tokens.
      */
-    function _sendPacket(bytes32 destinationIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 deadline) virtual internal returns(uint128 costOfsendPacketInNativeToken);
+    function _sendPacket(
+        bytes32 destinationIdentifier,
+        bytes memory destinationImplementation,
+        bytes memory message, uint64 deadline
+    ) virtual internal returns(uint128 costOfsendPacketInNativeToken);
 
     /**
      *  @notice A unique source identifier used to generate the message identifier.
