@@ -810,9 +810,18 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Compute the reward distribution. We need the time it took to deliver the ack back.
         uint64 executionTime;
         unchecked {
-            // Underflow is desired in this code chuck. It ensures that the code piece continues working
+            // Overflow is desired in this code chuck. It ensures that the code piece continues working
             // past the time when uint64 stops working. *As long as any timedelta is less than uint64.
             executionTime = uint64(block.timestamp) - messageExecutionTimestamp;
+            // Check if the overflow (/underflow) was because block.timestamp < messageExecutionTimestamp rather
+            // than because block.timestamp has overflowed and messageExecutionTimestamp has now.
+            // We do this by checking if executionTime is greater than an unrealistic period of time.
+            // 32768 days is chosen since that is the neatest value close to the uint32 limit: 49710 days.
+            // If this is the cause, we must assume that block.timestamp was slightly less than messageExecutionTimestamp
+            // and an overflow happened and the execution time was set significantly too large as a result.
+            // If this is true, then the delivery was quick (based on all available information) and the source to destination
+            // should get everything.
+            if (executionTime > 32768 days) executionTime = 0;
         }
         // The incentive scheme is as follows: When executionTime = targetDelta then 
         // The rewards are distributed as per the incentive spec. If the time is less, then
