@@ -47,4 +47,7 @@ contract TestSetRemoteImplementation is TestCommon {
 
         escrow.setRemoteImplementation(destination_identifier, implementation);
     }
+
+    // TODO: test that setting remote implementation
+    // length 1 disables the route.
 }
