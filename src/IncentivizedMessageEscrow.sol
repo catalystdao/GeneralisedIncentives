@@ -43,6 +43,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     bytes1 constant public MESSAGE_TIMED_OUT = 0xfd;
 
     /**
+     * @notice If setRemoteImplementation is called with this as the
+     * destination implementation (abi.encodePacked(DISABLE_ROUTE_IMPLEMENTATION)), then the route is
+     * permanently disabled
+     */
+    bytes1 constant DISABLE_ROUTE_IMPLEMENTATION = 0x00;
+
+    /**
      * @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
      * the gas is sent here instead.
      * @dev This may not invoke any logic on receive()
@@ -177,7 +184,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @dev This can only be set once. When set, is cannot be changed.
      * This is to protect relayers as this could be used to fail acks.
      * You are not allowed to set a 0 length implementation address.
-     * If you want to disable a specific route, set implementation to hex"00".
+     * If you want to disable a specific route, set implementation to hex"00" (DISABLE_ROUTE_IMPLEMENTATION).
      */
     function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
         if (implementationAddressHash[msg.sender][destinationIdentifier] != bytes32(0)) revert ImplementationAddressAlreadySet(
@@ -258,7 +265,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Check that the application has set a destination implementation by checking if the length of the destinationImplementation entry is not 0.
         bytes memory destinationImplementation = implementationAddress[msg.sender][destinationIdentifier];
         if (destinationImplementation.length == 0) revert NoImplementationAddressSet();
-        if (destinationImplementation.length == 1 && destinationImplementation[0] == 0x00) revert RouteDisabled();
+        if (destinationImplementation.length == 1 && destinationImplementation[0] == DISABLE_ROUTE_IMPLEMENTATION) revert RouteDisabled();
 
         // Check that the deadline is lower than the AMB specification.
         unchecked {
