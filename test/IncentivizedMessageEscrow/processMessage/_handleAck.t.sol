@@ -52,10 +52,11 @@ contract processPacketAckTest is TestCommon {
         bytes memory _acknowledgement = hex"d9b60178cfb2eb98b9ff9136532b6bd80eeae6a2c90a2f96470294981fcfb62b";
 
         vm.expectEmit();
-        emit MessageAcked(abi.encode(escrow), messageIdentifier);
+        emit MessageAcked(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
         vm.expectEmit();
         emit BountyClaimed(
             abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(GAS_SPENT_ON_DESTINATION),
             uint64(GAS_SPENT_ON_SOURCE),
@@ -101,7 +102,7 @@ contract processPacketAckTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         vm.expectEmit();
-        emit MessageAcked(abi.encode(escrow), messageIdentifier);
+        emit MessageAcked(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         uint256 gas_on_destination = GAS_SPENT_ON_DESTINATION;
         uint256 gas_on_source = GAS_SPENT_ON_SOURCE;
@@ -111,6 +112,7 @@ contract processPacketAckTest is TestCommon {
         vm.expectEmit();
         emit BountyClaimed(
             abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(gas_on_destination),
             uint64(gas_on_source),
@@ -155,6 +157,7 @@ contract processPacketAckTest is TestCommon {
         vm.expectEmit();
         emit BountyClaimed(
             abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(gas_on_destination),
             uint64(gas_on_source),
@@ -206,6 +209,7 @@ contract processPacketAckTest is TestCommon {
         vm.expectEmit();
         emit BountyClaimed(
             abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(gas_on_destination),
             uint64(gas_on_source),

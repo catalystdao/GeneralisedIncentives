@@ -8,16 +8,18 @@ interface IMessageEscrowEvents {
     // when indexed in events, the hash is in the topic not the actual implementation.
     event BountyPlaced(
         bytes indexed destinationImplementation, 
+        bytes32 chainIdentifier,
         bytes32 indexed messageIdentifier,
         IMessageEscrowStructs.IncentiveDescription incentive
     );
-    event MessageDelivered(bytes indexed sourceImplementation, bytes32 indexed messageIdentifier);
-    event MessageAcked(bytes destinationImplementation, bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
-    event TimeoutInitiated(bytes sourceImplementation, bytes32 messageIdentifier);
-    event MessageTimedOut(bytes destinationImplementation, bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
+    event MessageDelivered(bytes indexed sourceImplementation, bytes32 chainIdentifier, bytes32 indexed messageIdentifier);
+    event MessageAcked(bytes destinationImplementation, bytes32 chainIdentifier, bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
+    event TimeoutInitiated(bytes sourceImplementation, bytes32 chainIdentifier, bytes32 messageIdentifier);
+    event MessageTimedOut(bytes destinationImplementation, bytes32 chainIdentifier, bytes32 messageIdentifier); // Not indexed since relayers can sort by BountyClaimed.
     event BountyClaimed(
         bytes indexed destinationImplementation,
-        bytes32 indexed uniqueIdentifier,
+        bytes32 chainIdentifier,
+        bytes32 indexed messageIdentifier,
         uint64 gasSpentOnDestination,
         uint64 gasSpentOnSource,
         uint128 destinationRelayerReward,

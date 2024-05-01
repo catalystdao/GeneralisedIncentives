@@ -291,6 +291,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Emit the event for off-chain relayers.
         emit BountyPlaced(
             destinationImplementation,
+            destinationIdentifier,
             messageIdentifier,
             incentive
         );
@@ -439,7 +440,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
-            emit MessageDelivered(sourceImplementationIdentifier, messageIdentifier);
+            emit MessageDelivered(sourceImplementationIdentifier, sourceIdentifier, messageIdentifier);
             return receiveAckWithContext;
         }
 
@@ -468,7 +469,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
-            emit MessageDelivered(sourceImplementationIdentifier, messageIdentifier);
+            emit MessageDelivered(sourceImplementationIdentifier, sourceIdentifier, messageIdentifier);
             return receiveAckWithContext;
         }
 
@@ -521,7 +522,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send message to messaging protocol
         // This is done on processPacket.
         // This is done by returning receiveAckWithContext while source identifier and sourceImplementationIdentifier are known.
-        emit MessageDelivered(sourceImplementationIdentifier, messageIdentifier);
+        emit MessageDelivered(sourceImplementationIdentifier, sourceIdentifier, messageIdentifier);
         return receiveAckWithContext;
     }
 
@@ -612,9 +613,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]))
         );
 
-        emit MessageAcked(destinationImplementationIdentifier, messageIdentifier);
+        emit MessageAcked(destinationImplementationIdentifier, destinationIdentifier, messageIdentifier);
         emit BountyClaimed(
             destinationImplementationIdentifier,
+            destinationIdentifier,
             messageIdentifier,
             uint64(gasSpentOnDestination),
             uint64(gasSpentOnSource),
@@ -687,9 +689,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             0
         );
 
-        emit MessageTimedOut(destinationImplementationIdentifier, messageIdentifier);
+        emit MessageTimedOut(destinationImplementationIdentifier, destinationIdentifier, messageIdentifier);
         emit BountyClaimed(
             destinationImplementationIdentifier,
+            destinationIdentifier,
             messageIdentifier,
             0,  // No Gas spent on destiantion chain.
             uint64(gasSpentOnSource),
@@ -904,7 +907,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][chainIdentifier];
             if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
             ICrossChainReceiver(fromApplication).receiveAck(chainIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
-            emit MessageAcked(implementationIdentifier, messageIdentifier);
+            emit MessageAcked(implementationIdentifier, chainIdentifier, messageIdentifier);
         } else {
             revert NotImplementedError();
         }
@@ -1012,7 +1015,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         // To maintain a common implementation language, emit our event before message.
-        emit TimeoutInitiated(implementationIdentifier, messageIdentifier);
+        emit TimeoutInitiated(implementationIdentifier, sourceIdentifier, messageIdentifier);
 
         // Send the message
         uint128 cost = _sendPacket(

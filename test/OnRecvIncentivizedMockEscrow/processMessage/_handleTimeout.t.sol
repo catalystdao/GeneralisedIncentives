@@ -31,7 +31,7 @@ contract OnRecvTimeoutTest is TestOnRecvCommon {
 
         vm.expectEmit();
         // Check MessageDelivered emitted
-        emit MessageTimedOut(abi.encode(escrow), messageIdentifier);
+        emit MessageTimedOut(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         vm.expectCall(
             address(application),
