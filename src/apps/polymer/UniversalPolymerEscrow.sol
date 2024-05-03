@@ -13,6 +13,7 @@ import {
 } from "vibc-core-smart-contracts/interfaces/IbcMiddleware.sol";
 
 /// @notice Polymer implementation of the Generalised Incentives based on vIBC.
+/// @dev This implementation is not maintained
 contract UniversalPolymerEscrow is APolymerEscrow, IbcMwUser, IbcUniversalPacketReceiver {
 
     constructor(address sendLostGasTo, address messagingProtocol)
