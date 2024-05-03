@@ -54,7 +54,7 @@ contract processPacketNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipient,
-                uint48(0x8369),  // Gas used
+                uint48(0x833c),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message
