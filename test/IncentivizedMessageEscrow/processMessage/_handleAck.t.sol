@@ -125,9 +125,9 @@ contract processPacketAckTest is TestCommon {
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
     }
 
-    function test_ack_less_time_than_expected(uint64 timePassed, uint64 targetDelta) public {
+    function test_ack_less_time_than_expected(uint24 timePassed, uint24 targetDelta) public {
         vm.assume(timePassed < targetDelta);
-        _INCENTIVE.targetDelta = targetDelta;
+        _INCENTIVE.targetDelta = uint64(targetDelta);
         vm.warp(1);
         bytes memory message = _MESSAGE;
         bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
@@ -136,7 +136,7 @@ contract processPacketAckTest is TestCommon {
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
-        vm.warp(timePassed + 1);
+        vm.warp(uint64(timePassed) + 1);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -172,12 +172,12 @@ contract processPacketAckTest is TestCommon {
         assertEq(incentive.refundGasTo, address(0));
     }
 
-    function test_ack_more_time_than_expected(uint64 timePassed, uint64 targetDelta) public {
-        vm.assume(targetDelta != 0);
-        vm.assume(targetDelta < type(uint64).max/2);
-        vm.assume(timePassed > targetDelta);
-        vm.assume(timePassed - targetDelta < targetDelta);
-        _INCENTIVE.targetDelta = targetDelta;
+    function test_ack_more_time_than_expected(uint24 timePassed, uint24 targetDelta) public {
+        vm.assume(uint64(targetDelta) != 0);
+        vm.assume(uint64(targetDelta) < type(uint64).max/2);
+        vm.assume(uint64(timePassed) > uint64(targetDelta));
+        vm.assume(uint64(timePassed) - uint64(targetDelta) < uint64(targetDelta));
+        _INCENTIVE.targetDelta = uint64(targetDelta);
         vm.warp(1);
         bytes memory message = _MESSAGE;
         bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));
@@ -186,7 +186,7 @@ contract processPacketAckTest is TestCommon {
 
         (bytes32 messageIdentifier, bytes memory messageWithContext) = setupForAck(address(application), message, destinationFeeRecipient);
 
-        vm.warp(timePassed + 1);
+        vm.warp(uint64(timePassed) + 1);
 
         (uint8 v, bytes32 r, bytes32 s) = signMessageForMock(messageWithContext);
         bytes memory mockContext = abi.encode(v, r, s);
@@ -197,8 +197,8 @@ contract processPacketAckTest is TestCommon {
         _receive = gas_on_source * _INCENTIVE.priceOfAckGas;
         // uint256 totalIncentive = BOB_incentive + _receive;
         // less time has passed, so more incentives are given to destination relayer.
-        _receive += (BOB_incentive * uint256(timePassed - targetDelta))/uint256(targetDelta);
-        BOB_incentive -= (BOB_incentive * uint256(timePassed - targetDelta))/uint256(targetDelta);
+        _receive += (BOB_incentive * uint256(uint64(timePassed) - uint64(targetDelta)))/uint256(targetDelta);
+        BOB_incentive -= (BOB_incentive * uint256(uint64(timePassed) - uint64(targetDelta)))/uint256(targetDelta);
 
         vm.expectEmit();
         emit BountyClaimed(
