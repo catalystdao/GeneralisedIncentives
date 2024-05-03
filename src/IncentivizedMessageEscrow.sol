@@ -365,6 +365,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
         // Emit the event for off-chain relayers.
         emit BountyPlaced(
+            destinationImplementation,
+            destinationIdentifier,
             messageIdentifier,
             incentive
         );
@@ -443,7 +445,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             (bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage) = _verifyTimeout(chainIdentifier, implementationIdentifier, message);
 
             // Now that we have the verified the inputs, we can actually use them. Execute the timeout:
-            _handleTimeout(chainIdentifier, messageIdentifier, fromApplication, applicationMessage, feeRecipient, gasLimit);
+            _handleTimeout(chainIdentifier, implementationIdentifier, messageIdentifier, fromApplication, applicationMessage, feeRecipient, gasLimit);
         } else {
             revert NotImplementedError();
         }
@@ -514,7 +516,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
-            emit MessageDelivered(messageIdentifier);
+            emit MessageDelivered(sourceImplementationIdentifier, sourceIdentifier, messageIdentifier);
             return receiveAckWithContext;
         }
 
@@ -543,7 +545,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier] = keccak256(receiveAckWithContext);
 
             // Message has been delivered and shouldn't be executed again.
-            emit MessageDelivered(messageIdentifier);
+            emit MessageDelivered(sourceImplementationIdentifier, sourceIdentifier, messageIdentifier);
             return receiveAckWithContext;
         }
 
@@ -596,7 +598,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Send message to messaging protocol
         // This is done on processPacket.
         // This is done by returning receiveAckWithContext while source identifier and sourceImplementationIdentifier are known.
-        emit MessageDelivered(messageIdentifier);
+        emit MessageDelivered(sourceImplementationIdentifier, sourceIdentifier, messageIdentifier);
         return receiveAckWithContext;
     }
 
@@ -687,8 +689,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             uint64(bytes8(message[CTX1_EXECUTION_TIME_START:CTX1_EXECUTION_TIME_END]))
         );
 
-        emit MessageAcked(messageIdentifier);
+        emit MessageAcked(destinationImplementationIdentifier, destinationIdentifier, messageIdentifier);
         emit BountyClaimed(
+            destinationImplementationIdentifier,
+            destinationIdentifier,
             messageIdentifier,
             uint64(gasSpentOnDestination),
             uint64(gasSpentOnSource),
@@ -705,7 +709,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * Check if the destination implementation is correct. This function should never be called checking if the origin
      * is trusted.
      */
-    function _handleTimeout(bytes32 destinationIdentifier, bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage, bytes32 feeRecipient, uint256 gasLimit) internal {
+    function _handleTimeout(bytes32 destinationIdentifier, bytes memory destinationImplementationIdentifier, bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage, bytes32 feeRecipient, uint256 gasLimit) internal {
         // The 3 (9, loading the variables out of storage fills a bit.) next lines act as a reentry guard,
         // so this call doesn't have to be protected by reentry.
         IncentiveDescription storage incentive = _bounty[fromApplication][destinationIdentifier][messageIdentifier];
@@ -761,8 +765,10 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             0
         );
 
-        emit MessageTimedOut(messageIdentifier);
+        emit MessageTimedOut(destinationImplementationIdentifier, destinationIdentifier, messageIdentifier);
         emit BountyClaimed(
+            destinationImplementationIdentifier,
+            destinationIdentifier,
             messageIdentifier,
             uint64(maxGasDelivery),
             uint64(gasSpentOnSource),
@@ -990,7 +996,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][chainIdentifier];
             if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
             ICrossChainReceiver(fromApplication).receiveAck(chainIdentifier, messageIdentifier, message[CTX1_MESSAGE_START: ]);
-            emit MessageAcked(messageIdentifier);
+            emit MessageAcked(implementationIdentifier, chainIdentifier, messageIdentifier);
         } else {
             revert NotImplementedError();
         }
@@ -1103,7 +1109,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
 
         // To maintain a common implementation language, emit our event before message.
-        emit TimeoutInitiated(messageIdentifier);
+        emit TimeoutInitiated(implementationIdentifier, sourceIdentifier, messageIdentifier);
 
         // Send the message
         uint128 cost = _sendPacket(

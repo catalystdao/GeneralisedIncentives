@@ -39,10 +39,12 @@ contract TargetDeltaZeroTest is TestCommon {
         _receive = gas_on_source * _INCENTIVE.priceOfAckGas;
 
         vm.expectEmit();
-        emit MessageAcked(messageIdentifier);
+        emit MessageAcked(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         vm.expectEmit();
         emit BountyClaimed(
+            abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(gas_on_destination),
             uint64(gas_on_source),
