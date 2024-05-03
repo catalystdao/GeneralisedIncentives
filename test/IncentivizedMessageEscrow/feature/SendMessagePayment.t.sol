@@ -14,6 +14,8 @@ contract sendPacketPaymentTest is TestCommon {
 
     uint128 constant SEND_MESSAGE_PAYMENT_COST = 10_000;
 
+    address constant SEND_LOST_GAS_TO = address(0xdead);
+
     uint256 _receive;
 
     event Message(
@@ -26,7 +28,7 @@ contract sendPacketPaymentTest is TestCommon {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
-        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, SEND_MESSAGE_PAYMENT_COST, 0);
+        escrow = new IncentivizedMockEscrow(SEND_LOST_GAS_TO, _DESTINATION_IDENTIFIER, SIGNER, SEND_MESSAGE_PAYMENT_COST, 0);
  
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 

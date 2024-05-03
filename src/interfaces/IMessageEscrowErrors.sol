@@ -2,24 +2,26 @@
 pragma solidity >=0.8.0;
 
 interface IMessageEscrowErrors {
-    error NotEnoughGasProvided(uint128 expected, uint128 actual);  // 030748b5
-    error MessageAlreadyBountied();  // 068a62ee
-    error MessageDoesNotExist();  // 970e41ec
-    error MessageAlreadyAcked();  // 8af35858
-    error NotImplementedError();  // d41c17e7
-    error MessageAlreadySpent();  // e954aba2
-    error AckHasNotBeenExecuted();  // 3d1553f8
-    error NoImplementationAddressSet();  // 9f994b4b
-    error InvalidImplementationAddress();  // c970156c
-    error IncorrectValueProvided(uint128 expected, uint128 actual); // 0b52a60b
-    error ImplementationAddressAlreadySet(bytes currentImplementation); // dba47850
-    error NotEnoughGasExecution(); // 6bc33587
-    error RefundGasToIsZero(); // 6a1a6afe
-    error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 54090af9
-    error DeadlineInPast(uint64 blocktimestamp, uint64 actual); // 2d098d59
-    error CannotRetryWrongMessage(bytes32 expected, bytes32 actual); // 48ce7fac
-    error MessageAlreadyProcessed(); // 7b042609
-    error DeadlineNotPassed(uint64 expected, uint64 actual); // 862c57f4
-    error InvalidTimeoutPackage(bytes32 expected, bytes32 actual); // e020885d
-    error MessageHasInvalidContext(); // 3fcdbaba
+    error AckHasNotBeenExecuted(); // 0x3d1553f8
+    error CannotRetryWrongMessage(bytes32,bytes32); // 0x48ce7fac
+    error DeadlineInPast(uint64 blocktimestamp, uint64 actual); // 0x2d098d59
+    error DeadlineNotPassed(uint64 expected, uint64 actual); // 0x862c57f4
+    error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 0x3c06f369
+    error ImplementationAddressAlreadySet(bytes currentImplementation); // 0xdba47850
+    error IncorrectValueProvided(uint128 expected, uint128 actual); // 0x0b52a60b
+    error InvalidImplementationAddress(); // 0xc970156c
+    error InvalidTimeoutPackage(bytes32 expected, bytes32 actual); // 0xe020885d
+    error MessageAlreadyAcked(); // 0x8af35858
+    error MessageAlreadyBountied(); // 0x068a62ee
+    error MessageAlreadyProcessed(); // 0x7b042609
+    error MessageAlreadySpent(); // 0xe954aba2
+    error MessageDoesNotExist(); // 0x970e41ec
+    error MessageHasInvalidContext(); // 0x3fcdbaba
+    error NoImplementationAddressSet(); // 0x9f994b4b
+    error NotEnoughGasExecution(); // 0x6bc33587
+    error NotEnoughGasProvided(uint128 expected, uint128 actual);    // 0x030748b5
+    error NotImplementedError(); // 0xd41c17e7
+    error RefundGasToIsZero(); // 0x6a1a6afe
+    error SendLostGasToIsZero(); // 0x470337f2
+    error FeeRecipientIsZero(); // 0x6a1a6afe
 }

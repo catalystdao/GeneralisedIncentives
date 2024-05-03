@@ -40,7 +40,7 @@ contract processPacketCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipient,
-                uint48(0x7d66),  // Gas used
+                uint48(0x7d7f),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -92,6 +92,7 @@ contract processPacketCallTest is TestCommon {
     }
 
     function test_expect_caller(address caller) public {
+        vm.assume(caller != address(this));
         vm.assume(caller != 0x2e234DAe75C793f67A35089C9d99245E1C58470b);
         bytes memory message = _MESSAGE;
         bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));

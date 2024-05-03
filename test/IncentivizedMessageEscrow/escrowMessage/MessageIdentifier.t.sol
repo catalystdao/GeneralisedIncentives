@@ -90,6 +90,8 @@ contract MessageIdentifierTest is TestCommon {
         vm.assume(a != b);
         vm.assume(a != address(application));
         vm.assume(b != address(application));
+        vm.assume(a != address(this));
+        vm.assume(b != address(this));
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.deal(a, _getTotalIncentive(_INCENTIVE));
