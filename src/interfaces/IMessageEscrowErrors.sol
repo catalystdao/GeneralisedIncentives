@@ -7,6 +7,7 @@ interface IMessageEscrowErrors {
     error DeadlineInPast(uint64 blocktimestamp, uint64 actual); // 0x2d098d59
     error DeadlineNotPassed(uint64 expected, uint64 actual); // 0x862c57f4
     error DeadlineTooLong(uint64 maxAllowed, uint64 actual); // 0x3c06f369
+    error FeeRecipientIsZero(); // 0xfc53a835
     error ImplementationAddressAlreadySet(bytes currentImplementation); // 0xdba47850
     error IncorrectValueProvided(uint128 expected, uint128 actual); // 0x0b52a60b
     error InvalidImplementationAddress(); // 0xc970156c
@@ -19,9 +20,9 @@ interface IMessageEscrowErrors {
     error MessageHasInvalidContext(); // 0x3fcdbaba
     error NoImplementationAddressSet(); // 0x9f994b4b
     error NotEnoughGasExecution(); // 0x6bc33587
-    error NotEnoughGasProvided(uint128 expected, uint128 actual);    // 0x030748b5
+    error NotEnoughGasProvided(uint128 expected, uint128 actual); // 0x030748b5
     error NotImplementedError(); // 0xd41c17e7
     error RefundGasToIsZero(); // 0x6a1a6afe
-    error SendLostGasToIsZero(); // 0x470337f2
-    error FeeRecipientIsZero(); // 0x6a1a6afe
+    error RouteDisabled(); // 0x17d0b6db
+    error SendLostGasToIsZero(); // 0x9c76a9df
 }
