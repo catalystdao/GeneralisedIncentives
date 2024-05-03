@@ -9,7 +9,7 @@ import { BaseMultiChainDeployer} from "./BaseMultiChainDeployer.s.sol";
 // Import all the Apps for deployment here.
 import { IncentivizedMockEscrow } from "../src/apps/mock/IncentivizedMockEscrow.sol";
 import { IncentivizedWormholeEscrow } from "../src/apps/wormhole/IncentivizedWormholeEscrow.sol";
-import { IncentivizedPolymerEscrow } from "../src/apps/polymer/IncentivizedPolymerEscrow.sol";
+import { IncentivizedPolymerEscrow } from "../src/apps/polymer/vIBCEscrow.sol";
 
 contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
     using stdJson for string;
