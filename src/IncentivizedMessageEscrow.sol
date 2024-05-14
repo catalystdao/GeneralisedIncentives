@@ -777,6 +777,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
     }
 
+    /**
+     * @notice Verifies the input parameters are contained messageIdentfier and that the other arguments are valid.
+     * The usage of this function is intended when no parameters of a message can be trusted and we have to verify them.
+     * This is the case when we receive a timeout, as the timeout had to be emitted without any verification
+     * on the remote chain, for us to verify when the know if a message identifier is good AND how to compute it.
+     *
+     * @dev This function uses the fact that hash(a) == hash(b) IFF a == b. So if someone proposes b, we have hash(a)
+     * then we can check if b == a by hashing b and comparing to a.
+     * a is the initial state when the message was initiated and b is the proposed state from the timeout.
+     */
     function _verifyTimeout(bytes32 destinationIdentifier, bytes memory implementationIdentifier, bytes calldata message) internal view returns(bytes32 messageIdentifier, address fromApplication, bytes calldata applicationMessage) {
         // First check if the application trusts the implementation on the destination chain. This is very important
         // since the remote implementation NEEDS to check that the message hasn't been executed before the deadline
