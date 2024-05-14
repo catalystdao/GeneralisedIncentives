@@ -9,7 +9,7 @@ contract EscrowInformationTest is TestCommon {
         IncentiveDescription storage incentive = _INCENTIVE;
         incentive.refundGasTo = address(0);
         vm.expectRevert();
-        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

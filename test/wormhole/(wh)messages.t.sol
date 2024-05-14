@@ -1,7 +1,7 @@
 // test/Messages.sol
 // SPDX-License-Identifier: Apache 2
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.22;
 
 import "../../src/apps/wormhole/external/wormhole/Messages.sol";
 import "../../src/apps/wormhole/external/wormhole/Setters.sol";
