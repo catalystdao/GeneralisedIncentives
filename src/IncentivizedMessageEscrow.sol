@@ -12,15 +12,17 @@ import "./MessagePayload.sol";
 
 /**
  * @title Generalised Incentive Escrow
- * @author Cata labs for Catalyst
- * @notice Places transparent incentives on relaying messages.
+ * @author Cata labs Inc.
+ * @notice Main logic for placing transparent incentives on message relaying.
  * This contract is intended to sit between an application and a cross-chain message protocol.
  * The goal is to overload the existing incentive scheme with one that is open to anyone.
  *
- * Each messaging protocol will have a respective implementation that understands
- * how to send and verify messages. An integrating application shall deliver a message to submitMessage
- * along with the respective incentives. An integration of this contract will then handle transfering the 
- * message to the destination and carry an ack back from the destination to return to the integrating application.
+ * Each messaging protocol will have a respective implementation that understands how to send
+ * and verify messages. There are 4 functions that an integration has to implement.
+ * Any implementation of this contract, allows applications to deliver a message to ::submitMessage
+ * along with the respective incentives. 
+ * The integration (this contract) will handle transfering the message to the destination and
+ * returning an ack from the destination to the integrating application.
  *
  * The incentive is released when an ack from the destination chain is delivered to this contract.
  *
@@ -28,39 +30,52 @@ import "./MessagePayload.sol";
  * - Refund unused gas.
  * - Seperate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
+ *
+ * Applications integration with Generalised Incentives have to be aware that Acks are replayable.
  */
 abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes65 {
     
     //--- Constants ---//
 
-    /** @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte. */
+    /**
+     * @notice If the message reverts on the destination chain,
+     * 1 byte is prepended to the original message on ack. This is the byte.
+     */
     bytes1 constant MESSAGE_REVERTED = 0xff;
 
-    /** @notice  If the original sender is not authorised on the application on the destination chain, 1 bytes is sent back instead. This is the byte. */
+    /** 
+     * @notice If the original sender is not authorised on the application on the destination chain,
+     * 1 byte is prepended to the original message on ack. This is the byte.
+     */
     bytes1 constant NO_AUTHENTICATION = 0xfe;
 
-    /** @notice  Message timed out on destination chain. */
+    /** 
+     * @notice If the message timed out on destination chain,
+     * 1 byte is prepended to the original message on ack. This is the byte.
+     */
     bytes1 constant MESSAGE_TIMED_OUT = 0xfd;
 
     /**
-     * @notice If setRemoteImplementation is called with this as the
-     * destination implementation (abi.encodePacked(DISABLE_ROUTE_IMPLEMENTATION)), then the route is
-     * permanently disabled
+     * @notice If setRemoteImplementation is called with this as the destination implementation
+     * (abi.encodePacked(DISABLE_ROUTE_IMPLEMENTATION)), then the route is permanently disabled
+     * This is treated as a magic value so that incase an implementations treats abi.encodePacked(0x00)
+     * as a valid destination (say address(0)).
      */
     bytes1 constant DISABLE_ROUTE_IMPLEMENTATION = 0x00;
 
     /**
-     * @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
-     * the gas is sent here instead.
+     * @notice If a relayer or application provides an address that cannot accept gas and
+     * the transfer fails the gas is sent here instead.
      * @dev This may not invoke any logic on receive() or be a proxy.
      */
     address immutable public SEND_LOST_GAS_TO;
 
     //--- Storage ---//
+    
     /** 
      * @notice Get incentive description based on message context: messageIdentifier, fromApplication, and destChain
-     * @dev fromApplication and destChain are required to fetch the bounty since those
-     * match to exactly 1 remote escrow implementation. As a result, this restricts this storage
+     * @dev fromApplication and destChain are required to fetch the bounty. Together they
+     * match exactly 1 remote escrow implementation. As a result, this restricts the storage
      * slot's security to the security of the specified remote escrow implementation.
      */
     mapping(address fromApplication => mapping(bytes32 destChain => mapping(bytes32 messageIdentifier => IncentiveDescription))) _bounty;
@@ -73,16 +88,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     mapping(address => mapping(bytes32 => bytes32)) public implementationAddressHash;
 
     //--- Virtual Functions ---//
-    // To integrate a messaging protocol, a contract has to inherit this contract and implement the below 4 functions.
+    // To integrate a messaging protocol, a contract has to inherit this contract and implement 4 functions below.
 
     /** 
-     * @notice Verify a message's authenticity.
+     * @notice Verifies the authenticity of a message.
      * @dev Should be overwritten by the specific messaging protocol verification structure.
      * @param messagingProtocolContext Some context that is useful for verifing the message.
-     * It should not containt the message but instead verification context like signatures, header, etc.
+     * It should not contain the message but instead verification context like signatures, header, etc.
      * Context may not be needed for verifying the message and can be prepended to rawMessage.
-     * @param rawMessage Some kind of package, initially untrusted. May contain the encoded message but
-     * the message contained within as a slice. It may contain more than just the message like signatures.
+     * @param rawMessage Some kind of package, initially untrusted. Should contain the message as a slice
+     * It may contain more than just the message, like signatures, headers, etc.
      *
      * @return sourceIdentifier The source chain identifier. A chainID, a channel ID, or similarly.
      * @return implementationIdentifier An identifier for the address that emitted the message.
@@ -99,7 +114,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     );
 
     /** 
-     * @notice Send the message to the messaging protocol.
+     * @notice Deliver the message to the messaging protocol to generate a proof.
      * @dev Should be overwritten to send a message using the specific messaging protocol.
      * The function is allowed to claim native tokens (set costOfsendPacketInNativeToken). 
      * The function is allowed to take ERC20 tokens (transferFrom(msg.sender,...)) 
@@ -107,7 +122,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param destinationIdentifier The destination chain for the message.
      * @param destinationImplementation The destination escrow contract.
      * @param message The message. Contains relevant escrow context.
-     * @param deadline When the message should be delivered before. If the AMB does not nativly support a timeout on their messages this parameter should be ignored. If 0 is provided, parse it as MAX
+     * @param deadline A timestamp that the message should be delivered before. If the AMB does not nativly
+     * support a timeout on their messages this parameter should be ignored. If 0 is provided, parse it as MAX.
      * @return costOfsendPacketInNativeToken An additional cost to emitting messages in NATIVE tokens.
      */
     function _sendPacket(
@@ -123,31 +139,32 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     function _uniqueSourceIdentifier() virtual internal view returns(bytes32 sourceIdentifier);
 
     /**
-     * @notice Returns the duration for which a proof is valid for.
-     * It may vary by destination.
+     * @notice The duration for which a proof is valid for. It may vary by destination.
      * @dev On checks, block.timestamp is added to the return of this function such that
      * block.timestamp + _proofValidPeriod > deadline.
-     * Can be set to 0 which implies any is valid.
+     * If any deadline is valid, set to **0** instead of ~~type(uint64).max~~.
      * @param destinationIdentifier The destination chain identifier.
-     * @return duration The duration of when the application's message won't get delivered but rather acked back.
+     * @return duration The maximum proof duration. Includes the time from message emitted (proof gen)
+     * to message finalised.
      */
     function _proofValidPeriod(bytes32 destinationIdentifier) virtual internal view returns(uint64 duration);
 
     /**
-     * @notice Returns the duration for which a proof is valid for.
+     * @notice The duration for which a proof is valid for.
      * @dev On checks, block.timestamp is added to the return of this function such that
      * block.timestamp + _proofValidPeriod > deadline.
      * If 0, implies that any deadline is valid.
      * @param destinationIdentifier The destination chain identifier.
-     * @return duration The timestamp of when the application's message won't get delivered but rather acked back.
+     * @return duration The maximum proof duration. Includes the time from message emitted (proof gen)
+     * to message finalised.
      */
     function proofValidPeriod(bytes32 destinationIdentifier) external view returns(uint64 duration) {
         return duration = _proofValidPeriod(destinationIdentifier);
     }
 
     /**
-     * @param sendLostGasTo It should only be set to an EOA or a contract that has no logic on receive. It cannot be a proxy.
-     * It cannot be set to address 0, instead use a burn address (0xdead) if no-one wants to take responsibility of the Ether.
+     * @param sendLostGasTo It should only be set to an EOA or a contract that has no logic on receive nor be a proxy.
+     * If no-one wants to take responsibility of the lost Ether, use a burn address (0xdead) instead of address(0). 
      */
     constructor(address sendLostGasTo) {
         if (sendLostGasTo == address(0)) revert SendLostGasToIsZero();
@@ -156,31 +173,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /**
      * @notice Generates a unique message identifier for a message
-     */
-    function _getMessageIdentifier(
-        uint64 deadline,
-        bytes32 destinationIdentifier,
-        bytes calldata message
-    ) view internal virtual returns(bytes32) {
-        return _getMessageIdentifier(
-            msg.sender,
-            deadline,
-            block.number,
-            _uniqueSourceIdentifier(),
-            destinationIdentifier,
-            message
-        );
-    }
-
-    /**
-     * @notice Generates a unique message identifier for a message
      * @dev The identifier should:
-     *  - Be unique based on the sender such that applications can't be DoS'ed. 
-     *  - Be unique over time: Use blocknumber or blockhash
-     *  - Be unique on the source chain: Use a unique destinationIdentifier
-     *  - Be unique on destination chain: Use a unique source identifier 
-     *  - Depend on the message
-     *  This also implies that application should make their messages user specific, say include a user address.
+     *  - Be unique within a trusted ecosystem.
+     *  - Be unique based on the sender such that applications can't be DoS'ed.
+     *  - Contain the deadline for timeout validation.
+     *  - Be unique over time: Use blocknumber or blockhash.
+     *  - Be unique on the source chain: Use a unique destinationIdentifier.
+     *  - Be unique on destination chain: Use a unique source identifier.
+     *  - Depend on the message, for uniqueness & for timeouts.
+     * Point 2 implies that applications are allowed to DoS themselves. To protect against this, applications
+     * should include some user unique information, say include a user address.
      */
     function _getMessageIdentifier(
         address messageSender,
@@ -203,6 +205,26 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         );
     }
 
+    /**
+     * @notice Generates a unique message identifier for a message
+     * @dev Simplifies using _getMessageIdentifier raw by assuming what the inputs
+     * to the other parameters should be.
+     */
+    function _getMessageIdentifier(
+        uint64 deadline,
+        bytes32 destinationIdentifier,
+        bytes calldata message
+    ) view internal virtual returns(bytes32) {
+        return _getMessageIdentifier(
+            msg.sender,
+            deadline,
+            block.number,
+            _uniqueSourceIdentifier(),
+            destinationIdentifier,
+            message
+        );
+    }
+
     //--- Getter Functions ---//
     /**
      * @notice Returns the bounty associated with a specific messageIdentifier.
@@ -216,12 +238,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /**
-     * @notice Returns a hash of the ack unless there was no ack then it returns bytes32(uint256(1));
-     * If the message hasn't been delivered yet it still returns bytes32(0)
+     * @notice Get the message statue through the an ack hash.
+     * If the message hasn't been delivered yet it returns bytes32(0)
      * @param sourceIdentifier The source chain the message was emitted from.
      * @param sourceImplementationIdentifier The source escrow implementation that emitted the message.
      * @param messageIdentifier The message identifier of the message.
-     * @return hasMessageBeenExecuted Boolean indicating if a message has been executed.
+     * @return hasMessageBeenExecuted Hash of the ack message. If not ack, then bytes32(uint256(1)). If not
+     * executed then bytes32(0).
      */
    function messageDelivered(
         bytes32 sourceIdentifier,
@@ -233,11 +256,12 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
      /**
      * @notice Sets the escrow implementation for a specific chain
-     * @dev This can only be set once. When set, is cannot be changed.
+     * @dev This can only be set once. When set, it cannot be changed.
      * This is to protect relayers as this could be used to fail acks.
      * @param destinationIdentifier An identifier for the destination chain. Varies from AMB.
      * @param implementation Implementation address. Encoding varies between AMBs.
-     * You are not allowed to set a 0 length implementation address.
+     * You are not allowed to set a 0 length implementation address. Beaware that while some implementations
+     * are valid for sending (say hex"0x01" which may be read as address(uint160(1))), they break acks / delivery.
      * If you want to disable a specific route, set implementation to hex"00" (DISABLE_ROUTE_IMPLEMENTATION).
      */
     function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
@@ -300,22 +324,22 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /** 
      * @notice Set a bounty on a message and transfer the message to the messaging protocol.
-     * @dev Called by other contracts.
-     * Any integrating application should check:
-     *     1. That incentive.maxGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
-     *     2. That incentive.maxGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
+     * @dev Called by applications. These application should ensure:
+     *     1. incentive.maxGasAck is sufficient! Otherwise, an off-chain agent needs to re-submit the ack.
+     *     2. incentive.maxGasDelivery is sufficient. Otherwise, the call will fail within the try - catch.
      *     3. The relay incentive is enough to get the message relayed within the expected time. If that is never, this check is not needed.
      * Furthermore, if the package times out there is no gas refund.
-     * @param destinationIdentifier 32 bytes which identifies the destination chain.
-     * @param destinationAddress The destination address encoded in 65 bytes: First byte is the length and last 64 is the destination address.
+     * Sending too much value results in the excess being refunded to refundGasTo via a call. This may allow refundGasTo to throw the call.
+     * @param destinationIdentifier 32 bytes that identifies the destination chain.
+     * @param destinationAddress The destination application encoded in 65 bytes: First byte is the length and last 64 is the destination application.
      * @param message The message to be sent to the destination. Please ensure the message is block-unique.
-     *     This means that you don't send the same message twice in a single block.
+     *     This means that you don't send the same message twice in a single block. If you need to do that, add a nonce or noice.
      * @param incentive The incentive to attatch to the bounty. The price of this incentive has to be paid,
      * any excess is refunded to refundGasTo. (not msg.sender)
-     * @param deadline After this date, do not allow relayers to execute the message on the destination chain. If set to 0, "disable".
-     * Not all AMBs may support disabling the deadline. If messages should also be able to be acked back, we recommend setting the deadline far in the future.
-     * Note that it may still take a significant amount of time to bring back the timeout.
-     * @return gasRefund The amount of excess gas which was paid to this call. The app should handle the excess.
+     * @param deadline After this date, do not allow relayers to execute the message on the destination chain. If set to 0, disable timeouts.
+     * Not all AMBs may support disabling the deadline. If acks are required it is recommended to set the deadline sometime in the future.
+     * Note, it may still take a significant amount of time to bring back the timeout.
+     * @return gasRefund The amount of excess gas that was paid to this call. The app should handle the excess.
      * @return messageIdentifier An unique identifier for a message.
      */
     function submitMessage(
@@ -339,7 +363,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             uint64 ambMaxDeadline = _proofValidPeriod(destinationIdentifier);
             if (ambMaxDeadline != 0 && deadline == 0) revert DeadlineTooLong(ambMaxDeadline, 0);
             if (ambMaxDeadline != 0 && deadline > uint64(block.timestamp) + ambMaxDeadline) revert DeadlineTooLong(uint64(block.timestamp) + ambMaxDeadline, deadline);
-            // Check that the deadline is in the future = not (block.timestamp < deadline) = block.timestamp >= deadline
+            // Check that the deadline is in the future = not (block.timestamp < deadline) = block.timestamp >= deadline.
             if (deadline != 0 && block.timestamp >= deadline) revert DeadlineInPast(uint64(block.timestamp), deadline);
         }
 
@@ -349,17 +373,17 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             destinationIdentifier,
             message
         );
-        // Store the bounty, get the sum for later refunding excess.
+        // Store the bounty, get the sum to refunding excess later.
         uint128 sum = _setBounty(msg.sender, destinationIdentifier, messageIdentifier, incentive);
 
         // Add escrow context to the message.
         bytes memory messageWithContext = bytes.concat(
-            bytes1(CTX_SOURCE_TO_DESTINATION),      // This is a sendPacket,
-            bytes32(messageIdentifier),             // A unique message identifier
-            convertEVMTo65(msg.sender),             // Original sender
-            destinationAddress,                     // The address to deliver the (original) message to.
+            bytes1(CTX_SOURCE_TO_DESTINATION),      // This is a sendPacket intended for the _destination_
+            bytes32(messageIdentifier),             // A unique message identifier.
+            convertEVMTo65(msg.sender),             // Original sender / application.
+            destinationAddress,                     // The address to deliver the provided message to.
             bytes8(uint64(deadline)),
-            bytes6(incentive.maxGasDelivery),       // Send the gas limit to the other chain so we can enforce it
+            bytes6(incentive.maxGasDelivery),       // The delivery gas limit, to enforce on the destination.
             message                                 // The message to deliver to the destination.
         );
 
@@ -392,7 +416,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // Return excess incentives to the user (found from incentive.refundGasTo).
         unchecked {
             if (msg.value > sum) {
-                // We know: msg.value >= sum, thus msg.value - sum >= 0.
+                // We know: msg.value > sum, thus msg.value - sum > 0.
                 gasRefund = msg.value - sum;
                 Address.sendValue(payable(incentive.refundGasTo), uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
@@ -402,15 +426,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /**
-     * @notice Deliver a message which has been *signed* by a messaging protocol.
+     * @notice Deliver a message that has been proved by a messaging protocol.
      * @dev This function is intended to be called by off-chain agents.
-     *  Please ensure that feeRecipient can receive gas token: Either it is an EOA or a implement fallback() / receive().
+     *  Please ensure that feeRecipient can receive gas token: Either it is an EOA or a implement fallback() / receive() with no logic.
      *  Likewise for any non-evm chains. Otherwise the message fails (ack) or the relay payment is lost (call).
      *  You need to pass in incentive.maxGas(Delivery|Ack) + messaging protocol dependent buffer, otherwise this call might fail.
-     * On Receive implementations make _verifyPacket revert. The result is
-     * that this endpoint is disabled.
+     *
+     * OnReceive implementations make _verifyPacket revert. The result is that this endpoint is disabled.
+     * Though the endpoint is _virtual_ so feel free to override.
      * @param messagingProtocolContext Additional context required to verify the message by the messaging protocol.
-     * @param rawMessage The raw message as it was emitted.
+     * @param rawMessage A messaging protocol message, including the message as it was sent as a slice.
      * @param feeRecipient An identifier for the the fee recipient. The identifier should identify the relayer on the source chain.
      *  For EVM (and this contract as a source), use the bytes32 encoded address. For other VMs you might have to register your address.
      */
