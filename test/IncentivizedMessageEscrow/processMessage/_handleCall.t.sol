@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -25,7 +25,7 @@ contract processPacketCallTest is TestCommon {
         
         vm.expectEmit();
         // Check MessageDelivered emitted
-        emit MessageDelivered(messageIdentifier);
+        emit MessageDelivered(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
         vm.expectEmit();
         // That a new message is sent back
         emit Message(
@@ -40,7 +40,7 @@ contract processPacketCallTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipient,
-                uint48(0x7d66),  // Gas used
+                uint48(0x7d49),  // Gas used
                 uint64(1),
                 mockAck
             )
@@ -92,6 +92,7 @@ contract processPacketCallTest is TestCommon {
     }
 
     function test_expect_caller(address caller) public {
+        vm.assume(caller != address(this));
         vm.assume(caller != 0x2e234DAe75C793f67A35089C9d99245E1C58470b);
         bytes memory message = _MESSAGE;
         bytes32 feeRecipient = bytes32(uint256(uint160(address(this))));

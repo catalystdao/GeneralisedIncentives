@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestOnRecvCommon } from "../TestOnRecvCommon.t.sol";
@@ -31,8 +31,7 @@ contract OnRecvTimeoutTest is TestOnRecvCommon {
 
         vm.expectEmit();
         // Check MessageDelivered emitted
-        emit MessageTimedOut(messageIdentifier);
-        // );
+        emit MessageTimedOut(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         vm.expectCall(
             address(application),
@@ -48,6 +47,7 @@ contract OnRecvTimeoutTest is TestOnRecvCommon {
 
         escrow.onTimeout(
             _DESTINATION_IDENTIFIER,
+            abi.encode(escrow),
             messageWithContext,
             bytes32(uint256(uint160(address(this))))
         );

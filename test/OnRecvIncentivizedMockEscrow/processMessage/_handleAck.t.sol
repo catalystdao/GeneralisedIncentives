@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestOnRecvCommon } from "../TestOnRecvCommon.t.sol";
@@ -43,7 +43,7 @@ contract OnRecvAckTest is TestOnRecvCommon {
 
         vm.expectEmit();
         // Check MessageDelivered emitted
-        emit MessageAcked(messageIdentifier);
+        emit MessageAcked(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         vm.expectCall(
             address(application),

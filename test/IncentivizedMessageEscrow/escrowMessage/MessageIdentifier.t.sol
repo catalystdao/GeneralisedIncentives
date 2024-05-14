@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -90,6 +90,8 @@ contract MessageIdentifierTest is TestCommon {
         vm.assume(a != b);
         vm.assume(a != address(application));
         vm.assume(b != address(application));
+        vm.assume(a != address(this));
+        vm.assume(b != address(this));
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.deal(a, _getTotalIncentive(_INCENTIVE));

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -14,6 +14,8 @@ contract sendPacketPaymentTest is TestCommon {
 
     uint128 constant SEND_MESSAGE_PAYMENT_COST = 10_000;
 
+    address constant SEND_LOST_GAS_TO = address(0xdead);
+
     uint256 _receive;
 
     event Message(
@@ -26,7 +28,7 @@ contract sendPacketPaymentTest is TestCommon {
         (SIGNER, PRIVATEKEY) = makeAddrAndKey("signer");
         _REFUND_GAS_TO = makeAddr("Alice");
         BOB = makeAddr("Bob");
-        escrow = new IncentivizedMockEscrow(sendLostGasTo, _DESTINATION_IDENTIFIER, SIGNER, SEND_MESSAGE_PAYMENT_COST, 0);
+        escrow = new IncentivizedMockEscrow(SEND_LOST_GAS_TO, _DESTINATION_IDENTIFIER, SIGNER, SEND_MESSAGE_PAYMENT_COST, 0);
  
         application = ICrossChainReceiver(address(new MockApplication(address(escrow))));
 
@@ -77,7 +79,7 @@ contract sendPacketPaymentTest is TestCommon {
         );
 
         // Check that the message identifier points exposes the bounty.
-        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(address(this), bytes32(uint256(0x123123) + uint256(2**255)), messageIdentifier);
 
         assertEq(incentive.maxGasDelivery, storedIncentiveAtEscrow.maxGasDelivery);
         assertEq(incentive.maxGasAck, storedIncentiveAtEscrow.maxGasAck);
@@ -105,7 +107,7 @@ contract sendPacketPaymentTest is TestCommon {
         );
 
         // Check that the message identifier points exposes the bounty.
-        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(address(this), bytes32(uint256(0x123123) + uint256(2**255)),messageIdentifier);
 
         assertNotEq(incentive.maxGasDelivery, storedIncentiveAtEscrow.maxGasDelivery);
         assertNotEq(incentive.maxGasAck, storedIncentiveAtEscrow.maxGasAck);

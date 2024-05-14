@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -18,7 +18,7 @@ contract EscrowInformationTest is TestCommon {
         );
 
         // Check that the message identifier points exposes the bounty.
-        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory storedIncentiveAtEscrow = escrow.bounty(address(this), bytes32(uint256(0x123123) + uint256(2**255)), messageIdentifier);
 
         assertEq(incentive.maxGasDelivery, storedIncentiveAtEscrow.maxGasDelivery);
         assertEq(incentive.maxGasAck, storedIncentiveAtEscrow.maxGasAck);
@@ -31,11 +31,13 @@ contract EscrowInformationTest is TestCommon {
     function test_check_escrow_events() public {
         IncentiveDescription storage incentive = _INCENTIVE;
 
+        bytes32 destinationChainIdentifier = bytes32(uint256(0x123123) + uint256(2**255));
+
         vm.expectEmit();
-        emit BountyPlaced(bytes32(0x61adb1706803b672d6bc2979570942722fe2471f728cd5f8ebba7c642ca0d4b6), incentive);
+        emit BountyPlaced(abi.encode(escrow), destinationChainIdentifier, bytes32(0x61adb1706803b672d6bc2979570942722fe2471f728cd5f8ebba7c642ca0d4b6), incentive);
 
         escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
-            bytes32(uint256(0x123123) + uint256(2**255)),
+            destinationChainIdentifier,
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
             incentive,

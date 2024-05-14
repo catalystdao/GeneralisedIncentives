@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -61,7 +61,7 @@ contract CallReentryTest is TestCommon, ICrossChainReceiver {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_APPLICATION,
                 feeRecipient,
-                uint48(0xfd07),  // Gas used
+                uint48(0xfcb6),  // Gas used
                 uint64(1),
                 uint8(1)
             )

@@ -170,12 +170,15 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
         uint256 gasLimit = gasleft();
         bytes32 feeRecipitent = bytes32(uint256(uint160(tx.origin)));
 
+        // Collect the implementation identifier we added. Remember, this is trusted IFF packet.src.channelId is trusted.
+        bytes memory destinationImplementationIdentifier = packet.data[POLYMER_SENDER_IDENTIFIER_START:POLYMER_SENDER_IDENTIFIER_END];
+
         // We added a bytes32 implementation identifier. Remove it.
         bytes calldata rawMessage = packet.data[POLYMER_PACKAGE_PAYLOAD_START:];
         bytes32 messageIdentifier = bytes32(rawMessage[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
         address fromApplication = address(uint160(bytes20(rawMessage[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
         _handleTimeout(
-            packet.src.channelId, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START:], feeRecipitent, gasLimit
+            packet.src.channelId, destinationImplementationIdentifier, messageIdentifier, fromApplication, rawMessage[CTX0_MESSAGE_START:], feeRecipitent, gasLimit
         );
     }
 

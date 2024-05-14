@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../TestCommon.t.sol";
@@ -46,5 +46,24 @@ contract TestSetRemoteImplementation is TestCommon {
         vm.expectRevert();
 
         escrow.setRemoteImplementation(destination_identifier, implementation);
+    }
+
+    // TODO: test that setting remote implementation
+    // length 1 disables the route.
+
+    function test_revert_set_disable_route(bytes32 destinationIdentifier, address destAddress, bytes calldata message, uint64 deadline) public {
+        vm.assume(destinationIdentifier != _DESTINATION_IDENTIFIER);
+
+        bytes memory destinationAddress = abi.encodePacked(
+            uint8(20),
+            bytes32(0),
+            abi.encode(destAddress)
+        );
+        bytes memory implementation = hex"00";
+        
+        escrow.setRemoteImplementation(destinationIdentifier, implementation);
+
+        vm.expectRevert(abi.encodeWithSignature("RouteDisabled()"));
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(destinationIdentifier, destinationAddress, message, _INCENTIVE, deadline);
     }
 }

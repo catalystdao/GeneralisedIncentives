@@ -6,11 +6,13 @@ import { IMessageEscrowErrors } from "./IMessageEscrowErrors.sol";
 import { IMessageEscrowEvents } from "./IMessageEscrowEvents.sol";
 
 interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErrors, IMessageEscrowEvents {
-   function bounty(bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive);
+   function bounty(address fromApplication, bytes32 destinationIdentifier, bytes32 messageIdentifier) external view returns(IncentiveDescription memory incentive);
 
    function messageDelivered(bytes32 sourceIdentifier, bytes calldata sourceImplementationIdentifier, bytes32 messageIdentifier) external view returns(bytes32 hasMessageBeenExecuted);
 
     function increaseBounty(
+        address fromApplication,
+        bytes32 destinationIdentifier,
         bytes32 messageIdentifier,
         uint96 priceOfDeliveryGas,
         uint96 priceOfAckGas

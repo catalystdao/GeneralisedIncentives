@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -39,7 +39,7 @@ contract processPacketNoReceiveTest is TestCommon {
 
         vm.expectEmit();
         // Check MessageDelivered emitted
-        emit MessageDelivered(messageIdentifier);
+        emit MessageDelivered(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
         vm.expectEmit();
         // That a new message is sent back
         emit Message(
@@ -54,7 +54,7 @@ contract processPacketNoReceiveTest is TestCommon {
                 messageIdentifier,
                 _DESTINATION_ADDRESS_THIS,
                 feeRecipient,
-                uint48(0x8350),  // Gas used
+                uint48(0x833c),  // Gas used
                 uint64(1),
                 abi.encodePacked(bytes1(0xff)),
                 message

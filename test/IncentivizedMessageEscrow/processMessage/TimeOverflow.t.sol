@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import { TestCommon } from "../../TestCommon.t.sol";
@@ -30,7 +30,7 @@ contract TimeOverflowTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         vm.expectEmit();
-        emit MessageAcked(messageIdentifier);
+        emit MessageAcked(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         uint256 gas_on_destination = GAS_SPENT_ON_DESTINATION;
         uint256 gas_on_source = GAS_SPENT_ON_SOURCE;
@@ -39,6 +39,8 @@ contract TimeOverflowTest is TestCommon {
 
         vm.expectEmit();
         emit BountyClaimed(
+            abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(gas_on_destination),
             uint64(gas_on_source),
@@ -78,7 +80,7 @@ contract TimeOverflowTest is TestCommon {
         bytes memory mockContext = abi.encode(v, r, s);
 
         vm.expectEmit();
-        emit MessageAcked(messageIdentifier);
+        emit MessageAcked(abi.encode(escrow), _DESTINATION_IDENTIFIER, messageIdentifier);
 
         uint256 gas_on_destination = GAS_SPENT_ON_DESTINATION;
         uint256 gas_on_source = GAS_SPENT_ON_SOURCE;
@@ -87,6 +89,8 @@ contract TimeOverflowTest is TestCommon {
 
         vm.expectEmit();
         emit BountyClaimed(
+            abi.encode(escrow),
+            _DESTINATION_IDENTIFIER,
             messageIdentifier,
             uint64(gas_on_destination),
             uint64(gas_on_source),
@@ -103,7 +107,7 @@ contract TimeOverflowTest is TestCommon {
         assertEq(BOB.balance, BOB_incentive, "BOB incentive");
 
         // Check that the bounty has been deleted.
-        IncentiveDescription memory incentive = escrow.bounty(messageIdentifier);
+        IncentiveDescription memory incentive = escrow.bounty(address(application), _DESTINATION_IDENTIFIER, messageIdentifier);
         assertEq(incentive.refundGasTo, address(0));
     }
 

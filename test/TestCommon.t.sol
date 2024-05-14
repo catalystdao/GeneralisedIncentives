@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import "../src/apps/mock/IncentivizedMockEscrow.sol";
@@ -21,8 +21,8 @@ interface ICansubmitMessage is IMessageEscrowStructs{
 
 contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     
-    uint256 constant GAS_SPENT_ON_SOURCE = 6617;
-    uint256 constant GAS_SPENT_ON_DESTINATION = 32102;
+    uint256 constant GAS_SPENT_ON_SOURCE = 6888;
+    uint256 constant GAS_SPENT_ON_DESTINATION = 32073;
     
     bytes32 constant _DESTINATION_IDENTIFIER = bytes32(uint256(0x123123) + uint256(2**255));
 
@@ -36,7 +36,7 @@ contract TestCommon is Test, IMessageEscrowEvents, IMessageEscrowStructs {
     bytes _DESTINATION_ADDRESS_APPLICATION;
 
     address SIGNER;
-    address sendLostGasTo;
+    address sendLostGasTo = address(0xdead);
     address BOB;
     uint256 PRIVATEKEY;
 
