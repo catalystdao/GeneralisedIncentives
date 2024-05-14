@@ -12,19 +12,19 @@ import "./MessagePayload.sol";
 
 /**
  * @title Generalised Incentive Escrow
- * @author Alexander @ Catalyst
+ * @author Cata labs for Catalyst
  * @notice Places transparent incentives on relaying messages.
  * This contract is intended to sit between an application and a cross-chain message protocol.
- * The goal is to overload the existing incentive scheme with one which is open for anyone.
+ * The goal is to overload the existing incentive scheme with one that is open to anyone.
  *
- * Each messaging protocol will have a respective implementation which understands
+ * Each messaging protocol will have a respective implementation that understands
  * how to send and verify messages. An integrating application shall deliver a message to submitMessage
- * along with the respective incentives. This contract will then handle transfering the message to the
- * destination and carry an ack back from the destination to return to the integrating application.
+ * along with the respective incentives. An integration of this contract will then handle transfering the 
+ * message to the destination and carry an ack back from the destination to return to the integrating application.
  *
  * The incentive is released when an ack from the destination chain is delivered to this contract.
  *
- * Beyond making relayer incentives strong, this contract also implements several quality of life features:
+ * Beyond making relayer incentives stronger, this contract also implements several quality of life features:
  * - Refund unused gas.
  * - Seperate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
@@ -34,13 +34,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     //--- Constants ---//
 
     /** @notice  If a swap reverts on the destination chain, 1 bytes is sent back instead. This is the byte. */
-    bytes1 constant public MESSAGE_REVERTED = 0xff;
+    bytes1 constant MESSAGE_REVERTED = 0xff;
 
     /** @notice  If the original sender is not authorised on the application on the destination chain, 1 bytes is sent back instead. This is the byte. */
-    bytes1 constant public NO_AUTHENTICATION = 0xfe;
+    bytes1 constant NO_AUTHENTICATION = 0xfe;
 
     /** @notice  Message timed out on destination chain. */
-    bytes1 constant public MESSAGE_TIMED_OUT = 0xfd;
+    bytes1 constant MESSAGE_TIMED_OUT = 0xfd;
 
     /**
      * @notice If setRemoteImplementation is called with this as the
@@ -52,16 +52,16 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     /**
      * @notice If a relayer or application provides an address which cannot accept gas and the transfer fails
      * the gas is sent here instead.
-     * @dev This may not invoke any logic on receive()
+     * @dev This may not invoke any logic on receive() or be a proxy.
      */
     address immutable public SEND_LOST_GAS_TO;
 
     //--- Storage ---//
     /** 
-     * @notice messageIdentifier to IncentiveDescription.
+     * @notice Get incentive description based on message context: messageIdentifier, fromApplication, and destChain
      * @dev fromApplication and destChain are required to fetch the bounty since those
      * match to exactly 1 remote escrow implementation. As a result, this restricts this storage
-     * slot's security to the security of the remote escrow implementation.
+     * slot's security to the security of the specified remote escrow implementation.
      */
     mapping(address fromApplication => mapping(bytes32 destChain => mapping(bytes32 messageIdentifier => IncentiveDescription))) _bounty;
 
@@ -146,7 +146,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /**
-     * @param sendLostGasTo It should only be set to an EOA or a contract which implements either a fallback or a receive function that never reverts.
+     * @param sendLostGasTo It should only be set to an EOA or a contract that has no logic on receive. It cannot be a proxy.
      * It cannot be set to address 0, instead use a burn address (0xdead) if no-one wants to take responsibility of the Ether.
      */
     constructor(address sendLostGasTo) {
@@ -174,13 +174,13 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /**
      * @notice Generates a unique message identifier for a message
-     * @dev Should be overwritten. The identifier should:
+     * @dev The identifier should:
      *  - Be unique based on the sender such that applications can't be DoS'ed. 
      *  - Be unique over time: Use blocknumber or blockhash
      *  - Be unique on the source chain: Use a unique destinationIdentifier
      *  - Be unique on destination chain: Use a unique source identifier 
      *  - Depend on the message
-     *  This also implies that application should make their messages user specific.
+     *  This also implies that application should make their messages user specific, say include a user address.
      */
     function _getMessageIdentifier(
         address messageSender,
