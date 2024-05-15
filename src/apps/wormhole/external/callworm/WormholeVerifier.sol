@@ -8,6 +8,10 @@ import "./SmallStructs.sol";
 import "../wormhole/libraries/external/BytesLib.sol";
 
 
+/**
+ * @notice Optimised message verifier for Wormhole
+ * @dev Is based on the Wormhole verification library.
+ */
 contract WormholeVerifier is GettersGetter {
     using BytesLib for bytes;
 
