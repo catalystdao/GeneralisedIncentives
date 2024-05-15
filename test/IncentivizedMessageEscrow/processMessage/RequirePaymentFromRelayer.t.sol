@@ -63,7 +63,7 @@ contract sendPacketPaymentTest is TestCommon {
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.recordLogs();
-        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -103,7 +103,7 @@ contract sendPacketPaymentTest is TestCommon {
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.recordLogs();
-        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -132,7 +132,7 @@ contract sendPacketPaymentTest is TestCommon {
         IncentiveDescription storage incentive = _INCENTIVE;
 
         vm.recordLogs();
-        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,
@@ -180,7 +180,7 @@ contract sendPacketPaymentTest is TestCommon {
         vm.warp(1000000);
         IncentiveDescription storage incentive = _INCENTIVE;
 
-        (, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
+        escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE) + SEND_MESSAGE_PAYMENT_COST}(
             bytes32(uint256(0x123123) + uint256(2**255)),
             _DESTINATION_ADDRESS_THIS,
             _MESSAGE,

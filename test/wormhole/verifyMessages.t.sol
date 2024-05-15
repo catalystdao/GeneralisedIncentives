@@ -1,7 +1,7 @@
 // test/Messages.sol
 // SPDX-License-Identifier: Apache 2
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.22;
 
 import "../../src/apps/wormhole/external/wormhole/Messages.sol";
 import "../../src/apps/wormhole/external/wormhole/Setters.sol";
@@ -105,10 +105,10 @@ contract TestMessagesC is Test {
     bytes memory invalidVM = abi.encodePacked(validVM, uint8(1));
 
     // Confirm that the test VM is valid
-    (Structs.VM memory parsedInValidVm, bool valid, string memory reason) = messages.parseAndVerifyVM(invalidVM);
+    (, bool valid, string memory reason) = messages.parseAndVerifyVM(invalidVM);
     (
-      SmallStructs.SmallVM memory smallVM,
-      bytes memory payload,
+      ,
+      ,
       bool valid2,
       string memory reason2
     ) = messages2.parseAndVerifyVM(invalidVM);

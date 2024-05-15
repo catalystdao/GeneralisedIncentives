@@ -68,7 +68,7 @@ contract AckReentryTest is TestCommon, ICrossChainReceiver {
 
     bool flag;
 
-    function receiveAck(bytes32 /* destinationIdentifier */, bytes32 /* messageIdentifier */, bytes calldata acknowledgement) external {
+    function receiveAck(bytes32 /* destinationIdentifier */, bytes32 /* messageIdentifier */, bytes calldata /* acknowledgement */) external {
         vm.expectRevert(
             abi.encodeWithSignature("MessageAlreadyAcked()")
         ); 

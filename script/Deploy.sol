@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
@@ -159,7 +159,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
     }
 
     function deployEscrow(string[] memory bridges) forEachBridge(bridges) internal {
-        address escrow = deployGeneralisedIncentives(incentiveVersion);
+        deployGeneralisedIncentives(incentiveVersion);
     }
     
     function _deploy(string[] memory bridges) internal {

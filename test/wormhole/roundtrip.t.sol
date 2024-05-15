@@ -1,7 +1,7 @@
 // test/Messages.sol
 // SPDX-License-Identifier: Apache 2
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.22;
 
 import "../../src/apps/wormhole/external/wormhole/Messages.sol";
 import "../../src/apps/wormhole/external/wormhole/Setters.sol";
@@ -100,7 +100,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
     messages.storeGuardianSetPub(initialGuardianSet, uint32(0));
   }
 
-  function makeValidVM(bytes memory payload, uint16 emitterChainid, bytes32 emitterAddress) internal returns(bytes memory validVM) {
+  function makeValidVM(bytes memory payload, uint16 emitterChainid, bytes32 emitterAddress) view internal returns(bytes memory validVM) {
     bytes memory presigsVM = abi.encodePacked(
       uint8(1), // version
       uint32(0), // guardianSetIndex
@@ -132,7 +132,7 @@ contract TestRoundtrip is Test, IMessageEscrowStructs, Bytes65 {
     IncentiveDescription storage incentive = _INCENTIVE;
 
     vm.recordLogs();
-    (uint256 gasRefund, bytes32 messageIdentifier) = escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
+    escrow.submitMessage{value: _getTotalIncentive(_INCENTIVE)}(
         _DESTINATION_IDENTIFIER,
         convertEVMTo65(address(this)),
         message,

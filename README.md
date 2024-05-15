@@ -1,4 +1,4 @@
-Contracts within this repo have not been audited and should not be used in production.
+This repository has been audited 3 times, twice by Veridise and once by Ackee. You can find the audits in `/audits`.
 
 # Generalised Incentive Escrow
 
