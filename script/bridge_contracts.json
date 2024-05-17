@@ -2,23 +2,27 @@
   "Wormhole": {
     "mumbai": {
       "bridge": "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
-      "escrow": "0xFb4B1475e61642b3930d762B66d9DD4E08B14367"
+      "escrow": "0x950fB15FA83B76b739fd27BEa6DA34af0D60eb95"
     },
     "sepolia": {
       "bridge": "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78",
-      "escrow": "0x45C140Dd2526E4bfD1c2A5Bb0Aa6aA1DB00b1744"
+      "escrow": "0x294F41D30D058C9e5A71810A6C758E595b7aC170"
     },
     "basesepolia": {
       "bridge": "0x79A1027a6A159502049F10906D333EC57E95F083",
-      "escrow": "0xEA2F1d38e31fBE501c0b42BA25E217a47132D8fa"
+      "escrow": "0x63B4E24DC9814fAcDe241fB4dEFcA04d5fc6d763"
     },
     "arbitrumsepolia": {
       "bridge": "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35",
-      "escrow": "0xdF25f1BdE09Cee5ac1e6ef8dFA7113addBd58B28"
+      "escrow": "0x8B3228bf01A5cf53e3C3DF91Cc6285a5F8543071"
     },
     "optimismsepolia": {
       "bridge": "0x31377888146f3253211EFEf5c676D41ECe7D58Fe",
-      "escrow": "0xbDFD9163d8Cee1368698B023369f9A5Fd319A40F"
+      "escrow": "0x198cDD55d90277726f3222D5A8111AdB8b0af9ee"
+    },
+    "blasttestnet": {
+      "bridge": "0x473e002D7add6fB67a4964F13bFd61280Ca46886",
+      "escrow": "0x9524ACA1fF46fAd177160F0a803189Cb552A3780"
     }
   },
   "Polymer": {

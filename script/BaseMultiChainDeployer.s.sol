@@ -21,7 +21,8 @@ contract BaseMultiChainDeployer is Script {
         Sepolia,
         BaseSepolia,
         ArbitrumSepolia,
-        OptimismSepolia
+        OptimismSepolia,
+        BlastTestnet
     }
 
     mapping(Chains => string) public chainKey;
@@ -47,6 +48,9 @@ contract BaseMultiChainDeployer is Script {
 
         chainKey[Chains.OptimismSepolia] = "optimismsepolia";
         chain_list.push(Chains.OptimismSepolia);
+
+        chainKey[Chains.BlastTestnet] = "blasttestnet";
+        chain_list.push(Chains.BlastTestnet);
 
         // ADD: To deploy Generalised Incentives to a new chain, add 2 lines above this comment:
         // chainKey[Chains.OptimismSepolia] = "optimismsepolia"; // What is the external key used to identify this chain? Please add it to .env.example for an RPC key.
