@@ -17,7 +17,6 @@ contract BaseMultiChainDeployer is Script {
     // ADD: Add the chain to the enum here. Please use a descriptive name, including if the chain is
     // a testnet name in the name. This list contains both mainnets and testnets.
     enum Chains {
-        Mumbai,
         Sepolia,
         BaseSepolia,
         ArbitrumSepolia,
@@ -34,9 +33,6 @@ contract BaseMultiChainDeployer is Script {
     string currentChainKey;
 
     constructor() {
-        chainKey[Chains.Mumbai] = "mumbai";
-        chain_list.push(Chains.Mumbai);
-
         chainKey[Chains.Sepolia] = "sepolia";
         chain_list.push(Chains.Sepolia);
         
