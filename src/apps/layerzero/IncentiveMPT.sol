@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 // TODO: Check if we can upgrade solidity version
-pragma solidity 0.7.6;
-pragma abicoder v2;
+// pragma solidity 0.7.6;
+pragma solidity ^0.8.13;
 
-import "LayerZero/proof/utility/LayerZeroPacket.sol";
-import "LayerZero/proof/utility/UltraLightNodeEVMDecoder.sol";
+import "./utility/LayerZeroPacket.sol";
+import "./utility/UltraLightNodeEVMDecoder.sol";
 import "LayerZero/interfaces/IValidationLibraryHelperV2.sol";
 import "LayerZero/interfaces/ILayerZeroValidationLibrary.sol";
 
