@@ -6,8 +6,8 @@ pragma solidity ^0.8.13;
 
 import "./utility/LayerZeroPacket.sol";
 import "./utility/UltraLightNodeEVMDecoder.sol";
-import "LayerZero/interfaces/IValidationLibraryHelperV2.sol";
-import "LayerZero/interfaces/ILayerZeroValidationLibrary.sol";
+import "./interfaces/IValidationLibraryHelperV2.sol";
+import "./interfaces/ILayerZeroValidationLibrary.sol";
 
 contract MPTValidator01 is ILayerZeroValidationLibrary, IValidationLibraryHelperV2 {
     using RLPDecode for RLPDecode.RLPItem;

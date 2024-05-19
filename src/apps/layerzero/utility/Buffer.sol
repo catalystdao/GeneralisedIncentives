@@ -3,8 +3,8 @@
 // https://github.com/ensdomains/buffer
 
 // TODO: CHECK IF WE CAN UPGRADE
-// pragma solidity ^0.7.0;
 pragma solidity ^0.8.13;
+// pragma solidity ^0.7.0;
 
 /**
  * @dev A library for working with mutable byte buffers in Solidity.

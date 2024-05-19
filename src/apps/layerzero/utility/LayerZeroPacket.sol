@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 // TODO: CHECK IF WE CAN UPGRADE
-// pragma solidity ^0.7.0;
 pragma solidity ^0.8.13;
+// pragma solidity ^0.7.0;
 
 import "./Buffer.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 
 library LayerZeroPacket {
     using Buffer for Buffer.buffer;
@@ -49,10 +48,10 @@ library LayerZeroPacket {
         srcAddressBuffer.init(sizeOfSrcAddress);
         srcAddressBuffer.writeRawBytes(0, data, 136, sizeOfSrcAddress); // 128 + 8
 
-        uint payloadSize = size.sub(28).sub(sizeOfSrcAddress);
+        uint payloadSize = (size - 28) - sizeOfSrcAddress;
         Buffer.buffer memory payloadBuffer;
         payloadBuffer.init(payloadSize);
-        payloadBuffer.writeRawBytes(0, data, sizeOfSrcAddress.add(156), payloadSize); // 148 + 8
+        payloadBuffer.writeRawBytes(0, data, sizeOfSrcAddress + 156, payloadSize); // 148 + 8
         return LayerZeroPacket.Packet(srcChain, dstChainId, nonce, dstAddress, srcAddressBuffer.buf, ulnAddress, payloadBuffer.buf);
     }
 
@@ -94,7 +93,7 @@ library LayerZeroPacket {
         srcAddressBuffer.init(sizeOfSrcAddress);
         srcAddressBuffer.writeRawBytes(0, data, 106, sizeOfSrcAddress);
 
-        uint nonPayloadSize = sizeOfSrcAddress.add(32);// 2 + 2 + 8 + 20, 32 + 20 = 52 if sizeOfSrcAddress == 20
+        uint nonPayloadSize = sizeOfSrcAddress + 32;// 2 + 2 + 8 + 20, 32 + 20 = 52 if sizeOfSrcAddress == 20
         uint payloadSize = realSize.sub(nonPayloadSize);
         Buffer.buffer memory payloadBuffer;
         payloadBuffer.init(payloadSize);
@@ -120,7 +119,7 @@ library LayerZeroPacket {
 
         // decode the packet
         uint256 realSize = data.length;
-        uint nonPayloadSize = sizeOfSrcAddress.add(32);// 2 + 2 + 8 + 20, 32 + 20 = 52 if sizeOfSrcAddress == 20
+        uint nonPayloadSize = sizeOfSrcAddress + 32;// 2 + 2 + 8 + 20, 32 + 20 = 52 if sizeOfSrcAddress == 20
         require(realSize >= nonPayloadSize, "LayerZeroPacket: invalid packet");
         uint payloadSize = realSize - nonPayloadSize;
 
@@ -144,7 +143,7 @@ library LayerZeroPacket {
         Buffer.buffer memory payloadBuffer;
         if (payloadSize > 0) {
             payloadBuffer.init(payloadSize);
-            payloadBuffer.writeRawBytes(0, data, nonPayloadSize.add(32), payloadSize);
+            payloadBuffer.writeRawBytes(0, data, nonPayloadSize + 32, payloadSize);
         }
 
         return LayerZeroPacket.Packet(srcChain, dstChain, nonce, dstAddress, srcAddressBuffer.buf, ulnAddress, payloadBuffer.buf);

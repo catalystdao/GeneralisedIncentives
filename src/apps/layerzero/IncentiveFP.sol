@@ -5,8 +5,8 @@
 pragma solidity ^0.8.13;
 
 import "./utility/LayerZeroPacket.sol";
-import "LayerZero/interfaces/ILayerZeroValidationLibrary.sol";
-import "LayerZero/interfaces/IValidationLibraryHelperV2.sol";
+import "./interfaces/ILayerZeroValidationLibrary.sol";
+import "./interfaces/IValidationLibraryHelperV2.sol";
 
 contract FPValidator is ILayerZeroValidationLibrary, IValidationLibraryHelperV2 {
     uint8 public proofType = 2;
