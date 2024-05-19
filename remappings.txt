@@ -1,3 +1,4 @@
 forge-std/=lib/forge-std/src/
 openzeppelin/=lib/openzeppelin-contracts/contracts/
 vibc-core-smart-contracts/=lib/vibc-core-smart-contracts/contracts/
+@openzeppelin/=lib/openzeppelin-contracts/
