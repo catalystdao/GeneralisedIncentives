@@ -5,21 +5,20 @@ import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee } from "./interfaces/ILayerZeroEndpointV2.sol";
 import { PacketV1Codec } from "./libs/PacketV1Codec.sol";
 import { UlnConfig } from "./interfaces/IUlnBase.sol";
-import { SimpleLZULN } from "./SimpleLZULN.sol";
+import { IReceiveUlnBase, UlnConfig, Verification } from "./interfaces/IUlnBase.sol";
 
 /**
  * @notice LayerZero escrow.
  * TODO: Set config such that we are the executor.
- * TODO: Figure out if we can verify
- *      If not, then figure out how to decode the payload and then do both the composer and the executor step in 1.
  */
-abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, SimpleLZULN {
+abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     using PacketV1Codec for bytes;
 
     error LayerZeroCannotBeAddress0();
     error LZ_ULN_Verifying();
 
     ILayerZeroEndpointV2 immutable ENDPOINT;
+    IReceiveUlnBase immutable ULTRA_LIGHT_NODE;
 
     // TODO: Are these values packed?
     uint128 excessPaid = 1; // Set to 1 so we never have to pay zero to non-zero cost.
@@ -29,10 +28,11 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, 
     uint32 public immutable chainId;
     address private constant DEFAULT_CONFIG = address(0);
 
-    constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedMessageEscrow(sendLostGasTo) SimpleLZULN(ULN) {
+    constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedMessageEscrow(sendLostGasTo) {
         if (lzEndpointV2 == address(0)) revert LayerZeroCannotBeAddress0();
         ENDPOINT = ILayerZeroEndpointV2(lzEndpointV2);
         chainId  = ENDPOINT.eid();
+        ULTRA_LIGHT_NODE = IReceiveUlnBase(ULN);
         // TODO: Set executor as this contract.
     }
 
@@ -76,8 +76,8 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, 
 
         bytes32 _headerHash = keccak256(_packetHeader);
         bytes32 _payloadHash = keccak256(_payload);
-        if (!_checkVerifiable(srcEid, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
-
+        UlnConfig memory _config = ULTRA_LIGHT_NODE.getUlnConfig(address(this), srcEid);
+        if (ULTRA_LIGHT_NODE.verifiable(_config, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
 
         // TODO: everything below.
         // Load the identifier for the calling contract.

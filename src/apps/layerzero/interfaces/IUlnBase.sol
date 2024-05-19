@@ -20,8 +20,11 @@ struct Verification {
 }
 
 interface IReceiveUlnBase {
-    // mapping(bytes32 headerHash => mapping(bytes32 payloadHash => mapping(address dvn => Verification))) public hashLookup;
-    function hashLookup(bytes32 headerHash, bytes32 payloadHash, address dvn) external view returns (Verification memory);
+    function verifiable(
+        UlnConfig memory _config,
+        bytes32 _headerHash,
+        bytes32 _payloadHash
+    ) external view returns (bool);
     
     function getUlnConfig(address _oapp, uint32 _remoteEid) external view returns (UlnConfig memory rtnConfig);
 }
