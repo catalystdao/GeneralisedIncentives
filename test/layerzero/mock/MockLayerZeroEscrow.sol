@@ -14,8 +14,8 @@ contract MockLayerZeroEscrow is IncentivizedLayerZeroEscrow {
         return _verifyPacket(_packetHeader, _packet);
     }
 
-    function sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) external returns(uint128 costOfsendPacketInNativeToken) {
-        return _sendPacket(destinationChainIdentifier, destinationImplementation, message);
+    function sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 deadline) external returns(uint128 costOfsendPacketInNativeToken) {
+        return _sendPacket(destinationChainIdentifier, destinationImplementation, message, deadline);
     }
 
     function setAllowExternalCall(bool state) external {

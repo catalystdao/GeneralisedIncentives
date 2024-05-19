@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: DO-NOT-USE
 pragma solidity ^0.8.13;
 
-import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { IMessageLibManager, SetConfigParam } from "LayerZero-v2/protocol/contracts/interfaces/IMessageLibManager.sol";
 import { PacketV1Codec } from "LayerZero-v2/protocol/contracts/messagelib/libs/PacketV1Codec.sol";
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
@@ -13,6 +14,13 @@ import { IReceiveUlnBase, UlnConfig, Verification } from "./interfaces/IUlnBase.
  */
 contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     using PacketV1Codec for bytes;
+    uint32 CONFIG_TYPE_EXECUTOR = 1;
+    uint32 MAX_MESSAGE_SIZE = 4096;
+
+    struct ConfigTypeExecutor {
+        uint32 maxMessageSize;
+        address executorAddress;
+    }
 
     error LayerZeroCannotBeAddress0();
     error IncorrectDestination(address actual);
@@ -34,14 +42,58 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     uint8 allowExternalCall = 1;
 
 
+    /**
+     * @param sendLostGasTo Address to get gas that could not get sent to the recipitent.
+     * @param lzEndpointV2 LayerZero endpount. Is used for sending messages.
+     * @param ULN LayerZero Ultra Light Node. Used for verifying messages.
+     */
     constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedMessageEscrow(sendLostGasTo) {
-        if (lzEndpointV2 == address(0)) revert LayerZeroCannotBeAddress0();
-        ENDPOINT = ILayerZeroEndpointV2(lzEndpointV2);
-        chainId  = ENDPOINT.eid();
-        ULTRA_LIGHT_NODE = IReceiveUlnBase(ULN);
+        if (lzEndpointV2 == address(0) || ULN == address(0)) revert LayerZeroCannotBeAddress0();
 
-        // uint256 srcEID = 0;
-        // ENDPOINT.setReceiveLibrary(address(this), srcEID, address(this), 0);
+        // Load the LZ endpoint. This is the contract we will be sending events to.
+        ENDPOINT = ILayerZeroEndpointV2(lzEndpointV2);
+        // Set chainId.
+        chainId  = ENDPOINT.eid();
+        // Set the ultra light node. This is the contract we will be verifying packages against.
+        ULTRA_LIGHT_NODE = IReceiveUlnBase(ULN);
+    }
+
+    function _uniqueSourceIdentifier() override internal view returns(bytes32) {
+        return bytes32(uint256(chainId));
+    }
+
+    function _proofValidPeriod(bytes32 destinationIdentifier) override internal pure returns(uint64 timestamp) {
+        return 0;
+    }
+
+    /**
+     * @notice Set ourself as executor on all (provided) remote chains. This is required before we anyone
+     * can send message out of that chain.
+     * @dev sendLibrary is not checked. It is assumed that any endpoint will accept anything as long as it is somewhat sane.
+     * @param sendLibrary Contract to set config on.
+     * @param remoteEids List of remote Eids to set config on.
+     */
+    function initConfig(address sendLibrary, uint32[] calldata remoteEids) external {
+        unchecked {
+
+        bytes memory configExecutorBytes = abi.encode(ConfigTypeExecutor({
+            maxMessageSize: MAX_MESSAGE_SIZE,
+            executorAddress: address(this)
+        }));
+
+        uint256 numEids = remoteEids.length;
+        SetConfigParam[] memory params = new SetConfigParam[](numEids);
+        for (uint256 i = 0; i < numEids; ++i) {
+            SetConfigParam memory configParam = SetConfigParam({
+                eid: remoteEids[i],
+                configType: CONFIG_TYPE_EXECUTOR,
+                config: configExecutorBytes
+            });
+            params[i] = configParam;
+        }
+        ENDPOINT.setConfig(address(this), sendLibrary, params);
+
+        }
     }
 
     /**
@@ -54,7 +106,12 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         return false;
     }
 
-    // INTERNAL: We might have to update this ABI to take into consideration where the message is going
+    // TODO: load interface and correct implement then return 0 regardless of parameters.
+    function getFee() external pure returns(uint256 fee) {
+        return fee = 0;
+    }
+
+    // TODO:: We might have to update this ABI to take into consideration where the message is going
     /**
      * TODO: Can we set ourself as the executor?
      * We want to do this because the executor is also paid for when we send the message
@@ -65,8 +122,8 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
      */
     function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
         MessagingParams memory params = MessagingParams({
-            dstEid: uint32(uint256(0)), // INTERNAL: figure out a replacement.
-            receiver: bytes32(0), // INTERNAL: figure out a replacement.
+            dstEid: uint32(uint256(0)), // TODO:: figure out a replacement.
+            receiver: bytes32(0), // TODO:: figure out a replacement.
             message: hex"",
             options: hex"",
             payInLzToken: false
@@ -76,27 +133,12 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         asset =  address(0);
     }
 
-    function _getMessageIdentifier(
-        bytes32 destinationIdentifier,
-        bytes calldata message
-    ) internal override view returns(bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                msg.sender,
-                bytes32(block.number),
-                chainId, 
-                destinationIdentifier,
-                message
-            )   
-        );
-    }
-
     function _verifyPacket(bytes calldata _packetHeader, bytes calldata _packet) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         _assertHeader(_packetHeader);
 
         // Check that we are the receiver
         address receiver = _packetHeader.receiverB20();
-        if(receiver != address(this)) revert IncorrectDestination(receiver);
+        if (receiver != address(this)) revert IncorrectDestination(receiver);
 
         // Get the source chain.
         uint32 srcEid = _packetHeader.srcEid();
@@ -105,21 +147,9 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         bytes32 _payloadHash = _packet.payloadHash();
         UlnConfig memory _config = ULTRA_LIGHT_NODE.getUlnConfig(address(this), srcEid);
 
-        
-        // TODO: Is calling `verifiable` okay or do we need to call `commitVerification`?
-        // 1. `commitVerification` has a lot of side effects compared to just calling `verifyable`.
-        // most significantly, it also changes a zero storage slot to non-zero thus is `kind of` expensive.
-        // Is the deletion of commits worth it gas wise?
-        //
-        // 2. Can we block `commitVerification` from being called? verifiable stop returning true whenever
-        // `commitVerification` is called. From a quick look at the contracts, there are 2 ways to block the call.
-        //    2.1: `isValidReceiveLibrary`. That function can be made to call another contract, which could be this one
-        //    We can then force the function to fail making `commitVerification` fail and make sure it can never be called.
-        //    2.2: `_initializable` is called which eventually makes a call to ILayerZeroReceiver(_receiver).allowInitializePath(_origin);
-        //    We can easily expose allowInitializePath and return false. Thus blocking that call. Is it doable?
-        //
-        // 3. In case everything breaks, should we also check against the "verified" proof on the endpoint?
-        // That will be set after someone calls `commitVerification` and it doesn't revert.
+        // Verify the message on the LZ ultra light node.
+        // Note that this can could technically be DoS except that allowInitializePath returning false denies this DoS
+        // vector. As a result, this should always return true and can never turn false.
         if (!ULTRA_LIGHT_NODE.verifiable(_config, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
 
         // Get the source chain
@@ -130,7 +160,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         message_ = _packet.message();
     }
 
-    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 deadline) internal override returns(uint128 costOfsendPacketInNativeToken) {
 
         MessagingParams memory params = MessagingParams({
             dstEid: uint32(uint256(destinationChainIdentifier)),
