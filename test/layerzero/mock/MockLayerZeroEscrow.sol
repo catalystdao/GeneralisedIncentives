@@ -18,7 +18,7 @@ contract MockLayerZeroEscrow is IncentivizedLayerZeroEscrow {
         return _sendPacket(destinationChainIdentifier, destinationImplementation, message);
     }
 
-    function setAllowExternalCall(bool state) {
+    function setAllowExternalCall(bool state) external {
         allowExternalCall = state;
     }
 }
