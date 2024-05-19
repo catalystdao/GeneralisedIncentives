@@ -16,6 +16,9 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
     error LayerZeroCannotBeAddress0();
     error LZ_ULN_Verifying();
+    error LZ_ULN_InvalidPacketHeader();
+    error LZ_ULN_InvalidPacketVersion();
+    error LZ_ULN_InvalidEid();
 
     ILayerZeroEndpointV2 immutable ENDPOINT;
     IReceiveUlnBase immutable ULTRA_LIGHT_NODE;
@@ -65,35 +68,28 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         );
     }
 
-    function _verifyPacket(bytes calldata _packetHeader, bytes calldata _payload) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
-        // TODO: Set verification logic.
-        // TODO: We need to check the header.
-        // _assertHeader(_packetHeader, localEid);
+    function _verifyPacket(bytes calldata _packetHeader, bytes calldata _packet) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+        _assertHeader(_packetHeader);
 
-        // cache these values to save gas
+        // Check that we are the receiver
         address receiver = _packetHeader.receiverB20();
+        require(receiver == address(this)); // TODO: update
+
+        // Get the source chain.
         uint32 srcEid = _packetHeader.srcEid();
 
+
         bytes32 _headerHash = keccak256(_packetHeader);
-        bytes32 _payloadHash = keccak256(_payload);
+        bytes32 _payloadHash = _packet.payloadHash();
         UlnConfig memory _config = ULTRA_LIGHT_NODE.getUlnConfig(address(this), srcEid);
         if (ULTRA_LIGHT_NODE.verifiable(_config, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
 
-        // TODO: everything below.
-        // Load the identifier for the calling contract.
-        implementationIdentifier = _payload[0:32];
-
-        // Local "supposedly" this chain identifier.
-        uint16 thisChainIdentifier = uint16(uint256(bytes32(_payload[64:96])));
-
-        // Check that the message is intended for this chain.
-        require(thisChainIdentifier == chainId, "!Identifier");
-
-        // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(_payload[32:64]);
-
-        // Get the application message.
-        message_ = _payload[96:];
+        // Get the sourec chain
+        sourceIdentifier = bytes32(uint256(srcEid));
+        // Get the sender
+        implementationIdentifier = abi.encode(_packetHeader.sender());
+        // Get the message
+        message_ = _packet.message();
     }
 
     function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
@@ -133,4 +129,13 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         allowExternalCall = false;
     }
 
+
+    function _assertHeader(bytes calldata _packetHeader) internal view {
+        // assert packet header is of right size 81
+        if (_packetHeader.length != 81) revert LZ_ULN_InvalidPacketHeader();
+        // assert packet header version is the same as ULN
+        if (_packetHeader.version() != PacketV1Codec.PACKET_VERSION) revert LZ_ULN_InvalidPacketVersion();
+        // assert the packet is for this endpoint
+        if (_packetHeader.dstEid() != chainId) revert LZ_ULN_InvalidEid();
+    }
 }
