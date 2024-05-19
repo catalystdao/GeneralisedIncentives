@@ -255,7 +255,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
    }
 
-     /**
+    /**
      * @notice Sets the escrow implementation for a specific chain
      * @dev This can only be set once. When set, it cannot be changed.
      * This is to protect relayers as this could be used to fail acks.
@@ -265,7 +265,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * are valid for sending (say hex"0x01" which may be read as address(uint160(1))), they break acks / delivery.
      * If you want to disable a specific route, set implementation to hex"00" (DISABLE_ROUTE_IMPLEMENTATION).
      */
-    function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
+    function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external virtual {
         if (implementationAddressHash[msg.sender][destinationIdentifier] != bytes32(0)) revert ImplementationAddressAlreadySet(
             implementationAddress[msg.sender][destinationIdentifier]
         );
@@ -419,6 +419,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (msg.value > sum) {
                 // We know: msg.value > sum, thus msg.value - sum > 0.
                 gasRefund = msg.value - sum;
+                // Send the refund to the refund address.
                 Address.sendValue(payable(incentive.refundGasTo), uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
             }

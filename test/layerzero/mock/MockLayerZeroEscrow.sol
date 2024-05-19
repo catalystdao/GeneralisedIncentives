@@ -19,6 +19,6 @@ contract MockLayerZeroEscrow is IncentivizedLayerZeroEscrow {
     }
 
     function setAllowExternalCall(bool state) external {
-        allowExternalCall = state;
+        allowExternalCall = state ? 2 : 1;
     }
 }
