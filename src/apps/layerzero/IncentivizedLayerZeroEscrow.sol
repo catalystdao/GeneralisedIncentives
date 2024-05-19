@@ -44,9 +44,15 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         // ENDPOINT.setReceiveLibrary(address(this), srcEID, address(this), 0);
     }
 
-    // function allowInitializePath(Origin calldata /* _origin */) external pure returns(bool) {
-    //     return false;
-    // }
+    /**
+     * @notice Block any calls from the LZ endpoint so that no messages can ever get "verified" on the endpoint.
+     * This is very important, as otherwise, the package status can progress on the LZ endpoint which causes
+     * `verifiyable` which we rely on to be able to switch from true to false by commiting the proof to the endpoint.
+     * While this function is not intended for this use case, it should work.
+     */
+    function allowInitializePath(Origin calldata /* _origin */) external pure returns(bool) {
+        return false;
+    }
 
     // INTERNAL: We might have to update this ABI to take into consideration where the message is going
     /**
