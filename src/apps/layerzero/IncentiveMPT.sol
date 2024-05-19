@@ -13,8 +13,8 @@ contract MPTValidator01 is ILayerZeroValidationLibrary, IValidationLibraryHelper
     using RLPDecode for RLPDecode.RLPItem;
     using RLPDecode for RLPDecode.Iterator;
 
-    uint8 public proofType = 1;
-    uint8 public utilsVersion = 4;
+    uint8 public constant proofType = 1;
+    uint8 public constant utilsVersion = 4;
     bytes32 public constant PACKET_SIGNATURE = 0xe9bded5f24a4168e4f3bf44e00298c993b22376aad8c58c7dda9718a54cbea82;
 
     function validateProof(bytes32 _receiptsRoot, bytes calldata _transactionProof, uint _remoteAddressSize) external view override returns (LayerZeroPacket.Packet memory packet) {

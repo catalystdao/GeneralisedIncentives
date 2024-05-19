@@ -233,7 +233,7 @@ library RLPDecode {
         // 1 byte for the length prefix
         require(item.len == 21, "RLPDecoder toAddress invalid length");
 
-        return address(toUint(item));
+        return address(uint160((toUint(item))));
     }
 
     function toUint(RLPItem memory item) internal pure returns (uint) {
