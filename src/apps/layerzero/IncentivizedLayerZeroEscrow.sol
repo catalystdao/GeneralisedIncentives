@@ -110,24 +110,22 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         // We are getting a refund on any excess value we sent. Since that refund is 
         // coming before the end of this call, we can record it.
         allowExternalCall = true;
-        ENDPOINT.send{value: msg.value}(
+        MessagingReceipt memory receipt = ENDPOINT.send{value: msg.value}(
             params,
             address(this)
         );
+        allowExternalCall = false;
         // Set the cost of the sendPacket to msg.value 
-        costOfsendPacketInNativeToken = uint128(msg.value - (excessPaid - 1));
-        excessPaid = 1;
+        costOfsendPacketInNativeToken = uint128(msg.value - receipt.fee.nativeFee);
 
         return costOfsendPacketInNativeToken;
     }
 
-    // Record refunds coming in.
-    // Ideally, disallow randoms from sending to this contract but that wou
+    // Allow LZ refunds to come in while disallowing randoms from sending to this contract.
+    // It won't stop abuses but it is the best we can do.
     receive() external payable {
-        // TODO: Do we have enough gas for this? I hope we have since allowExternalCall is warm.
+        // allowExternalCall is hot so it shouldn't be that expensive.
         require(allowExternalCall, "Do not send ether to this address");
-        excessPaid = uint128(1 + msg.value);
-        allowExternalCall = false;
     }
 
 
