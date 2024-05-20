@@ -34,5 +34,19 @@
       "bridge": "0xE2029629f51ab994210d671Dc08b7Ec94899b278",
       "escrow": "0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD"
     }
+  },
+  "LayerZero": {
+    "basesepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0x0000000000000000000000000000000000000000"
+    },
+    "optimismsepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0x0000000000000000000000000000000000000000"
+    },
+    "blasttestnet": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0x0000000000000000000000000000000000000000"
+    }
   }
 }
