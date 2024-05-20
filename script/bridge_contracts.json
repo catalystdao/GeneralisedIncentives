@@ -1,5 +1,17 @@
 {
   "Wormhole": {
+    "base": {
+      "bridge": "0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6",
+      "escrow": "0x3C5C5436BCa59042cBC835276E51428781366d85"
+    },
+    "blast": {
+      "bridge": "0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6",
+      "escrow": "0x3C5C5436BCa59042cBC835276E51428781366d85"
+    },
+    "optimism": {
+      "bridge": "0xEe91C335eab126dF5fDB3797EA9d6aD93aeC9722",
+      "escrow": "0x8C8727276725b7Da11fDA6e2646B2d2448E5B3c5"
+    },
     "mumbai": {
       "bridge": "0x0CBE91CF822c73C2315FB05100C2F714765d5c20",
       "escrow": "0x950fB15FA83B76b739fd27BEa6DA34af0D60eb95"

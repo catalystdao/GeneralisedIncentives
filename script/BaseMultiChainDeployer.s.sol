@@ -17,6 +17,11 @@ contract BaseMultiChainDeployer is Script {
     // ADD: Add the chain to the enum here. Please use a descriptive name, including if the chain is
     // a testnet name in the name. This list contains both mainnets and testnets.
     enum Chains {
+        // Mainnets
+        Base,
+        Blast,
+        Optimism,
+        // Testnets
         Sepolia,
         BaseSepolia,
         ArbitrumSepolia,
@@ -29,24 +34,35 @@ contract BaseMultiChainDeployer is Script {
 
     Chains[] chain_list;
     Chains[] chain_list_legacy;
+    Chains[] chain_list_testnet;
+    Chains[] chain_list_testnet_legacy;
 
     string currentChainKey;
 
     constructor() {
+        chainKey[Chains.Base] = "base";
+        chain_list.push(Chains.Base);
+
+        chainKey[Chains.Blast] = "blast";
+        chain_list.push(Chains.Blast);
+
+        chainKey[Chains.Optimism] = "optimism";
+        chain_list.push(Chains.Optimism);
+
         chainKey[Chains.Sepolia] = "sepolia";
-        chain_list.push(Chains.Sepolia);
+        chain_list_testnet.push(Chains.Sepolia);
         
         chainKey[Chains.BaseSepolia] = "basesepolia";
-        chain_list.push(Chains.BaseSepolia);
+        chain_list_testnet.push(Chains.BaseSepolia);
 
         chainKey[Chains.ArbitrumSepolia] = "arbitrumsepolia";
-        chain_list.push(Chains.ArbitrumSepolia);
+        chain_list_testnet.push(Chains.ArbitrumSepolia);
 
         chainKey[Chains.OptimismSepolia] = "optimismsepolia";
-        chain_list.push(Chains.OptimismSepolia);
+        chain_list_testnet.push(Chains.OptimismSepolia);
 
         chainKey[Chains.BlastTestnet] = "blasttestnet";
-        chain_list.push(Chains.BlastTestnet);
+        chain_list_testnet.push(Chains.BlastTestnet);
 
         // ADD: To deploy Generalised Incentives to a new chain, add 2 lines above this comment:
         // chainKey[Chains.OptimismSepolia] = "optimismsepolia"; // What is the external key used to identify this chain? Please add it to .env.example for an RPC key.
