@@ -265,7 +265,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * are valid for sending (say hex"0x01" which may be read as address(uint160(1))), they break acks / delivery.
      * If you want to disable a specific route, set implementation to hex"00" (DISABLE_ROUTE_IMPLEMENTATION).
      */
-    function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external {
+    function setRemoteImplementation(bytes32 destinationIdentifier, bytes calldata implementation) external virtual {
         if (implementationAddressHash[msg.sender][destinationIdentifier] != bytes32(0)) revert ImplementationAddressAlreadySet(
             implementationAddress[msg.sender][destinationIdentifier]
         );
