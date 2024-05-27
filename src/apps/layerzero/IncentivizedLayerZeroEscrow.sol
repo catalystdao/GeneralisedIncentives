@@ -2,16 +2,22 @@
 pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
-import { ILayerZeroEndpointV2, MessagingParams } from "./interfaces/ILayerZeroEndpointV2.sol";
+import { ILayerZeroEndpointV2, MessagingParams, MessagingFee } from "./interfaces/ILayerZeroEndpointV2.sol";
 
 /**
  * @notice LayerZero escrow.
- * Do not use because of license issues.
+ * TODO: Set config such that we are the executor.
+ * TODO: Figure out if we can verify
+ *      If not, then figure out how to decode the payload and then do both the composer and the executor step in 1.
  */
 abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     error LayerZeroCannotBeAddress0();
 
     ILayerZeroEndpointV2 immutable LAYER_ZERO;
+
+    // TODO: Are these values packed?
+    uint128 excessPaid = 1; // Set to 1 so we never have to pay zero to non-zero cost.
+    bool allowExternalCall = false;
 
     // chainid is immutable on LayerZero endpoint, so we read it and store it likewise.
     uint32 public immutable chainId;
@@ -22,9 +28,18 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         chainId  = LAYER_ZERO.eid();
     }
 
+    // TODO: Fix
     function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
+        MessagingParams memory params = MessagingParams({
+            dstEid: uint32(uint256(0)), // TODO: Fix
+            receiver: bytes32(0), // TODO: FIX
+            message: hex"",
+            options: hex"",
+            payInLzToken: false
+        });
+        MessagingFee memory fee = LAYER_ZERO.quote(params, address(this));
+        amount = fee.nativeFee;
         asset =  address(0);
-        amount = 0; // TODO: Verify.
     }
 
     function _getMessageIdentifier(
@@ -64,20 +79,38 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
     function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
 
-        costOfsendPacketInNativeToken = 0; // TODO
+        // TODO: Optimise this.
+        MessagingParams memory params = MessagingParams({
+            dstEid: uint32(uint256(destinationChainIdentifier)),
+            receiver: bytes32(destinationImplementation),
+            message: message,
+            options: hex"",
+            payInLzToken: false
+        });
+
+        // MessagingFee memory fee = LAYER_ZERO.quote(params, address(this));
+        // costOfsendPacketInNativeToken = uint128(fee.nativeFee); // Layer zero doesn't need that much.
 
         // Handoff package to LZ.
-        LAYER_ZERO.send{value: costOfsendPacketInNativeToken}(
-            MessagingParams({
-                dstEid: uint32(uint256(destinationChainIdentifier)),
-                receiver: bytes32(destinationImplementation),
-                message: message,
-                options: hex"",
-                payInLzToken: false
-            }),
-            msg.sender // TODO:
+        // We are getting a refund on any excess value we sent. Since that refund is 
+        // coming before the end of this call, we can record it.
+        allowExternalCall = true;
+        LAYER_ZERO.send{value: msg.value}(
+            params,
+            address(this)
         );
+        // Set the cost of the sendPacket to msg.value 
+        costOfsendPacketInNativeToken = uint128(msg.value - (excessPaid - 1));
+        excessPaid = 1;
 
         return costOfsendPacketInNativeToken;
+    }
+
+    // Record refunds coming in.
+    // Ideally, disallow randoms from sending to this contract but that wou
+    receive() external payable {
+        require(allowExternalCall, "Do not send ether to this address");
+        excessPaid = uint128(1 + msg.value);
+        allowExternalCall = false;
     }
 }
