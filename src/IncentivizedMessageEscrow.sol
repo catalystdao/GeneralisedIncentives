@@ -255,7 +255,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
    }
 
-     /**
+    /**
      * @notice Sets the escrow implementation for a specific chain
      * @dev This can only be set once. When set, it cannot be changed.
      * This is to protect relayers as this could be used to fail acks.
@@ -419,6 +419,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (msg.value > sum) {
                 // We know: msg.value > sum, thus msg.value - sum > 0.
                 gasRefund = msg.value - sum;
+                // Send the refund to the refund address.
                 Address.sendValue(payable(incentive.refundGasTo), uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
             }
