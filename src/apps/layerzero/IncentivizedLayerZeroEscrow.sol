@@ -11,7 +11,7 @@ import { IReceiveUlnBase, UlnConfig, Verification } from "./interfaces/IUlnBase.
  * @notice LayerZero escrow.
  * TODO: Set config such that we are the executor.
  */
-abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
+contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     using PacketV1Codec for bytes;
 
     error LayerZeroCannotBeAddress0();
@@ -21,16 +21,18 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     error LZ_ULN_InvalidEid();
     error IncorrectDestination(address actual);
 
+    // Layer Zero associated addresses
     ILayerZeroEndpointV2 immutable ENDPOINT;
     IReceiveUlnBase immutable ULTRA_LIGHT_NODE;
 
-    // TODO: Are these values packed?
-    uint128 excessPaid = 1; // Set to 1 so we never have to pay zero to non-zero cost.
-    bool allowExternalCall = false;
-
     // chainid is immutable on LayerZero endpoint, so we read it and store it likewise.
     uint32 public immutable chainId;
-    address private constant DEFAULT_CONFIG = address(0);
+
+    /// @notice How much extra did we sent to LZ?
+    uint128 excessPaid = 1; // Set to 1 so we never have to pay zero to non-zero cost.
+    /// @notice Only allow LZ to send 
+    bool allowExternalCall = false;
+
 
     constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedMessageEscrow(sendLostGasTo) {
         if (lzEndpointV2 == address(0)) revert LayerZeroCannotBeAddress0();
@@ -121,6 +123,7 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     // Record refunds coming in.
     // Ideally, disallow randoms from sending to this contract but that wou
     receive() external payable {
+        // TODO: Do we have enough gas for this? I hope we have since allowExternalCall is warm.
         require(allowExternalCall, "Do not send ether to this address");
         excessPaid = uint128(1 + msg.value);
         allowExternalCall = false;
