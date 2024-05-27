@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.22;
+
+import "forge-std/Script.sol";
+import {stdJson} from "forge-std/StdJson.sol";
+
+import { BaseMultiChainDeployer} from "./BaseMultiChainDeployer.s.sol";
+
+// Import all the Apps for deployment here.
 import { IncentivizedMockEscrow } from "../src/apps/mock/IncentivizedMockEscrow.sol";
 import { IncentivizedWormholeEscrow } from "../src/apps/wormhole/IncentivizedWormholeEscrow.sol";
 import { IncentivizedPolymerEscrow } from "../src/apps/polymer/vIBCEscrow.sol";
