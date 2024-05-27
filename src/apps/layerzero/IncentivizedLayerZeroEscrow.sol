@@ -60,8 +60,6 @@ contract ExecutorZero is ILayerZeroExecutor {
  * That is the purpose of `allowInitializePath`.
  *
  * Then we can use `verfiyable` to check if a message has been verified by DVNs.
- *
- * 
  */
 contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero {
     using PacketV1Codec for bytes;
