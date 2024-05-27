@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import { MockLayerZeroEscrow } from "./mock/MockLayerZeroEscrow.sol";
+import { EndpointV2 } from "LayerZero-v2/protocol/contracts/EndpointV2.sol";
 
 contract TestLzCommon is Test {
 

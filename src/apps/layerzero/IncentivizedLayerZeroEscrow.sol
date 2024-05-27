@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: DO-NOT-USE
 pragma solidity ^0.8.13;
 
+import { ILayerZeroEndpointV2, MessagingParams, MessagingFee } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { PacketV1Codec } from "LayerZero-v2/protocol/contracts/messagelib/libs/PacketV1Codec.sol";
+
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
-import { ILayerZeroEndpointV2, MessagingParams, MessagingFee } from "./interfaces/ILayerZeroEndpointV2.sol";
-import { PacketV1Codec } from "./libs/PacketV1Codec.sol";
 import { UlnConfig } from "./interfaces/IUlnBase.sol";
 import { IReceiveUlnBase, UlnConfig, Verification } from "./interfaces/IUlnBase.sol";
 
