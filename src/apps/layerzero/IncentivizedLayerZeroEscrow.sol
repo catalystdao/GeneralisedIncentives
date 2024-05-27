@@ -82,6 +82,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
     error LZ_ULN_InvalidEid();
 
     uint16 internal constant TYPE_3 = 3;
+    /** @notice Set the LayerZero options. Needs to be 2 bytes with a version for the optionsSplit Library to process. */
     bytes constant LAYERZERO_OPTIONS = abi.encodePacked(TYPE_3);
 
     /** @notice The Layer Zero Endpoint. It is the destination for packages & configuration */
