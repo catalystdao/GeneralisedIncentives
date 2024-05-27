@@ -79,6 +79,7 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, 
         if (!_checkVerifiable(srcEid, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
 
 
+        // TODO: everything below.
         // Load the identifier for the calling contract.
         implementationIdentifier = _payload[0:32];
 
