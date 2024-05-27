@@ -19,6 +19,7 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     error LZ_ULN_InvalidPacketHeader();
     error LZ_ULN_InvalidPacketVersion();
     error LZ_ULN_InvalidEid();
+    error IncorrectDestination(address actual);
 
     ILayerZeroEndpointV2 immutable ENDPOINT;
     IReceiveUlnBase immutable ULTRA_LIGHT_NODE;
@@ -73,7 +74,7 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
         // Check that we are the receiver
         address receiver = _packetHeader.receiverB20();
-        require(receiver == address(this)); // TODO: update
+        if(receiver != address(this)) revert IncorrectDestination(receiver);
 
         // Get the source chain.
         uint32 srcEid = _packetHeader.srcEid();
@@ -94,7 +95,6 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
     function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
 
-        // TODO: Optimise this.
         MessagingParams memory params = MessagingParams({
             dstEid: uint32(uint256(destinationChainIdentifier)),
             receiver: bytes32(destinationImplementation),
@@ -102,9 +102,6 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
             options: hex"",
             payInLzToken: false
         });
-
-        // MessagingFee memory fee = ENDPOINT.quote(params, address(this));
-        // costOfsendPacketInNativeToken = uint128(fee.nativeFee); // Layer zero doesn't need that much.
 
         // Handoff package to LZ.
         // We are getting a refund on any excess value we sent. Since that refund is 
