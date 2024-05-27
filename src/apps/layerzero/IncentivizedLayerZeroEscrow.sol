@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { ILayerZeroExecutor } from "LayerZero-v2/messagelib/contracts/interfaces/ILayerZeroExecutor.sol";
 import { IMessageLibManager, SetConfigParam } from "LayerZero-v2/protocol/contracts/interfaces/IMessageLibManager.sol";
 import { PacketV1Codec } from "LayerZero-v2/protocol/contracts/messagelib/libs/PacketV1Codec.sol";
 
@@ -10,9 +11,33 @@ import { UlnConfig } from "./interfaces/IUlnBase.sol";
 import { IReceiveUlnBase, UlnConfig, Verification } from "./interfaces/IUlnBase.sol";
 
 /**
+ * @notice Always returns 0 to any job.
+ * @dev We have set ourself as the executor. As a result, we need to implement the executor interfaces.
+ */
+contract ExecutorZero is ILayerZeroExecutor {
+    function assignJob(
+        uint32 /* _dstEid */,
+        address /* _sender */,
+        uint256 /* _calldataSize */,
+        bytes calldata /* _options */
+    ) external pure returns (uint256 price) {
+        return price = 0;
+    }
+
+    function getFee(
+        uint32 /* _dstEid */,
+        address /* _sender */,
+        uint256 /* _calldataSize */,
+        bytes calldata /* _options */
+    ) external pure returns (uint256 price) {
+        return price = 0;
+    }
+}
+
+/**
  * @notice LayerZero escrow.
  */
-contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
+contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero {
     using PacketV1Codec for bytes;
     uint32 CONFIG_TYPE_EXECUTOR = 1;
     uint32 MAX_MESSAGE_SIZE = 4096;
@@ -22,6 +47,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         address executorAddress;
     }
 
+    // Errors specific to this contract.
     error LayerZeroCannotBeAddress0();
     error IncorrectDestination(address actual);
 
@@ -33,7 +59,6 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
     // Layer Zero associated addresses
     ILayerZeroEndpointV2 immutable ENDPOINT;
-    IReceiveUlnBase immutable ULTRA_LIGHT_NODE;
 
     // chainid is immutable on LayerZero endpoint, so we read it and store it likewise.
     uint32 public immutable chainId;
@@ -45,25 +70,22 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
     /**
      * @param sendLostGasTo Address to get gas that could not get sent to the recipitent.
      * @param lzEndpointV2 LayerZero endpount. Is used for sending messages.
-     * @param ULN LayerZero Ultra Light Node. Used for verifying messages.
      */
-    constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedMessageEscrow(sendLostGasTo) {
-        if (lzEndpointV2 == address(0) || ULN == address(0)) revert LayerZeroCannotBeAddress0();
+    constructor(address sendLostGasTo, address lzEndpointV2) IncentivizedMessageEscrow(sendLostGasTo) {
+        if (lzEndpointV2 == address(0)) revert LayerZeroCannotBeAddress0();
 
         // Load the LZ endpoint. This is the contract we will be sending events to.
         ENDPOINT = ILayerZeroEndpointV2(lzEndpointV2);
         // Set chainId.
         chainId  = ENDPOINT.eid();
-        // Set the ultra light node. This is the contract we will be verifying packages against.
-        ULTRA_LIGHT_NODE = IReceiveUlnBase(ULN);
     }
 
     function _uniqueSourceIdentifier() override internal view returns(bytes32) {
         return bytes32(uint256(chainId));
     }
 
-    function _proofValidPeriod(bytes32 destinationIdentifier) override internal pure returns(uint64 timestamp) {
-        return 0;
+    function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64 timestamp) {
+        return 0; // TODO: Set to something like 1 month.
     }
 
     /**
@@ -106,30 +128,34 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         return false;
     }
 
-    // TODO: load interface and correct implement then return 0 regardless of parameters.
-    function getFee() external pure returns(uint256 fee) {
-        return fee = 0;
-    }
-
-    // TODO:: We might have to update this ABI to take into consideration where the message is going
-    /**
-     * TODO: Can we set ourself as the executor?
-     * We want to do this because the executor is also paid for when we send the message
-     * However, this incentive scheme is designed to act as its own incentive model and as such
-     * we don't need to paid for another set for relayers. So: Can we set ourself as the exector
-     * and will the DVNs continue to be paid and deliver their "proofs/commit" to the destination chain
-     * for us to use when calling verifiable?
-     */
-    function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
+    function _estimateAdditionalCost(uint32 destEid) view internal returns(uint256 amount) {
         MessagingParams memory params = MessagingParams({
-            dstEid: uint32(uint256(0)), // TODO:: figure out a replacement.
-            receiver: bytes32(0), // TODO:: figure out a replacement.
+            dstEid: uint32(destEid),
+            receiver: bytes32(0), // Is unused by LZ.
             message: hex"",
-            options: hex"",
+            options: hex"", // TODO: Are these options important?
             payInLzToken: false
         });
+
         MessagingFee memory fee = ENDPOINT.quote(params, address(this));
         amount = fee.nativeFee;
+    }
+
+    /**
+     * @notice Get a very rough estimate of the additional cost to send a message.
+     * Layer Zero requires knowing the destination chain and that is not possible with this function signature.
+     * For a better quote, use the function overload.
+     */
+    function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
+        amount = _estimateAdditionalCost(chainId);
+        asset =  address(0);
+    }
+
+    /**
+     * @notice Get an exact quote.
+     */
+    function estimateAdditionalCost(uint256 destinationChainId) external view returns(address asset, uint256 amount) {
+        amount = _estimateAdditionalCost(uint32(destinationChainId));
         asset =  address(0);
     }
 
@@ -145,12 +171,24 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
         bytes32 _headerHash = keccak256(_packetHeader);
         bytes32 _payloadHash = _packet.payloadHash();
-        UlnConfig memory _config = ULTRA_LIGHT_NODE.getUlnConfig(address(this), srcEid);
+
+        // The ULN may not be constant since it depends on the srcEid. :(
+        // We need to read the ULN from the endpoint.
+        IReceiveUlnBase ULN = IReceiveUlnBase(ENDPOINT.defaultReceiveLibrary(srcEid));
+
+        UlnConfig memory _config = ULN.getUlnConfig(address(this), srcEid);
 
         // Verify the message on the LZ ultra light node.
-        // Note that this can could technically be DoS except that allowInitializePath returning false denies this DoS
-        // vector. As a result, this should always return true and can never turn false.
-        if (!ULTRA_LIGHT_NODE.verifiable(_config, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
+        // Without any protection, this is a DoS vector. It is protected by setting allowInitializePath to return false
+        // As a result, once this returns true it should return true perpetually.
+        bool verifyable = ULN.verifiable(_config, _headerHash, _payloadHash);
+        if (!verifyable) {
+            // LayerZero may have migrated to a new receive library. Check the timeout receive library.
+            (address timeoutULN, ) = ENDPOINT.defaultReceiveLibraryTimeout(srcEid);
+            ULN = IReceiveUlnBase(timeoutULN);
+            verifyable = ULN.verifiable(_config, _headerHash, _payloadHash);
+            if (!verifyable) revert LZ_ULN_Verifying();
+        }
 
         // Get the source chain
         sourceIdentifier = bytes32(uint256(srcEid));
@@ -160,7 +198,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         message_ = _packet.message();
     }
 
-    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 deadline) internal override returns(uint128 costOfsendPacketInNativeToken) {
+    function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message, uint64 /* deadline */) internal override returns(uint128 costOfsendPacketInNativeToken) {
 
         MessagingParams memory params = MessagingParams({
             dstEid: uint32(uint256(destinationChainIdentifier)),
@@ -171,7 +209,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         });
 
         // Handoff package to LZ.
-        // We are getting a refund on any excess value we sent. We can get the natice fee by subtracting it from
+        // We are getting a refund on any excess value we sent. We can get the native fee by subtracting it from
         // the value we sent.
         allowExternalCall = 2;
         MessagingReceipt memory receipt = ENDPOINT.send{value: msg.value}(
