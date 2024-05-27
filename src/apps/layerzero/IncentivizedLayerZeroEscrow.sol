@@ -3,6 +3,9 @@ pragma solidity ^0.8.13;
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee } from "./interfaces/ILayerZeroEndpointV2.sol";
+import { PacketV1Codec } from "./libs/PacketV1Codec.sol";
+import { UlnConfig } from "./interfaces/IUlnBase.sol";
+import { SimpleLZULN } from "./SimpleLZULN.sol";
 
 /**
  * @notice LayerZero escrow.
@@ -10,10 +13,13 @@ import { ILayerZeroEndpointV2, MessagingParams, MessagingFee } from "./interface
  * TODO: Figure out if we can verify
  *      If not, then figure out how to decode the payload and then do both the composer and the executor step in 1.
  */
-abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
-    error LayerZeroCannotBeAddress0();
+abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, SimpleLZULN {
+    using PacketV1Codec for bytes;
 
-    ILayerZeroEndpointV2 immutable LAYER_ZERO;
+    error LayerZeroCannotBeAddress0();
+    error LZ_ULN_Verifying();
+
+    ILayerZeroEndpointV2 immutable ENDPOINT;
 
     // TODO: Are these values packed?
     uint128 excessPaid = 1; // Set to 1 so we never have to pay zero to non-zero cost.
@@ -21,11 +27,13 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
 
     // chainid is immutable on LayerZero endpoint, so we read it and store it likewise.
     uint32 public immutable chainId;
+    address private constant DEFAULT_CONFIG = address(0);
 
-    constructor(address sendLostGasTo, address layer_zero) IncentivizedMessageEscrow(sendLostGasTo) {
-        if (layer_zero == address(0)) revert LayerZeroCannotBeAddress0();
-        LAYER_ZERO = ILayerZeroEndpointV2(layer_zero);
-        chainId  = LAYER_ZERO.eid();
+    constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedMessageEscrow(sendLostGasTo) SimpleLZULN(ULN) {
+        if (lzEndpointV2 == address(0)) revert LayerZeroCannotBeAddress0();
+        ENDPOINT = ILayerZeroEndpointV2(lzEndpointV2);
+        chainId  = ENDPOINT.eid();
+        // TODO: Set executor as this contract.
     }
 
     // TODO: Fix
@@ -37,7 +45,7 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
             options: hex"",
             payInLzToken: false
         });
-        MessagingFee memory fee = LAYER_ZERO.quote(params, address(this));
+        MessagingFee memory fee = ENDPOINT.quote(params, address(this));
         amount = fee.nativeFee;
         asset =  address(0);
     }
@@ -53,28 +61,38 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
                 chainId, 
                 destinationIdentifier,
                 message
-            )
+            )   
         );
     }
 
-    function _verifyPacket(bytes calldata _metadata, bytes calldata _message) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function _verifyPacket(bytes calldata _packetHeader, bytes calldata _payload) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         // TODO: Set verification logic.
-        // require(messageSigner == owner(), "!signer");
+        // TODO: We need to check the header.
+        // _assertHeader(_packetHeader, localEid);
+
+        // cache these values to save gas
+        address receiver = _packetHeader.receiverB20();
+        uint32 srcEid = _packetHeader.srcEid();
+
+        bytes32 _headerHash = keccak256(_packetHeader);
+        bytes32 _payloadHash = keccak256(_payload);
+        if (!_checkVerifiable(srcEid, _headerHash, _payloadHash)) revert LZ_ULN_Verifying();
+
 
         // Load the identifier for the calling contract.
-        implementationIdentifier = _message[0:32];
+        implementationIdentifier = _payload[0:32];
 
         // Local "supposedly" this chain identifier.
-        uint16 thisChainIdentifier = uint16(uint256(bytes32(_message[64:96])));
+        uint16 thisChainIdentifier = uint16(uint256(bytes32(_payload[64:96])));
 
         // Check that the message is intended for this chain.
         require(thisChainIdentifier == chainId, "!Identifier");
 
         // Local the identifier for the source chain.
-        sourceIdentifier = bytes32(_message[32:64]);
+        sourceIdentifier = bytes32(_payload[32:64]);
 
         // Get the application message.
-        message_ = _message[96:];
+        message_ = _payload[96:];
     }
 
     function _sendPacket(bytes32 destinationChainIdentifier, bytes memory destinationImplementation, bytes memory message) internal override returns(uint128 costOfsendPacketInNativeToken) {
@@ -88,14 +106,14 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
             payInLzToken: false
         });
 
-        // MessagingFee memory fee = LAYER_ZERO.quote(params, address(this));
+        // MessagingFee memory fee = ENDPOINT.quote(params, address(this));
         // costOfsendPacketInNativeToken = uint128(fee.nativeFee); // Layer zero doesn't need that much.
 
         // Handoff package to LZ.
         // We are getting a refund on any excess value we sent. Since that refund is 
         // coming before the end of this call, we can record it.
         allowExternalCall = true;
-        LAYER_ZERO.send{value: msg.value}(
+        ENDPOINT.send{value: msg.value}(
             params,
             address(this)
         );
@@ -113,4 +131,5 @@ abstract contract BareIncentivizedLayerZeroEscrow is IncentivizedMessageEscrow {
         excessPaid = uint128(1 + msg.value);
         allowExternalCall = false;
     }
+
 }
