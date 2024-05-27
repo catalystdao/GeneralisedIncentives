@@ -9,8 +9,8 @@ import "./interfaces/ILayerZeroValidationLibrary.sol";
 import "./interfaces/IValidationLibraryHelperV2.sol";
 
 contract FPValidator is ILayerZeroValidationLibrary, IValidationLibraryHelperV2 {
-    uint8 public proofType = 2;
-    uint8 public utilsVersion = 1;
+    uint8 public constant proofType = 2;
+    uint8 public constant utilsVersion = 1;
 
     function validateProof(bytes32 _packetHash, bytes calldata _transactionProof, uint _remoteAddressSize) external view override returns (LayerZeroPacket.Packet memory packet) {
         require(_remoteAddressSize > 0, "ProofLib: invalid address size");

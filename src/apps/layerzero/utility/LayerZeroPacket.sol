@@ -94,10 +94,10 @@ library LayerZeroPacket {
         srcAddressBuffer.writeRawBytes(0, data, 106, sizeOfSrcAddress);
 
         uint nonPayloadSize = sizeOfSrcAddress + 32;// 2 + 2 + 8 + 20, 32 + 20 = 52 if sizeOfSrcAddress == 20
-        uint payloadSize = realSize.sub(nonPayloadSize);
+        uint payloadSize = realSize - nonPayloadSize;
         Buffer.buffer memory payloadBuffer;
         payloadBuffer.init(payloadSize);
-        payloadBuffer.writeRawBytes(0, data, nonPayloadSize.add(96), payloadSize);
+        payloadBuffer.writeRawBytes(0, data, nonPayloadSize + 96, payloadSize);
 
         return LayerZeroPacket.Packet(srcChain, dstChain, nonce, dstAddress, srcAddressBuffer.buf, ulnAddress, payloadBuffer.buf);
     }
