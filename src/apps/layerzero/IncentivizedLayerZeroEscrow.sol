@@ -81,11 +81,8 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
     error LZ_ULN_InvalidPacketVersion();
     error LZ_ULN_InvalidEid();
 
-    /**
-     * @notice Set the LayerZero options to nothing. We are not using any special options
-     * and have set ourself to manage gas so we don't see special config.
-     */
-    bytes constant LAYERZERO_OPTIONS = hex'';
+    uint16 internal constant TYPE_3 = 3;
+    bytes constant LAYERZERO_OPTIONS = abi.encodePacked(TYPE_3);
 
     /** @notice The Layer Zero Endpoint. It is the destination for packages & configuration */
     ILayerZeroEndpointV2 immutable ENDPOINT;
