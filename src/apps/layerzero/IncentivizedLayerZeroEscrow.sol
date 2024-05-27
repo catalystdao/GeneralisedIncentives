@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: DO-NOT-USE
 pragma solidity ^0.8.13;
 
+import { OptionsBuilder } from "LayerZero-v2/oapp/contracts/oapp/libs/OptionsBuilder.sol";
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { ILayerZeroExecutor } from "LayerZero-v2/messagelib/contracts/interfaces/ILayerZeroExecutor.sol";
 import { IMessageLibManager, SetConfigParam } from "LayerZero-v2/protocol/contracts/interfaces/IMessageLibManager.sol";
@@ -57,19 +58,21 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
     error LZ_ULN_InvalidPacketVersion();
     error LZ_ULN_InvalidEid();
 
-    // Layer Zero associated addresses
+    uint16 internal constant TYPE_3 = 3;
+    bytes constant LAYERZERO_OPTIONS = abi.encodePacked(TYPE_3);
+
+    /** @notice The Layer Zero Endpoint. It is the destination for packages & configuration */
     ILayerZeroEndpointV2 immutable ENDPOINT;
 
-    // chainid is immutable on LayerZero endpoint, so we read it and store it likewise.
+    /** @notice chainid is immutable on LayerZero endpoint, so we read it and store it likewise. */
     uint32 public immutable chainId;
 
-    /// @notice Only allow LZ to send 
+    /** @notice Only allow LZ to send value to this contract  */
     uint8 allowExternalCall = 1;
-
 
     /**
      * @param sendLostGasTo Address to get gas that could not get sent to the recipitent.
-     * @param lzEndpointV2 LayerZero endpount. Is used for sending messages.
+     * @param lzEndpointV2 LayerZero endpount. It is used for sending messages.
      */
     constructor(address sendLostGasTo, address lzEndpointV2) IncentivizedMessageEscrow(sendLostGasTo) {
         if (lzEndpointV2 == address(0)) revert LayerZeroCannotBeAddress0();
@@ -133,7 +136,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
             dstEid: uint32(destEid),
             receiver: bytes32(0), // Is unused by LZ.
             message: hex"",
-            options: hex"", // TODO: Are these options important?
+            options: LAYERZERO_OPTIONS, // TODO: Are these options important?
             payInLzToken: false
         });
 
@@ -204,7 +207,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
             dstEid: uint32(uint256(destinationChainIdentifier)),
             receiver: bytes32(destinationImplementation),
             message: message,
-            options: hex"",
+            options: LAYERZERO_OPTIONS,
             payInLzToken: false
         });
 
