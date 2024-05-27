@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: DO-NOT-USE
 pragma solidity ^0.8.13;
 
-import { OptionsBuilder } from "LayerZero-v2/oapp/contracts/oapp/libs/OptionsBuilder.sol";
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { ILayerZeroExecutor } from "LayerZero-v2/messagelib/contracts/interfaces/ILayerZeroExecutor.sol";
 import { IMessageLibManager, SetConfigParam } from "LayerZero-v2/protocol/contracts/interfaces/IMessageLibManager.sol";
@@ -36,12 +35,38 @@ contract ExecutorZero is ILayerZeroExecutor {
 }
 
 /**
- * @notice LayerZero escrow.
+ * @title Incentivized LayerZero Messag Escrow
+ * @notice Provides an alternative pathway to incentivize LayerZero message relaying.
+ * While Layer Zero has a native way to incentivize message relaying, it lacks:
+ * - Gas refunds of unspent gas.
+ *   No gas refunds increase the cost of cross-chain messages by ~10% to ~20%.
+ *   That is before accounting for the fact that the cross-chain gas prices are fixed
+ *   and charged a margin on.
+ *
+ * - Payment conditional on execution.
+ *   By not allowing anyone to claim messaging payment, the relaying incentive becomes
+ *   a denial-of-service vector. If the relayer specified in the LZ config does not
+ *   relay the message, it likely won't get relayed. It is even built directly into LZ
+ *   that some relayers (the default included) may adjust their quotes depending on the
+ *   application. While permissionwise, it is 1/N, the economic security is 1/1.
+ *
+ * @dev This contract only allows messages smaller than or equal to 65536 bytes to be sent.
+ * This implementation works by breaking the LZ endpoint flow. It relies on the
+ * `.verfiyable` check on the ULN. When a cross-chain message is verified (step 2)
+ * `commitVerification` is called and it deletes the storage for the verification: https://github.com/LayerZero-Labs/LayerZero-v2/blob/1fde89479fdc68b1a54cda7f19efa84483fcacc4/messagelib/contracts/uln/uln302/ReceiveUln302.sol#L56
+ * this exactly `verfiyable: true -> false`.
+ * We break this making the subcall `EndpointV2::verify` revert on _initializable:
+ * https://github.com/LayerZero-Labs/LayerZero-v2/blob/1fde89479fdc68b1a54cda7f19efa84483fcacc4/protocol/contracts/EndpointV2.sol#L340
+ * That is the purpose of `allowInitializePath`.
+ *
+ * Then we can use `verfiyable` to check if a message has been verified by DVNs.
+ *
+ * 
  */
 contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero {
     using PacketV1Codec for bytes;
     uint32 CONFIG_TYPE_EXECUTOR = 1;
-    uint32 MAX_MESSAGE_SIZE = 4096;
+    uint32 MAX_MESSAGE_SIZE = 65536;
 
     struct ConfigTypeExecutor {
         uint32 maxMessageSize;
