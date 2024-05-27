@@ -1,15 +1,7 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
-
-import "forge-std/Script.sol";
-import {stdJson} from "forge-std/StdJson.sol";
-
-import { BaseMultiChainDeployer} from "./BaseMultiChainDeployer.s.sol";
-
-// Import all the Apps for deployment here.
 import { IncentivizedMockEscrow } from "../src/apps/mock/IncentivizedMockEscrow.sol";
 import { IncentivizedWormholeEscrow } from "../src/apps/wormhole/IncentivizedWormholeEscrow.sol";
 import { IncentivizedPolymerEscrow } from "../src/apps/polymer/vIBCEscrow.sol";
+import { IncentivizedLayerZeroEscrow } from "../src/apps/layerzero/IncentivizedLayerZeroEscrow.sol";
 
 contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
     using stdJson for string;
@@ -28,6 +20,9 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
     // define a list of AMB mappings so we can get their addresses.
     mapping(string => mapping(string => address)) bridgeContract;
+    // mapping to store ULN addresses
+    mapping(string => mapping(string => address)) ulnContract;
+
 
     constructor() {
         // Here we can define input salts. These are always assumed to be dependent on the secondary argument
@@ -93,6 +88,26 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
             IncentivizedPolymerEscrow polymerEscrow = new IncentivizedPolymerEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract);
 
             incentive = address(polymerEscrow);
+
+        } else if (versionHash == keccak256(abi.encodePacked("LayerZero"))) {
+            address layerZeroBridgeContract = bridgeContract[version][currentChainKey];
+            address ulnAddress = ulnContract[version][currentChainKey];
+            bytes32 salt = deploySalts[layerZeroBridgeContract];
+            require(layerZeroBridgeContract != address(0), "bridge cannot be address(0)");
+            require(ulnAddress != address(0), "ULN cannot be address(0)");
+
+            address expectedAddress = _getAddress(
+                abi.encodePacked(
+                    type(IncentivizedLayerZeroEscrow).creationCode,
+                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract, ulnAddress)
+                ),
+                salt
+            );
+
+            if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
+
+            IncentivizedLayerZeroEscrow layerZeroEscrow = new IncentivizedLayerZeroEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract, ulnAddress);
+            incentive = address(layerZeroEscrow);
         } else {
             revert IncentivesVersionNotFound();
         }
@@ -119,13 +134,20 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
         // For each bridge, decode their contracts for each chain.
         for (uint256 i = 0; i < availableBridges.length; ++i) {
             string memory bridge = availableBridges[i];
-            // Get the chains this bridge support.
+            // Get the chains this bridge supports.
             string[] memory availableBridgesChains = vm.parseJsonKeys(bridge_config, string.concat(".", bridge));
             for (uint256 j = 0; j < availableBridgesChains.length; ++j) {
                 string memory chain = availableBridgesChains[j];
-                // decode the address
+                // Decode the address
                 address _bridgeContract = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".bridge"));
                 bridgeContract[bridge][chain] = _bridgeContract;
+
+                // Check if the bridge is LayerZero
+                if (keccak256(abi.encodePacked(bridge)) == keccak256(abi.encodePacked("LayerZero"))) {
+                    // Read the ULN address
+                    address ulnAddress = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".ULN"));
+                    ulnContract[bridge][chain] = ulnAddress;
+                }
             }
         }
 
