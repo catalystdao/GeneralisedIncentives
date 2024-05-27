@@ -29,8 +29,6 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
     // define a list of AMB mappings so we can get their addresses.
     mapping(string => mapping(string => address)) bridgeContract;
-    // mapping to store ULN addresses
-    mapping(string => mapping(string => address)) ulnContract;
 
 
     constructor() {
@@ -100,22 +98,20 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
         } else if (versionHash == keccak256(abi.encodePacked("LayerZero"))) {
             address layerZeroBridgeContract = bridgeContract[version][currentChainKey];
-            address ulnAddress = ulnContract[version][currentChainKey];
             bytes32 salt = deploySalts[layerZeroBridgeContract];
             require(layerZeroBridgeContract != address(0), "bridge cannot be address(0)");
-            require(ulnAddress != address(0), "ULN cannot be address(0)");
 
             address expectedAddress = _getAddress(
                 abi.encodePacked(
                     type(IncentivizedLayerZeroEscrow).creationCode,
-                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract, ulnAddress)
+                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract)
                 ),
                 salt
             );
 
             if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
 
-            IncentivizedLayerZeroEscrow layerZeroEscrow = new IncentivizedLayerZeroEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract, ulnAddress);
+            IncentivizedLayerZeroEscrow layerZeroEscrow = new IncentivizedLayerZeroEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract);
             incentive = address(layerZeroEscrow);
         } else {
             revert IncentivesVersionNotFound();
@@ -150,13 +146,6 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
                 // Decode the address
                 address _bridgeContract = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".bridge"));
                 bridgeContract[bridge][chain] = _bridgeContract;
-
-                // Check if the bridge is LayerZero
-                if (keccak256(abi.encodePacked(bridge)) == keccak256(abi.encodePacked("LayerZero"))) {
-                    // Read the ULN address
-                    address ulnAddress = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".ULN"));
-                    ulnContract[bridge][chain] = ulnAddress;
-                }
             }
         }
 

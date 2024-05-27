@@ -8,7 +8,7 @@ import { IncentivizedLayerZeroEscrow } from "../../../src/apps/layerzero/Incenti
  */
 contract MockLayerZeroEscrow is IncentivizedLayerZeroEscrow {
 
-    constructor(address sendLostGasTo, address lzEndpointV2, address ULN) IncentivizedLayerZeroEscrow(sendLostGasTo, lzEndpointV2, ULN) {}
+    constructor(address sendLostGasTo, address lzEndpointV2) IncentivizedLayerZeroEscrow(sendLostGasTo, lzEndpointV2) {}
 
     function verifyPacket(bytes calldata _packetHeader, bytes calldata _packet) external view returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         return _verifyPacket(_packetHeader, _packet);

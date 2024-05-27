@@ -37,7 +37,7 @@ contract TestLzCommon is Test {
 
 
         // Setup our mock escrow
-        mockLayerZeroEscrow = new MockLayerZeroEscrow(SEND_LOST_GAS_TO, address(endpoint), address(ULN));
+        mockLayerZeroEscrow = new MockLayerZeroEscrow(SEND_LOST_GAS_TO, address(endpoint));
 
     }
 }
