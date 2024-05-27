@@ -46,5 +46,22 @@
       "bridge": "0xE2029629f51ab994210d671Dc08b7Ec94899b278",
       "escrow": "0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD"
     }
+  },
+  "LayerZero": {
+    "basesepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0x794d16F3a32FF13E1734D245f1c4C378622a53a5",
+      "ULN": "0x9eCf72299027e8AeFee5DC5351D6d92294F46d2b"
+    },
+    "optimismsepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0xe2C449C0f8b0bF55655e4E92299d9d1c27bDE585",
+      "ULN": "0x420667429538adBF982aDa16C268ba561f097F74"
+    },
+    "blasttestnet": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0xe2FD2FEB02DD96eF1D3c0a8823a38C3005fDCB15",
+      "ULN": "0x8dF53a660a00C3D977d7E778fB7385ECf4482D16"
+    }
   }
 }
