@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: DO-NOT-USE
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { ILayerZeroExecutor } from "LayerZero-v2/messagelib/contracts/interfaces/ILayerZeroExecutor.sol";
@@ -121,6 +121,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
      * @dev sendLibrary is not checked. It is assumed that any endpoint will accept anything as long as it is somewhat sane.
      * @param sendLibrary Contract to set config on.
      * @param remoteEids List of remote Eids to set config on.
+     // TODO: read sendLibrary from Endpoint maybe.
      */
     function initConfig(address sendLibrary, uint32[] calldata remoteEids) external {
         unchecked {

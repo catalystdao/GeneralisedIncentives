@@ -1,6 +1,5 @@
-// SPDX-License-Identifier: LZBL-1.2
-// TODO: License
-pragma solidity ^0.8.13;
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.8.0;
 
 
 // the formal properties are documented in the setter functions
