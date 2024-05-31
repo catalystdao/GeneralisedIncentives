@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: IncentivizedLayerZeroEscrow
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.22;
 
 import { IncentivizedLayerZeroEscrow } from "../../../src/apps/layerzero/IncentivizedLayerZeroEscrow.sol";
 

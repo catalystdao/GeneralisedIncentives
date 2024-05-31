@@ -3,3 +3,5 @@ openzeppelin/=lib/openzeppelin-contracts/contracts/
 vibc-core-smart-contracts/=lib/vibc-core-smart-contracts/contracts/
 @openzeppelin/=lib/openzeppelin-contracts/
 @layerzerolabs/lz-evm-protocol-v2/=lib/LayerZero-v2/protocol/
+
+solidity-bytes-utils/=lib/solidity-bytes-utils/
