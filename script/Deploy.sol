@@ -29,6 +29,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
     // define a list of AMB mappings so we can get their addresses.
     mapping(string => mapping(string => address)) bridgeContract;
+    mapping(string => mapping(string => address)) lzEndpoint;
 
 
     constructor() {
@@ -98,20 +99,22 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
         } else if (versionHash == keccak256(abi.encodePacked("LayerZero"))) {
             address layerZeroBridgeContract = bridgeContract[version][currentChainKey];
+            address lzEndpointV2 = lzEndpoint[version][currentChainKey]; // Fetch LZ_ENDPOINT_V2 from bridge contracts
             bytes32 salt = deploySalts[layerZeroBridgeContract];
             require(layerZeroBridgeContract != address(0), "bridge cannot be address(0)");
+            require(lzEndpointV2 != address(0), "LZ endpoint cannot be address(0)");
 
             address expectedAddress = _getAddress(
                 abi.encodePacked(
                     type(IncentivizedLayerZeroEscrow).creationCode,
-                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract)
+                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), lzEndpointV2)
                 ),
                 salt
             );
 
             if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
 
-            IncentivizedLayerZeroEscrow layerZeroEscrow = new IncentivizedLayerZeroEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract);
+            IncentivizedLayerZeroEscrow layerZeroEscrow = new IncentivizedLayerZeroEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), lzEndpointV2);
             incentive = address(layerZeroEscrow);
         } else {
             revert IncentivesVersionNotFound();
@@ -126,8 +129,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
         return incentive;
     }
 
-    modifier load_config() {
-        
+modifier load_config() {
         string memory pathRoot = vm.projectRoot();
         pathToAmbConfig = string.concat(pathRoot, "/script/bridge_contracts.json");
 
@@ -146,6 +148,10 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
                 // Decode the address
                 address _bridgeContract = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".bridge"));
                 bridgeContract[bridge][chain] = _bridgeContract;
+                // Decode the LZ endpoint if it exists
+                if (keccak256(abi.encodePacked(bridge)) == keccak256(abi.encodePacked("LayerZero"))) {                    address _lzEndpointV2 = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".LZ_ENDPOINT_V2"));
+                    lzEndpoint[bridge][chain] = _lzEndpointV2;
+                }
             }
         }
 
