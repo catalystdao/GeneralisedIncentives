@@ -126,7 +126,42 @@ contract TestLZVerifyPacket is LZCommon {
         layerZeroEscrow.verifyPacket(hex"", _packet);
     }
 
-    // TODO:
+    function test_revert_verify_invalid_receiver(bytes calldata message, address target) external {
+        vm.assume(target != address(layerZeroEscrow));
+        vm.assume(message.length > 0);
+
+        uint64 nonce = 1;
+        uint32 dstEid = localEid;
+        bytes32 receiver = bytes32(uint256(uint160(target)));
+        address sender = address(layerZeroEscrow);
+        
+        bytes32 guid = GUID.generate(nonce, dstEid, sender, dstEid, receiver);
+
+        Packet memory packet = Packet({
+            nonce: nonce,
+            srcEid: remoteEid,
+            sender: sender,
+            dstEid: dstEid,
+            receiver: receiver,
+            guid: guid,
+            message: message
+        });
+
+        bytes memory _packet = packet.encode();
+
+        bytes32 ph = this.payloadHash(packet.encode());
+    
+        vm.prank(address(mockDVN));
+        receiveULN.verify(
+            packet.encodePacketHeader(),
+            ph,
+            10
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("IncorrectDestination(address)", receiver));
+        layerZeroEscrow.verifyPacket(hex"", _packet);
+    }
+
     function test_revert_verify_invalid_packet_version(bytes calldata message) external {
         vm.assume(message.length > 0);
         address target = address(layerZeroEscrow);
