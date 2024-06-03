@@ -12,6 +12,8 @@ import { MockLayerZeroEscrow } from "./mock/MockLayerZeroEscrow.sol";
 import { MockDVN } from "./mock/MockDVN.sol";
 
 contract LZCommon is Test {
+
+    function test() public {}
     uint32 MAX_MESSAGE_SIZE = 65536;
     
     uint32 internal localEid;

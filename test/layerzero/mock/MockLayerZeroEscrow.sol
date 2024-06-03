@@ -7,6 +7,8 @@ import { IncentivizedLayerZeroEscrow } from "../../../src/apps/layerzero/Incenti
  * @notice Mock Layer Zero Escrow
  */
 contract MockLayerZeroEscrow is IncentivizedLayerZeroEscrow {
+    
+    function test() public {}
 
     constructor(address sendLostGasTo, address lzEndpointV2) IncentivizedLayerZeroEscrow(sendLostGasTo, lzEndpointV2) {}
 

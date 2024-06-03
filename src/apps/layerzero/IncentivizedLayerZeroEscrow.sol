@@ -175,14 +175,13 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
      * For a better quote, use the function overload.
      */
     function estimateAdditionalCost() external view returns(address asset, uint256 amount) {
-        amount = _estimateAdditionalCost(chainId);
-        asset =  address(0);
+        (asset, amount) = estimateAdditionalCost(chainId);
     }
 
     /**
      * @notice Get an exact quote.
      */
-    function estimateAdditionalCost(uint256 destinationChainId) external view returns(address asset, uint256 amount) {
+    function estimateAdditionalCost(uint256 destinationChainId) public view returns(address asset, uint256 amount) {
         amount = _estimateAdditionalCost(uint32(destinationChainId));
         asset =  address(0);
     }

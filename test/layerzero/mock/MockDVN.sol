@@ -7,6 +7,9 @@ import { ILayerZeroDVN } from "LayerZero-v2/messagelib/contracts/uln/interfaces/
  * @notice Mock DVN
  */
 contract MockDVN is ILayerZeroDVN {
+
+    function test() public {}
+    
     function assignJob(AssignJobParam calldata /* _param */, bytes calldata /* _options */) external payable returns (uint256 fee) {
         return 0;
     }
