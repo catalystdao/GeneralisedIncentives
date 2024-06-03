@@ -12,15 +12,6 @@ contract TestLZSendPacket is LZCommon {
     event ExecutorFeePaid(address executor, uint256 fee);
     event PacketSent(bytes encodedPayload, bytes options, address sendLibrary);
 
-    function _set_init_config() internal {
-        uint32[] memory remoteEids = new uint32[](2);
-        remoteEids[0] = remoteEid;
-        remoteEids[1] = localEid;
-
-        address sendLibrary = endpoint.getSendLibrary(address(layerZeroEscrow), remoteEid);
-        layerZeroEscrow.initConfig(sendLibrary, remoteEids);
-    }
-
     function setUp() public override {
         super.setUp();
     }

@@ -90,4 +90,13 @@ contract LZCommon is Test {
         // Setup our mock escrow
         layerZeroEscrow = new MockLayerZeroEscrow(SEND_LOST_GAS_TO, address(endpoint));
     }
+
+    function _set_init_config() internal {
+        uint32[] memory remoteEids = new uint32[](2);
+        remoteEids[0] = remoteEid;
+        remoteEids[1] = localEid;
+
+        address sendLibrary = endpoint.getSendLibrary(address(layerZeroEscrow), remoteEid);
+        layerZeroEscrow.initConfig(sendLibrary, remoteEids);
+    }
 }

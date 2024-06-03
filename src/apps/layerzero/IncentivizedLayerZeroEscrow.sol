@@ -116,12 +116,11 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
     }
 
     /**
-     * @notice Set ourself as executor on all (provided) remote chains. This is required before we anyone
-     * can send message out of that chain.
+     * @notice Set ourself as executor on all (provided) remote chains. This is required before anyone
+     * can send message out to that chain.
      * @dev sendLibrary is not checked. It is assumed that any endpoint will accept anything as long as it is somewhat sane.
      * @param sendLibrary Contract to set config on.
      * @param remoteEids List of remote Eids to set config on.
-     // TODO: read sendLibrary from Endpoint maybe.
      */
     function initConfig(address sendLibrary, uint32[] calldata remoteEids) external {
         unchecked {
@@ -161,7 +160,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
             dstEid: uint32(destEid),
             receiver: bytes32(0), // Is unused by LZ.
             message: hex"",
-            options: LAYERZERO_OPTIONS, // TODO: Are these options important?
+            options: LAYERZERO_OPTIONS,
             payInLzToken: false
         });
 
