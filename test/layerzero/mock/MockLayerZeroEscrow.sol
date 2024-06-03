@@ -10,7 +10,7 @@ contract MockLayerZeroEscrow is IncentivizedLayerZeroEscrow {
 
     constructor(address sendLostGasTo, address lzEndpointV2) IncentivizedLayerZeroEscrow(sendLostGasTo, lzEndpointV2) {}
 
-    function verifyPacket(bytes calldata _packetHeader, bytes calldata _packet) external view returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+    function verifyPacket(bytes calldata _packetHeader, bytes calldata _packet) view external returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
         return _verifyPacket(_packetHeader, _packet);
     }
 

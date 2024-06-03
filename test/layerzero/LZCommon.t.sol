@@ -49,7 +49,7 @@ contract LZCommon is Test {
 
         // Set ULN Config
         UlnConfig memory baseConfig = UlnConfig({
-            confirmations: 0,
+            confirmations: 1,
             requiredDVNCount: 1,
             optionalDVNCount: 0,
             optionalDVNThreshold: 0,

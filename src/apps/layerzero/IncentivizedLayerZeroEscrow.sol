@@ -187,17 +187,17 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         asset =  address(0);
     }
 
-    function _verifyPacket(bytes calldata _packetHeader, bytes calldata _packet) internal view override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
-        _assertHeader(_packetHeader);
+    function _verifyPacket(bytes calldata /* _packetHeader */, bytes calldata _packet) view internal override returns(bytes32 sourceIdentifier, bytes memory implementationIdentifier, bytes calldata message_) {
+        _assertHeader(_packet.header());
 
         // Check that we are the receiver
-        address receiver = _packetHeader.receiverB20();
+        address receiver = _packet.receiverB20();
         if (receiver != address(this)) revert IncorrectDestination(receiver);
 
         // Get the source chain.
-        uint32 srcEid = _packetHeader.srcEid();
+        uint32 srcEid = _packet.srcEid();
 
-        bytes32 _headerHash = keccak256(_packetHeader);
+        bytes32 _headerHash = keccak256(_packet);
         bytes32 _payloadHash = _packet.payloadHash();
 
         // The ULN may not be constant since it depends on the srcEid. :(
@@ -213,6 +213,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         if (!verifyable) {
             // LayerZero may have migrated to a new receive library. Check the timeout receive library.
             (address timeoutULN, ) = ENDPOINT.defaultReceiveLibraryTimeout(srcEid);
+            if (timeoutULN == address(0)) revert LZ_ULN_Verifying();
             ULN = IReceiveUlnBase(timeoutULN);
             verifyable = ULN.verifiable(_config, _headerHash, _payloadHash);
             if (!verifyable) revert LZ_ULN_Verifying();
@@ -221,7 +222,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         // Get the source chain
         sourceIdentifier = bytes32(uint256(srcEid));
         // Get the sender
-        implementationIdentifier = abi.encode(_packetHeader.sender());
+        implementationIdentifier = abi.encode(_packet.sender());
         // Get the message
         message_ = _packet.message();
     }
@@ -258,10 +259,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         require(allowExternalCall != 1, "Do not send ether to this address");
     }
 
-
     function _assertHeader(bytes calldata _packetHeader) internal view {
-        // assert packet header is of right size 81
-        if (_packetHeader.length != 81) revert LZ_ULN_InvalidPacketHeader();
         // assert packet header version is the same as ULN
         if (_packetHeader.version() != PacketV1Codec.PACKET_VERSION) revert LZ_ULN_InvalidPacketVersion();
         // assert the packet is for this endpoint
