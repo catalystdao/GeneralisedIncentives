@@ -214,8 +214,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
             // LayerZero may have migrated to a new receive library. Check the timeout receive library.
             (address timeoutULN, ) = ENDPOINT.defaultReceiveLibraryTimeout(srcEid);
             if (timeoutULN == address(0)) revert LZ_ULN_Verifying();
-            ULN = IReceiveUlnBase(timeoutULN);
-            verifyable = ULN.verifiable(_config, _headerHash, _payloadHash);
+            verifyable = IReceiveUlnBase(timeoutULN).verifiable(_config, _headerHash, _payloadHash);
             if (!verifyable) revert LZ_ULN_Verifying();
         }
 
