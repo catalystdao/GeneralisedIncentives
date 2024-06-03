@@ -197,7 +197,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         // Get the source chain.
         uint32 srcEid = _packet.srcEid();
 
-        bytes32 _headerHash = keccak256(_packet);
+        bytes32 _headerHash = keccak256(_packet.header());
         bytes32 _payloadHash = _packet.payloadHash();
 
         // The ULN may not be constant since it depends on the srcEid. :(

@@ -3,8 +3,6 @@ pragma solidity ^0.8.22;
 
 import { LZCommon } from "./LZCommon.t.sol";
 
-import { ExecutorConfig } from "LayerZero-v2/messagelib/contracts/SendLibBase.sol";
-import { Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { Packet } from "LayerZero-v2/protocol/contracts/interfaces/ISendLib.sol";
 import { PacketV1Codec } from "LayerZero-v2/protocol/contracts/messagelib/libs/PacketV1Codec.sol";
 import { GUID } from "LayerZero-v2/protocol/contracts/libs/GUID.sol";
@@ -30,7 +28,6 @@ contract TestLZSendPacket is LZCommon {
     function test_send_packet(address target, bytes calldata message, uint64 deadline) external {
         _set_init_config();
 
-
         uint64 nonce = 1;
         uint32 dstEid = remoteEid;
         bytes32 receiver = bytes32(uint256(uint160(target)));
@@ -42,7 +39,7 @@ contract TestLZSendPacket is LZCommon {
             nonce: nonce,
             srcEid: localEid,
             sender: sender,
-            dstEid: remoteEid,
+            dstEid: dstEid,
             receiver: receiver,
             guid: guid,
             message: message
