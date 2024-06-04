@@ -50,18 +50,15 @@
   "LayerZero": {
     "basesepolia": {
       "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-      "escrow": "0x495691fafcf2E0c8554bfD6eA67698BCD9795eec",
-      "LZ_ENDPOINT_V2": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+      "escrow": "0x495691fafcf2E0c8554bfD6eA67698BCD9795eec"
     },
     "optimismsepolia": {
       "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-      "escrow": "0x495691fafcf2E0c8554bfD6eA67698BCD9795eec",
-      "LZ_ENDPOINT_V2": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+      "escrow": "0x495691fafcf2E0c8554bfD6eA67698BCD9795eec"
     },
     "blasttestnet": {
       "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-      "escrow": "0x495691fafcf2E0c8554bfD6eA67698BCD9795eec",
-      "LZ_ENDPOINT_V2": "0x6EDCE65403992e310A62460808c4b910D972f10f"
+      "escrow": "0x495691fafcf2E0c8554bfD6eA67698BCD9795eec"
     }
   }
 }
