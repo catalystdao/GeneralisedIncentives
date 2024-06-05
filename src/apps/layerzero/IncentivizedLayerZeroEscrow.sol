@@ -244,7 +244,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         );
         allowExternalCall = 1;
         // Set the cost of the sendPacket to msg.value 
-        costOfsendPacketInNativeToken = uint128(msg.value - receipt.fee.nativeFee);
+        costOfsendPacketInNativeToken = uint128(receipt.fee.nativeFee);
 
         return costOfsendPacketInNativeToken;
     }
