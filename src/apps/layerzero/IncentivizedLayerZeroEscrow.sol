@@ -86,7 +86,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
     bytes constant LAYERZERO_OPTIONS = abi.encodePacked(TYPE_3);
 
     /** @notice The Layer Zero Endpoint. It is the destination for packages & configuration */
-    ILayerZeroEndpointV2 immutable ENDPOINT;
+    ILayerZeroEndpointV2 public immutable ENDPOINT;
 
     /** @notice chainid is immutable on LayerZero endpoint, so we read it and store it likewise. */
     uint32 public immutable chainId;
