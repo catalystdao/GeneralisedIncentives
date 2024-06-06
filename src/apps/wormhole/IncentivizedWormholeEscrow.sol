@@ -45,6 +45,11 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         amount = WORMHOLE.messageFee();
     }
 
+    function estimateAdditionalCost(bytes32 /* destinationChainIdentifier */) external view returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = WORMHOLE.messageFee();
+    }
+
     /** @notice Wormhole proofs are valid until the guardian set is changed. The new guradian set may sign a new VAA */
     function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
         return 0;

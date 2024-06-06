@@ -30,6 +30,11 @@ contract IncentivizedMockEscrow is IncentivizedMessageEscrow, Ownable2Step {
         amount = costOfMessages;
     }
 
+    function estimateAdditionalCost(bytes32 /* destinationChainIdentifier */) external view returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = costOfMessages;
+    }
+
     function collectPayments() external {
         unchecked {
             payable(owner()).transfer(accumulator - 1);

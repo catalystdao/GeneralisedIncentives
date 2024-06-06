@@ -40,6 +40,6 @@ contract TestLZMisc is LZCommon {
             address(layerZeroEscrow),
             abi.encodeCall(layerZeroEscrow.getFee, (remoteEid, address(layerZeroEscrow), 0, hex""))
         );
-        layerZeroEscrow.estimateAdditionalCost(remoteEid);
+        layerZeroEscrow.estimateAdditionalCost(bytes32(uint256(remoteEid)));
     }
 }
