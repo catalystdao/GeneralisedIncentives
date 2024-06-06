@@ -112,7 +112,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
     }
 
     function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64 timestamp) {
-        return 0; // TODO: Set to something like 1 month.
+        return 30 days;
     }
 
     /**
