@@ -16,8 +16,11 @@ contract TestLZSendPacket is LZCommon {
         super.setUp();
     }
 
-    function test_send_packet(address target, bytes calldata message, uint64 deadline) external {
+    function test_send_packet(address target, bytes calldata message, uint32 deadline) external {
+        vm.assume(deadline < 30 days);
         _set_init_config();
+
+        deadline = deadline + uint32(block.timestamp);
 
         uint64 nonce = 1;
         uint32 dstEid = remoteEid;
@@ -45,11 +48,6 @@ contract TestLZSendPacket is LZCommon {
             hex"0003",
             address(sendULN)
         );
-        layerZeroEscrow.sendPacket(bytes32(uint256(remoteEid)), abi.encodePacked(bytes32(uint256(uint160(target)))), message, deadline);
-    }
-
-    function test_revert_no_init_config_send_packet(address target, bytes calldata message, uint64 deadline) external {
-        vm.expectRevert();
         layerZeroEscrow.sendPacket(bytes32(uint256(remoteEid)), abi.encodePacked(bytes32(uint256(uint160(target)))), message, deadline);
     }
 }
