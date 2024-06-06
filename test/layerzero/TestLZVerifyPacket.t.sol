@@ -149,7 +149,7 @@ contract TestLZVerifyPacket is LZCommon {
             10
         );
 
-        vm.expectRevert(abi.encodeWithSignature("IncorrectDestination(address)", receiver));
+        vm.expectRevert(abi.encodeWithSignature("IncorrectDestination()"));
         layerZeroEscrow.verifyPacket(hex"", _packet);
     }
 
