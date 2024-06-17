@@ -50,11 +50,15 @@
   "LayerZero": {
     "basesepolia": {
       "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-      "escrow": "0xDb93559e30F5A3845438DDcf7Ca8A2D6D9005d30"
+      "escrow": "0xbA6f62a6539e4Bc11d2A8B1C760b5a1097c6cF6B"
     },
     "optimismsepolia": {
       "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
-      "escrow": "0xDb93559e30F5A3845438DDcf7Ca8A2D6D9005d30"
+      "escrow": "0xbA6f62a6539e4Bc11d2A8B1C760b5a1097c6cF6B"
+    },
+    "seidevnet": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0xbA6f62a6539e4Bc11d2A8B1C760b5a1097c6cF6B"
     }
   }
 }
