@@ -3,7 +3,7 @@ pragma solidity ^0.8.22;
 
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { ILayerZeroExecutor } from "LayerZero-v2/messagelib/contracts/interfaces/ILayerZeroExecutor.sol";
-import { IMessageLibManager, SetConfigParam } from "LayerZero-v2/protocol/contracts/interfaces/IMessageLibManager.sol";
+import { SetConfigParam } from "LayerZero-v2/protocol/contracts/interfaces/IMessageLibManager.sol";
 import { PacketV1Codec } from "LayerZero-v2/protocol/contracts/messagelib/libs/PacketV1Codec.sol";
 
 import { IncentivizedMessageEscrow } from "../../IncentivizedMessageEscrow.sol";
@@ -89,7 +89,6 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
 
     // Errors inherited from LZ.
     error LZ_ULN_Verifying();
-    error LZ_ULN_InvalidPacketHeader();
     error LZ_ULN_InvalidPacketVersion();
     error LZ_ULN_InvalidEid();
 
