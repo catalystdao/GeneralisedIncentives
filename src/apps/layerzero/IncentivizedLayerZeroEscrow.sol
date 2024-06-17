@@ -37,7 +37,7 @@ contract ExecutorZero is ILayerZeroExecutor {
 }
 
 /**
- * @title Incentivized LayerZero Messag Escrow
+ * @title Incentivized LayerZero Message Escrow
  * @notice Provides an alternative pathway to incentivize LayerZero message relaying.
  * While Layer Zero has a native way to incentivize message relaying, it lacks:
  * - Gas refunds of unspent gas.
@@ -129,7 +129,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
      * a new receiveLibrary. When they do this, they invalidate the previous receiveLibrary and
      * any associated proofs. As a result, the owners of the endpoint can determine when and if
      * proofs should be invalidated.
-     * On one hand, you could arguemt that this warrant a timeout of 0, since these messages could
+     * On one hand, you could argument that this warrant a timeout of 0, since these messages could
      * be recovered and ordinary usage would imply unlimited. However, since the structure of
      * LayerZero generally does not encorage 'recovery', it has been set to 30 days ≈ 1 month.
      */
@@ -172,11 +172,11 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
 
     /**
      * @notice Block any calls from the LZ endpoint so that no messages can ever get "verified" on the endpoint.
-     * This contract relies on a `verifiyable` call on the LZ receiveULN. In an ordinary config, when
-     * `verifiyable` returns true, the package state can progress by calling `commitVerification` and
-     * `verifiyable` switched from true to false. This breaks our flow. The LZ Endpoint calls `allowInitializePath`
+     * This contract relies on a `verifiable` call on the LZ receiveULN. In an ordinary config, when
+     * `verifiable` returns true, the package state can progress by calling `commitVerification` and
+     * `verifiable` switched from true to false. This breaks our flow. The LZ Endpoint calls `allowInitializePath`
      * during this flow and this function is intended to break that.
-     * As a result, when `verifiyable` switches from false => true it cannot be switched true => false.
+     * As a result, when `verifiable` switches from false => true it cannot be switched true => false.
      */
     function allowInitializePath(Origin calldata /* _origin */) external pure returns(bool) {
         return false;
@@ -209,7 +209,7 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
      */
     function estimateAdditionalCost(bytes32 destinationChainId) public view returns(address asset, uint256 amount) {
         amount = _estimateAdditionalCost(uint32(uint256(destinationChainId)));
-        asset =  address(0);
+        asset = address(0);
     }
 
     /**
