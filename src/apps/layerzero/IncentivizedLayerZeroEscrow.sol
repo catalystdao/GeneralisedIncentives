@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: DO-NOT-USE
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
 import { ILayerZeroEndpointV2, MessagingParams, MessagingFee, MessagingReceipt, Origin } from "LayerZero-v2/protocol/contracts/interfaces/ILayerZeroEndpointV2.sol";
