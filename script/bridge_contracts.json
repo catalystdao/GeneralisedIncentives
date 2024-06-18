@@ -48,6 +48,10 @@
     }
   },
   "LayerZero": {
+    "arbitrumsepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0xbA6f62a6539e4Bc11d2A8B1C760b5a1097c6cF6B"
+    },
     "basesepolia": {
       "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
       "escrow": "0xbA6f62a6539e4Bc11d2A8B1C760b5a1097c6cF6B"
