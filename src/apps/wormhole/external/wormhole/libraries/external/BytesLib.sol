@@ -421,14 +421,14 @@ library BytesLib {
                 } {
                     // if any of these checks fails then arrays are not equal
                     if iszero(eq(mload(mc), mload(cc))) {
-                        // unsuccess:
+                        // unsuccessful:
                         success := 0
                         cb := 0
                     }
                 }
             }
             default {
-                // unsuccess:
+                // unsuccessful:
                 success := 0
             }
         }
@@ -466,7 +466,7 @@ library BytesLib {
                         fslot := mul(div(fslot, 0x100), 0x100)
 
                         if iszero(eq(fslot, mload(add(_postBytes, 0x20)))) {
-                            // unsuccess:
+                            // unsuccessful:
                             success := 0
                         }
                     }
@@ -491,7 +491,7 @@ library BytesLib {
                             mc := add(mc, 0x20)
                         } {
                             if iszero(eq(sload(sc), mload(mc))) {
-                                // unsuccess:
+                                // unsuccessful:
                                 success := 0
                                 cb := 0
                             }
@@ -500,7 +500,7 @@ library BytesLib {
                 }
             }
             default {
-                // unsuccess:
+                // unsuccessful:
                 success := 0
             }
         }

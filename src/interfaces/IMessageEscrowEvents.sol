@@ -28,7 +28,7 @@ interface IMessageEscrowEvents {
 
     // To save gas, this event does not emit the full incentive scheme.
     // Instead, the new gas prices are emitted. As a result, the relayer can collect all bountyIncreased
-    // and then use the maximum. (since the  maxmimum is enforced in the smart contract)
+    // and then use the maximum. (since the  maximum is enforced in the smart contract)
     event BountyIncreased(
         bytes32 indexed messageIdentifier,
         uint96 newDeliveryGasPrice,

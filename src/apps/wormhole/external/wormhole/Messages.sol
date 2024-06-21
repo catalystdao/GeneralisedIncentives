@@ -12,7 +12,7 @@ import "./libraries/external/BytesLib.sol";
 contract Messages is Getters {
     using BytesLib for bytes;
 
-    /// @dev parseAndVerifyVM serves to parse an encodedVM and wholy validate it for consumption
+    /// @dev parseAndVerifyVM serves to parse an encodedVM and wholly validate it for consumption
     function parseAndVerifyVM(bytes calldata encodedVM) public view returns (Structs.VM memory vm, bool valid, string memory reason) {
         vm = parseVM(encodedVM);
         /// setting checkHash to false as we can trust the hash field in this case given that parseVM computes and then sets the hash field above
@@ -103,7 +103,7 @@ contract Messages is Getters {
 
 
     /**
-     * @dev verifySignatures serves to validate arbitrary sigatures against an arbitrary guardianSet
+     * @dev verifySignatures serves to validate arbitrary signatures against an arbitrary guardianSet
      *  - it intentionally does not solve for expectations within guardianSet (you should use verifyVM if you need these protections)
      *  - it intentioanlly does not solve for quorum (you should use verifyVM if you need these protections)
      *  - it intentionally returns true when signatures is an empty set (you should use verifyVM if you need these protections)
@@ -208,7 +208,7 @@ contract Messages is Getters {
     }
 
     /**
-     * @dev quorum serves solely to determine the number of signatures required to acheive quorum
+     * @dev quorum serves solely to determine the number of signatures required to achieve quorum
      */
     function quorum(uint numGuardians) public pure virtual returns (uint numSignaturesRequiredForQuorum) {
         // The max number of guardians is 255

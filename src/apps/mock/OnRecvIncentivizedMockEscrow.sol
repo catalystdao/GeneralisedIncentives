@@ -116,9 +116,9 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         bytes32 feeRecipient
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
-        VerifiedMessageHashContext storage _verfiedMessageHashContext = isVerifiedMessageHash[keccak256(rawMessage)];
-        _verfiedMessageHashContext.chainIdentifier = chainIdentifier;
-        _verfiedMessageHashContext.implementationIdentifier = destinationImplementationIdentifier;
+        VerifiedMessageHashContext storage _verifiedMessageHashContext = isVerifiedMessageHash[keccak256(rawMessage)];
+        _verifiedMessageHashContext.chainIdentifier = chainIdentifier;
+        _verifiedMessageHashContext.implementationIdentifier = destinationImplementationIdentifier;
         
         _handleAck(chainIdentifier, destinationImplementationIdentifier, rawMessage, feeRecipient, gasLimit);
     }
