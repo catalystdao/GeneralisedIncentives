@@ -58,14 +58,14 @@ contract ExecutorZero is ILayerZeroExecutor {
  * the executor. This has to be done for every remote chain & ULN.
  *
  * This implementation works by breaking the LZ endpoint flow. It relies on the
- * `.verfiyable` check on the ULN. When a cross-chain message is verified (step 2)
+ * `.verifiable` check on the ULN. When a cross-chain message is verified (step 2)
  * `commitVerification` is called and it deletes the storage for the verification: https://github.com/LayerZero-Labs/LayerZero-v2/blob/1fde89479fdc68b1a54cda7f19efa84483fcacc4/messagelib/contracts/uln/uln302/ReceiveUln302.sol#L56
- * this exactly `verfiyable: true -> false`.
+ * this exactly `verifiable: true -> false`.
  * We break this making the subcall `EndpointV2::verify` revert on _initializable:
  * https://github.com/LayerZero-Labs/LayerZero-v2/blob/1fde89479fdc68b1a54cda7f19efa84483fcacc4/protocol/contracts/EndpointV2.sol#L340
  * That is the purpose of `allowInitializePath`.
  *
- * Then we can use `verfiyable` to check if a message has been verified by DVNs.
+ * Then we can use `verifiable` to check if a message has been verified by DVNs.
  */
 contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero {
     using PacketV1Codec for bytes;
@@ -239,13 +239,13 @@ contract IncentivizedLayerZeroEscrow is IncentivizedMessageEscrow, ExecutorZero 
         // Verify the message on the LZ ultra light node.
         // Without any protection, this is a DoS vector. It is protected by setting allowInitializePath to return false
         // As a result, once this returns true it should return true perpetually.
-        bool verifyable = ULN.verifiable(_config, _headerHash, _payloadHash);
-        if (!verifyable) {
+        bool verifiable = ULN.verifiable(_config, _headerHash, _payloadHash);
+        if (!verifiable) {
             // LayerZero may have migrated to a new receive library. Check the timeout receive library.
             (address timeoutULN, uint256 expiry) = ENDPOINT.defaultReceiveLibraryTimeout(srcEid);
             if (timeoutULN == address(0) || expiry < block.timestamp) revert LZ_ULN_Verifying();
-            verifyable = IReceiveUlnBase(timeoutULN).verifiable(_config, _headerHash, _payloadHash);
-            if (!verifyable) revert LZ_ULN_Verifying();
+            verifiable = IReceiveUlnBase(timeoutULN).verifiable(_config, _headerHash, _payloadHash);
+            if (!verifiable) revert LZ_ULN_Verifying();
         }
 
         // Get the source chain
