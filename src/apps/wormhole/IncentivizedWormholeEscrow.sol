@@ -10,7 +10,7 @@ import { IWormhole } from "./interfaces/IWormhole.sol";
 /**
  * @title Incentivized Wormhole Message Escrow
  * @notice Incentivizes Wormhole messages through Generalised Incentives.
- * Wormhole does not have any native way of relaying messages, this implemention adds one.
+ * Wormhole does not have any native way of relaying messages, this implementation adds one.
  *
  * When using Wormhole with Generalised Incentives and you don't want to lose message, be very careful regarding
  * emitting messages to destinationChainIdentifiers that does not exist. Wormhole has no way to verify if a
@@ -50,7 +50,7 @@ contract IncentivizedWormholeEscrow is IncentivizedMessageEscrow, WormholeVerifi
         amount = WORMHOLE.messageFee();
     }
 
-    /** @notice Wormhole proofs are valid until the guardian set is changed. The new guradian set may sign a new VAA */
+    /** @notice Wormhole proofs are valid until the guardian set is changed. The new guardian set may sign a new VAA */
     function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
         return 0;
     }
