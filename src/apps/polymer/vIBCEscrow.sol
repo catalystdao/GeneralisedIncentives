@@ -104,7 +104,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
     }
 
     function onCloseIbcChannel(bytes32 channelId, string calldata, bytes32) external virtual onlyIbcDispatcher {
-        // logic to determin if the channel should be closed
+        // logic to determine if the channel should be closed
         bool channelFound = false;
         for (uint256 i = 0; i < connectedChannels.length; i++) {
             if (connectedChannels[i] == channelId) {
@@ -158,7 +158,7 @@ contract IncentivizedPolymerEscrow is APolymerEscrow, IbcReceiverBase, IbcReceiv
         // Get the payload by removing the implementation identifier.
         bytes calldata rawMessage = ack.data[POLYMER_PACKAGE_PAYLOAD_START:];
 
-        // Set a verificaiton context so we can recover the ack.
+        // Set a verification context so we can recover the ack.
         isVerifiedMessageHash[keccak256(rawMessage)] = VerifiedMessageHashContext({
             chainIdentifier: packet.src.channelId,
             implementationIdentifier: destinationImplementationIdentifier

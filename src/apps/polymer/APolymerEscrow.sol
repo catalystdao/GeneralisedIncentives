@@ -25,6 +25,11 @@ abstract contract APolymerEscrow is IncentivizedMessageEscrow {
         amount = 0;
     }
 
+    function estimateAdditionalCost(bytes32 /* destinationChainIdentifier */) external pure returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = 0;
+    }
+
     function _uniqueSourceIdentifier() internal view override returns (bytes32 sourceIdentifier) {
         return sourceIdentifier = bytes32(block.chainid);
     }

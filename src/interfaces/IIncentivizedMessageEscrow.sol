@@ -36,6 +36,14 @@ interface IIncentivizedMessageEscrow is IMessageEscrowStructs, IMessageEscrowErr
      * @return amount The number of assets to pay.
      */
     function estimateAdditionalCost() external view returns(address asset, uint256 amount);
+    
+    /**
+     * @notice Estimates the additional cost to the messaging router to validate the message
+     * @param destinationChainIdentifier Destination chain. Some messaging protocols have chain based costs.
+     * @return asset The asset the token is in. If native token, returns address(0);
+     * @return amount The number of assets to pay.
+     */
+    function estimateAdditionalCost(bytes32 destinationChainIdentifier) external view returns(address asset, uint256 amount);
 
     function timeoutMessage(
         bytes32 sourceIdentifier,

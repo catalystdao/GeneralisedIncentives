@@ -38,6 +38,11 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         amount = 0;
     }
 
+    function estimateAdditionalCost(bytes32 /* destinationChainIdentifier */) external pure returns(address asset, uint256 amount) {
+        asset =  address(0);
+        amount = 0;
+    }
+
     function _proofValidPeriod(bytes32 /* destinationIdentifier */) override internal pure returns(uint64) {
         return 0;
     }
@@ -111,9 +116,9 @@ contract OnRecvIncentivizedMockEscrow is IncentivizedMessageEscrow {
         bytes32 feeRecipient
     ) onlyMessagingProtocol external {
         uint256 gasLimit = gasleft();
-        VerifiedMessageHashContext storage _verfiedMessageHashContext = isVerifiedMessageHash[keccak256(rawMessage)];
-        _verfiedMessageHashContext.chainIdentifier = chainIdentifier;
-        _verfiedMessageHashContext.implementationIdentifier = destinationImplementationIdentifier;
+        VerifiedMessageHashContext storage _verifiedMessageHashContext = isVerifiedMessageHash[keccak256(rawMessage)];
+        _verifiedMessageHashContext.chainIdentifier = chainIdentifier;
+        _verifiedMessageHashContext.implementationIdentifier = destinationImplementationIdentifier;
         
         _handleAck(chainIdentifier, destinationImplementationIdentifier, rawMessage, feeRecipient, gasLimit);
     }

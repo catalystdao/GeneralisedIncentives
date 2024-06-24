@@ -10,6 +10,7 @@ import { BaseMultiChainDeployer} from "./BaseMultiChainDeployer.s.sol";
 import { IncentivizedMockEscrow } from "../src/apps/mock/IncentivizedMockEscrow.sol";
 import { IncentivizedWormholeEscrow } from "../src/apps/wormhole/IncentivizedWormholeEscrow.sol";
 import { IncentivizedPolymerEscrow } from "../src/apps/polymer/vIBCEscrow.sol";
+import { IncentivizedLayerZeroEscrow } from "../src/apps/layerzero/IncentivizedLayerZeroEscrow.sol";
 
 contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
     using stdJson for string;
@@ -28,6 +29,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
 
     // define a list of AMB mappings so we can get their addresses.
     mapping(string => mapping(string => address)) bridgeContract;
+
 
     constructor() {
         // Here we can define input salts. These are always assumed to be dependent on the secondary argument
@@ -93,6 +95,24 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
             IncentivizedPolymerEscrow polymerEscrow = new IncentivizedPolymerEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), polymerBridgeContract);
 
             incentive = address(polymerEscrow);
+
+        } else if (versionHash == keccak256(abi.encodePacked("LayerZero"))) {
+            address layerZeroBridgeContract = bridgeContract[version][currentChainKey];
+            bytes32 salt = deploySalts[layerZeroBridgeContract];
+            require(layerZeroBridgeContract != address(0), "bridge cannot be address(0)");
+
+            address expectedAddress = _getAddress(
+                abi.encodePacked(
+                    type(IncentivizedLayerZeroEscrow).creationCode,
+                    abi.encode(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract)
+                ),
+                salt
+            );
+
+            if (expectedAddress.codehash != bytes32(0)) return expectedAddress;
+
+            IncentivizedLayerZeroEscrow layerZeroEscrow = new IncentivizedLayerZeroEscrow{salt: salt}(vm.envAddress("SEND_LOST_GAS_TO"), layerZeroBridgeContract);
+            incentive = address(layerZeroEscrow);
         } else {
             revert IncentivesVersionNotFound();
         }
@@ -106,8 +126,7 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
         return incentive;
     }
 
-    modifier load_config() {
-        
+modifier load_config() {
         string memory pathRoot = vm.projectRoot();
         pathToAmbConfig = string.concat(pathRoot, "/script/bridge_contracts.json");
 
@@ -119,11 +138,11 @@ contract DeployGeneralisedIncentives is BaseMultiChainDeployer {
         // For each bridge, decode their contracts for each chain.
         for (uint256 i = 0; i < availableBridges.length; ++i) {
             string memory bridge = availableBridges[i];
-            // Get the chains this bridge support.
+            // Get the chains this bridge supports.
             string[] memory availableBridgesChains = vm.parseJsonKeys(bridge_config, string.concat(".", bridge));
             for (uint256 j = 0; j < availableBridgesChains.length; ++j) {
                 string memory chain = availableBridgesChains[j];
-                // decode the address
+                // Decode the address
                 address _bridgeContract = vm.parseJsonAddress(bridge_config, string.concat(".", bridge, ".", chain, ".bridge"));
                 bridgeContract[bridge][chain] = _bridgeContract;
             }

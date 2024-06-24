@@ -21,14 +21,14 @@ import "./MessagePayload.sol";
  * and verify messages. There are 4 functions that an integration has to implement.
  * Any implementation of this contract, allows applications to deliver a message to ::submitMessage
  * along with the respective incentives. 
- * The integration (this contract) will handle transfering the message to the destination and
+ * The integration (this contract) will handle transferring the message to the destination and
  * returning an ack from the destination to the integrating application.
  *
  * The incentive is released when an ack from the destination chain is delivered to this contract.
  *
  * Beyond making relayer incentives stronger, this contract also implements several quality of life features:
  * - Refund unused gas.
- * - Seperate gas payments for call and ack.
+ * - Separate gas payments for call and ack.
  * - Simple implementation of new messaging protocols.
  *
  * Applications integration with Generalised Incentives have to be aware that Acks are replayable.
@@ -94,7 +94,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @notice Verifies the authenticity of a message.
      * @dev Should be overwritten by the specific messaging protocol verification structure.
      * onRecv. implementations should collect acks so _verifyPacket returns true after acks have been executed once.
-     * @param messagingProtocolContext Some context that is useful for verifing the message.
+     * @param messagingProtocolContext Some context that is useful for verifying the message.
      * It should not contain the message but instead verification context like signatures, header, etc.
      * Context may not be needed for verifying the message and can be prepended to rawMessage.
      * @param rawMessage Some kind of package, initially untrusted. Should contain the message as a slice
@@ -123,7 +123,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param destinationIdentifier The destination chain for the message.
      * @param destinationImplementation The destination escrow contract.
      * @param message The message. Contains relevant escrow context.
-     * @param deadline A timestamp that the message should be delivered before. If the AMB does not nativly
+     * @param deadline A timestamp that the message should be delivered before. If the AMB does not natively
      * support a timeout on their messages this parameter should be ignored. If 0 is provided, parse it as MAX.
      * @return costOfsendPacketInNativeToken An additional cost to emitting messages in NATIVE tokens.
      */
@@ -255,7 +255,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         return _messageDelivered[sourceIdentifier][sourceImplementationIdentifier][messageIdentifier];
    }
 
-     /**
+    /**
      * @notice Sets the escrow implementation for a specific chain
      * @dev This can only be set once. When set, it cannot be changed.
      * This is to protect relayers as this could be used to fail acks.
@@ -334,8 +334,8 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
      * @param destinationIdentifier 32 bytes that identifies the destination chain.
      * @param destinationAddress The destination application encoded in 65 bytes: First byte is the length and last 64 is the destination application.
      * @param message The message to be sent to the destination. Please ensure the message is block-unique.
-     *     This means that you don't send the same message twice in a single block. If you need to do that, add a nonce or noice.
-     * @param incentive The incentive to attatch to the bounty. The price of this incentive has to be paid,
+     *     This means that you don't send the same message twice in a single block. If you need to do that, add a nonce or noise.
+     * @param incentive The incentive to attach to the bounty. The price of this incentive has to be paid,
      * any excess is refunded to refundGasTo. (not msg.sender)
      * @param deadline After this date, do not allow relayers to execute the message on the destination chain. If set to 0, disable timeouts.
      * Not all AMBs may support disabling the deadline. If acks are required it is recommended to set the deadline sometime in the future.
@@ -419,6 +419,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             if (msg.value > sum) {
                 // We know: msg.value > sum, thus msg.value - sum > 0.
                 gasRefund = msg.value - sum;
+                // Send the refund to the refund address.
                 Address.sendValue(payable(incentive.refundGasTo), uint256(gasRefund));
                 return (gasRefund, messageIdentifier);
             }
@@ -476,7 +477,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             revert NotImplementedError();
         }
 
-        // Check if there is a mis-match between the cost and the value of the message.
+        // Check if there is a mismatch between the cost and the value of the message.
         if (uint128(msg.value) != cost) {
             if (uint128(msg.value) > cost) {
                 // Send the unused gas back to the the user.
@@ -669,7 +670,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // First check if the application trusts the implementation on the destination chain.
         bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][destinationIdentifier];
         // Check that the application approves the source implementation
-        // For acks, this should always be the case except when a fradulent applications sends a message to this contract.
+        // For acks, this should always be the case except when a fraudulent applications sends a message to this contract.
         if (expectedDestinationImplementationHash != keccak256(destinationImplementationIdentifier)) revert InvalidImplementationAddress();
 
         // Deliver the ack to the application.
@@ -824,7 +825,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
     }
 
     /**
-     * @notice Verifies the input parameters are contained messageIdentfier and that the other arguments are valid.
+     * @notice Verifies the input parameters are contained messageIdentifier and that the other arguments are valid.
      * The usage of this function is intended when no parameters of a message can be trusted and we have to verify them.
      * This is the case when we receive a timeout, as the timeout had to be emitted without any verification
      * on the remote chain, for us to then verify since we know when a message identifier is good AND how to compute it.
@@ -850,7 +851,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         fromApplication = address(uint160(bytes20(message[FROM_APPLICATION_START_EVM:FROM_APPLICATION_END])));
         bytes32 expectedDestinationImplementationHash = implementationAddressHash[fromApplication][destinationIdentifier];
         // Check that the application approves of the remote implementation.
-        // For timeouts, this could fail because of fradulent sender or bad data.
+        // For timeouts, this could fail because of fraudulent sender or bad data.
         if (expectedDestinationImplementationHash != keccak256(implementationIdentifier)) revert InvalidImplementationAddress();
 
         // Do we need to check deadline again?
@@ -925,7 +926,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             ackFee = gasSpentOnSource * priceOfAckGas;  
             // deliveryFee + ackFee < 2**144 + 2**144 = 2**145
             actualFee = deliveryFee + ackFee;
-            // (priceOfDeliveryGas * maxGasDelivery + priceOfDeliveryGas * maxGasAck) has been caculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
+            // (priceOfDeliveryGas * maxGasDelivery + priceOfDeliveryGas * maxGasAck) has been calculated before (escrowBounty) < (2**48 * 2**96) + (2**48 * 2**96) = 2**144 + 2**144 = 2**145
             uint256 maxDeliveryFee = maxGasDelivery * priceOfDeliveryGas;
             uint256 maxAckFee = maxGasAck * priceOfAckGas;
             uint256 maxFee = maxDeliveryFee + maxAckFee;
@@ -1017,7 +1018,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /** 
      * @notice Sets a bounty for a message
-     * @dev Does not check if enough incentives have been provided, this is delegated as responsiblity 
+     * @dev Does not check if enough incentives have been provided, this is delegated as responsibility 
      * of the caller of this function.
      * @param fromApplication The application that called the contract. Should generally be msg.sender. Is used to separate storage between applications.
      * @param destinationIdentifier The destination chain. Combined with fromApplication, this specifics a unique remote escrow implementation.
@@ -1043,7 +1044,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
 
     /**
      * @notice Allows anyone to re-execute an ack which didn't properly execute.
-     * @dev No applciation should rely on this function. It should only be used incase an application has faulty logic. 
+     * @dev No application should rely on this function. It should only be used incase an application has faulty logic. 
      * Example: Faulty logic results in wrong enforcement on gas limit => out of gas?
      *
      * This function allows replaying acks.
@@ -1093,21 +1094,21 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         bytes calldata implementationIdentifier,
         bytes calldata receiveAckWithContext
     ) external payable virtual {
-        // Has the package previously been executed? (otherwise timeout might be more appropiate)
+        // Has the package previously been executed? (otherwise timeout might be more appropriate)
 
         // Load the messageIdentifier from receiveAckWithContext.
-        // This makes it slighly easier to retry messages.
+        // This makes it slightly easier to retry messages.
         bytes32 messageIdentifier = bytes32(receiveAckWithContext[MESSAGE_IDENTIFIER_START:MESSAGE_IDENTIFIER_END]);
 
         bytes32 storedAckHash = _messageDelivered[sourceIdentifier][implementationIdentifier][messageIdentifier];
-        // First, check if there is actually an appropiate hash at the message identifier.
+        // First, check if there is actually an appropriate hash at the message identifier.
         // Then, check if the storedAckHash & the source target (sourceIdentifier & implementationIdentifier) matches the executed one.
         if (storedAckHash == bytes32(0) || storedAckHash != keccak256(receiveAckWithContext)) revert CannotRetryWrongMessage(storedAckHash, keccak256(receiveAckWithContext));
 
         // Send the package again.
         uint128 cost = _sendPacket(sourceIdentifier, implementationIdentifier, receiveAckWithContext, 0);
 
-        // Check if there is a mis-match between the cost and the value of the message.
+        // Check if there is a mismatch between the cost and the value of the message.
         if (uint128(msg.value) != cost) {
             if (uint128(msg.value) > cost) {
                 // Send the unused gas back to the the user.
@@ -1165,7 +1166,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
         // When the message arrives, the usual incentive check ensures only 1 message can arrive. Since the incentive check is based on
         // messageIdentifier, we need to verify it.
         // Remember, the messageIdentifier is actually untrusted. So it is trivial to pass the above check. However, any way to pass
-        // the above check fradulently would result in messageIdentifier being wrong and unable to be reproduced on the source chain.
+        // the above check fraudulently would result in messageIdentifier being wrong and unable to be reproduced on the source chain.
 
         // Load the deadline from the message.
         uint64 deadline = uint64(bytes8(message[CTX0_DEADLINE_START:CTX0_DEADLINE_END]));
@@ -1196,7 +1197,7 @@ abstract contract IncentivizedMessageEscrow is IIncentivizedMessageEscrow, Bytes
             0
         );
 
-        // Check if there is a mis-match between the cost and the value of the message.
+        // Check if there is a mismatch between the cost and the value of the message.
         if (uint128(msg.value) != cost) {
             if (uint128(msg.value) > cost) {
                 // Send the unused gas back to the the user.

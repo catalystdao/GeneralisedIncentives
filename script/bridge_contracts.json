@@ -46,5 +46,15 @@
       "bridge": "0xE2029629f51ab994210d671Dc08b7Ec94899b278",
       "escrow": "0x87AE7bC6B565E545bDD51788C43BF9E5cbB72EBD"
     }
+  },
+  "LayerZero": {
+    "basesepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0xDb93559e30F5A3845438DDcf7Ca8A2D6D9005d30"
+    },
+    "optimismsepolia": {
+      "bridge": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "escrow": "0xDb93559e30F5A3845438DDcf7Ca8A2D6D9005d30"
+    }
   }
 }
